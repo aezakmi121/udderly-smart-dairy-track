@@ -3,6 +3,10 @@ import React, { useState } from 'react';
 import { Navigation } from './Navigation';
 import { Sidebar } from './Sidebar';
 import { Dashboard } from '../dashboard/Dashboard';
+import { CowsManagement } from '../cows/CowsManagement';
+import { CalvesManagement } from '../calves/CalvesManagement';
+import { MilkProduction } from '../milk/MilkProduction';
+import { FarmersManagement } from '../farmers/FarmersManagement';
 
 export const MainLayout = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -12,25 +16,25 @@ export const MainLayout = () => {
       case 'dashboard':
         return <Dashboard />;
       case 'cows':
-        return <div>Cows Management - Coming Soon</div>;
+        return <CowsManagement />;
       case 'calves':
-        return <div>Calves Management - Coming Soon</div>;
+        return <CalvesManagement />;
       case 'milk-production':
-        return <div>Milk Production - Coming Soon</div>;
+        return <MilkProduction />;
       case 'vaccination':
-        return <div>Vaccination Management - Coming Soon</div>;
+        return <div className="p-8 text-center text-muted-foreground">Vaccination Management - Coming Soon</div>;
       case 'weight-logs':
-        return <div>Weight Logs - Coming Soon</div>;
+        return <div className="p-8 text-center text-muted-foreground">Weight Logs - Coming Soon</div>;
       case 'ai-tracking':
-        return <div>AI Tracking - Coming Soon</div>;
+        return <div className="p-8 text-center text-muted-foreground">AI Tracking - Coming Soon</div>;
       case 'farmers':
-        return <div>Farmers Management - Coming Soon</div>;
+        return <FarmersManagement />;
       case 'milk-collection':
-        return <div>Milk Collection - Coming Soon</div>;
+        return <div className="p-8 text-center text-muted-foreground">Milk Collection - Coming Soon</div>;
       case 'feed-management':
-        return <div>Feed & Stock Management - Coming Soon</div>;
+        return <div className="p-8 text-center text-muted-foreground">Feed & Stock Management - Coming Soon</div>;
       case 'reports':
-        return <div>Reports & Analytics - Coming Soon</div>;
+        return <div className="p-8 text-center text-muted-foreground">Reports & Analytics - Coming Soon</div>;
       default:
         return <Dashboard />;
     }
