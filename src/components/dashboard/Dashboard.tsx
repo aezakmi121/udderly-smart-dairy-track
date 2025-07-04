@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Beef, Baby, Milk, Users, TrendingUp, Calendar } from 'lucide-react';
@@ -28,14 +27,13 @@ export const Dashboard = () => {
         totalCows: results[0].status === 'fulfilled' ? results[0].value.count || 0 : 0,
         totalCalves: results[1].status === 'fulfilled' ? results[1].value.count || 0 : 0,
         monthlyMilk: results[2].status === 'fulfilled' && results[2].value.data 
-          ? results[2].value.data.reduce((sum: number, record: { quantity: number }) => sum + (record.quantity || 0), 0)
+          ? results[2].value.data.reduce((sum, record) => sum + (record.quantity || 0), 0)
           : 0,
         totalFarmers: results[3].status === 'fulfilled' ? results[3].value.count || 0 : 0,
       };
     },
   });
 
-  
   const statsCards = [
     {
       title: 'Total Cows',
@@ -67,7 +65,6 @@ export const Dashboard = () => {
     },
   ].filter(card => card.show);
 
-  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
