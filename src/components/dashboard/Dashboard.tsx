@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Beef, Baby, Milk, Users, TrendingUp, Calendar } from 'lucide-react';
@@ -35,6 +34,7 @@ export const Dashboard = () => {
     },
   });
 
+  
   const statsCards = [
     {
       title: 'Total Cows',
@@ -66,6 +66,7 @@ export const Dashboard = () => {
     },
   ].filter(card => card.show);
 
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
