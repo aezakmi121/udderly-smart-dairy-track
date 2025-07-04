@@ -18,7 +18,7 @@ interface MilkProduction {
   id: string;
   cow_id?: string;
   production_date: string;
-  session: string;
+  session: 'morning' | 'evening';
   quantity: number;
   fat_percentage?: number;
   snf_percentage?: number;
@@ -96,7 +96,7 @@ export const MilkProduction = () => {
     mutationFn: async (newRecord: Omit<MilkProduction, 'id'>) => {
       const { data, error } = await supabase
         .from('milk_production')
-        .insert([newRecord])
+        .insert(newRecord)
         .select()
         .single();
       
@@ -159,7 +159,7 @@ export const MilkProduction = () => {
     const recordData = {
       cow_id: formData.get('cow_id') as string || null,
       production_date: formData.get('production_date') as string,
-      session: formData.get('session') as string,
+      session: formData.get('session') as 'morning' | 'evening',
       quantity: parseFloat(formData.get('quantity') as string),
       fat_percentage: parseFloat(formData.get('fat_percentage') as string) || null,
       snf_percentage: parseFloat(formData.get('snf_percentage') as string) || null,

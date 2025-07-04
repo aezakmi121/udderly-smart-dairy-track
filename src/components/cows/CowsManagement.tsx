@@ -20,7 +20,7 @@ interface Cow {
   breed?: string;
   date_of_birth?: string;
   date_of_arrival: string;
-  status?: string;
+  status?: 'active' | 'dry' | 'pregnant' | 'sick' | 'sold' | 'dead';
   image_url?: string;
   estimated_milk_capacity?: number;
   current_month_yield?: number;
@@ -52,7 +52,7 @@ export const CowsManagement = () => {
     mutationFn: async (newCow: Omit<Cow, 'id'>) => {
       const { data, error } = await supabase
         .from('cows')
-        .insert([newCow])
+        .insert(newCow)
         .select()
         .single();
       
@@ -141,7 +141,7 @@ export const CowsManagement = () => {
       breed: formData.get('breed') as string,
       date_of_birth: formData.get('date_of_birth') as string || null,
       date_of_arrival: formData.get('date_of_arrival') as string,
-      status: formData.get('status') as string,
+      status: formData.get('status') as 'active' | 'dry' | 'pregnant' | 'sick' | 'sold' | 'dead',
       estimated_milk_capacity: parseFloat(formData.get('estimated_milk_capacity') as string) || null,
       notes: formData.get('notes') as string,
       image_url: selectedCow?.image_url || null

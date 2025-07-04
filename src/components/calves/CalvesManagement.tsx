@@ -17,12 +17,12 @@ import { useToast } from '@/hooks/use-toast';
 interface Calf {
   id: string;
   calf_number?: string;
-  gender: string;
+  gender: 'male' | 'female';
   date_of_birth: string;
   mother_cow_id?: string;
   breed?: string;
   birth_weight?: number;
-  status?: string;
+  status?: 'alive' | 'dead' | 'sold';
   image_url?: string;
   notes?: string;
 }
@@ -75,7 +75,7 @@ export const CalvesManagement = () => {
     mutationFn: async (newCalf: Omit<Calf, 'id'>) => {
       const { data, error } = await supabase
         .from('calves')
-        .insert([newCalf])
+        .insert(newCalf)
         .select()
         .single();
       
@@ -161,12 +161,12 @@ export const CalvesManagement = () => {
     
     const calfData = {
       calf_number: formData.get('calf_number') as string,
-      gender: formData.get('gender') as string,
+      gender: formData.get('gender') as 'male' | 'female',
       date_of_birth: formData.get('date_of_birth') as string,
       mother_cow_id: formData.get('mother_cow_id') as string || null,
       breed: formData.get('breed') as string,
       birth_weight: parseFloat(formData.get('birth_weight') as string) || null,
-      status: formData.get('status') as string,
+      status: formData.get('status') as 'alive' | 'dead' | 'sold',
       notes: formData.get('notes') as string,
       image_url: selectedCalf?.image_url || null
     };
