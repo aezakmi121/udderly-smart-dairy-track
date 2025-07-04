@@ -1,177 +1,124 @@
+
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Beef, Milk, Users, TrendingUp } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Beef, Baby, Milk, Users, TrendingUp, Calendar } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { NotificationPanel } from '@/components/notifications/NotificationPanel';
 
 export const Dashboard = () => {
-  const { data: cowsCount } = useQuery({
-    queryKey: ['cows-count'],
+  const { canAccess } = useUserPermissions();
+
+  // Query for dashboard stats
+  const { data: stats } = useQuery({
+    queryKey: ['dashboard-stats'],
     queryFn: async () => {
-      const { count } = await supabase
-        .from('cows')
-        .select('*', { count: 'exact', head: true });
-      return count || 0;
-    }
+      const results = await Promise.allSettled([
+        canAccess.cows ? supabase.from('cows').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
+        canAccess.calves ? supabase.from('calves').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
+        canAccess.milkProduction ? supabase
+          .from('milk_production')
+          .select('quantity')
+          .gte('production_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]) : Promise.resolve({ data: [] }),
+        canAccess.farmers ? supabase.from('farmers').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
+      ]);
+
+      return {
+        totalCows: results[0].status === 'fulfilled' ? results[0].value.count || 0 : 0,
+        totalCalves: results[1].status === 'fulfilled' ? results[1].value.count || 0 : 0,
+        monthlyMilk: results[2].status === 'fulfilled' && results[2].value.data 
+          ? results[2].value.data.reduce((sum: number, record: any) => sum + (record.quantity || 0), 0) 
+          : 0,
+        totalFarmers: results[3].status === 'fulfilled' ? results[3].value.count || 0 : 0,
+      };
+    },
   });
 
-  const { data: todayMilk } = useQuery({
-    queryKey: ['today-milk'],
-    queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const { data } = await supabase
-        .from('milk_production')
-        .select('quantity')
-        .eq('production_date', today);
-      
-      return data?.reduce((sum, record) => sum + Number(record.quantity), 0) || 0;
-    }
-  });
-
-  const { data: farmersCount } = useQuery({
-    queryKey: ['farmers-count'],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from('farmers')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
-      return count || 0;
-    }
-  });
-
-  const { data: calvesCount } = useQuery({
-    queryKey: ['calves-count'],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from('calves')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'alive');
-      return count || 0;
-    }
-  });
-
-  const stats = [
+  const statsCards = [
     {
-      title: "Total Cows",
-      value: cowsCount?.toString() || "0",
-      description: "Active cows in the farm",
+      title: 'Total Cows',
+      value: stats?.totalCows || 0,
       icon: Beef,
-      color: "text-blue-600"
+      color: 'text-blue-600',
+      show: canAccess.cows
     },
     {
-      title: "Today's Milk",
-      value: `${todayMilk?.toFixed(1) || "0"} L`,
-      description: "Total milk production today",
+      title: 'Total Calves',
+      value: stats?.totalCalves || 0,
+      icon: Baby,
+      color: 'text-pink-600',
+      show: canAccess.calves
+    },
+    {
+      title: 'Monthly Milk (L)',
+      value: stats?.monthlyMilk?.toFixed(1) || '0',
       icon: Milk,
-      color: "text-green-600"
+      color: 'text-green-600',
+      show: canAccess.milkProduction
     },
     {
-      title: "Active Farmers",
-      value: farmersCount?.toString() || "0",
-      description: "Registered milk suppliers",
+      title: 'Total Farmers',
+      value: stats?.totalFarmers || 0,
       icon: Users,
-      color: "text-purple-600"
+      color: 'text-purple-600',
+      show: canAccess.farmers
     },
-    {
-      title: "Live Calves",
-      value: calvesCount?.toString() || "0",
-      description: "Healthy calves in the farm",
-      icon: TrendingUp,
-      color: "text-orange-600"
-    }
-  ];
+  ].filter(card => card.show);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-        <p className="text-muted-foreground">
-          Welcome to your dairy farm management system
-        </p>
-      </div>
-      
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">
-                {stat.description}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Calendar className="h-4 w-4" />
+          {new Date().toLocaleDateString()}
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>
-              Latest updates from your dairy farm
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-3" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Milk production recorded</p>
-                  <p className="text-xs text-muted-foreground">Morning session completed</p>
-                </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statsCards.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.title}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {stat.title}
+                </CardTitle>
+                <Icon className={`h-4 w-4 ${stat.color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Notifications Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <NotificationPanel />
+        </div>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Quick Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Use the sidebar to navigate to different sections of the farm management system.
+              </p>
+              <div className="text-xs text-muted-foreground">
+                Access is based on your assigned role and permissions.
               </div>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mr-3" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">New calf registered</p>
-                  <p className="text-xs text-muted-foreground">Female calf from Cow #145</p>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full mr-3" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Vaccination due</p>
-                  <p className="text-xs text-muted-foreground">3 cows need deworming</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>Quick Stats</CardTitle>
-            <CardDescription>
-              Farm performance overview
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-sm">Avg. Daily Milk</span>
-                <span className="font-medium">245.5 L</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Pregnancy Rate</span>
-                <span className="font-medium">78%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Feed Efficiency</span>
-                <span className="font-medium">92%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Health Score</span>
-                <span className="font-medium">95%</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

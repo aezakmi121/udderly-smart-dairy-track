@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { User, LogOut, Settings } from 'lucide-react';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export const Navigation = () => {
   const { user, signOut } = useAuth();
@@ -23,6 +24,7 @@ export const Navigation = () => {
             </h1>
           </div>
           <div className="flex items-center space-x-4">
+            <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm">
