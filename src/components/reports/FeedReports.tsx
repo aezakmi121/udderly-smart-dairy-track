@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,11 +6,24 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useReportExports } from '@/hooks/useReportExports';
 
+interface StockDistributionItem {
+  name: string;
+  value: number;
+  color: string;
+}
+
+interface StockData {
+  totalValue: number;
+  lowStockItems: number;
+  stockDistribution: StockDistributionItem[];
+  totalStock: number;
+}
+
 export const FeedReports = () => {
   const { exportToCSV } = useReportExports();
 
   // Fetch feed stock data
-  const { data: stockData } = useQuery({
+  const { data: stockData } = useQuery<StockData>({
     queryKey: ['feed-stock-stats'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -31,7 +43,7 @@ export const FeedReports = () => {
         Number(item.current_stock) <= Number(item.minimum_stock_level || 0)
       ).length;
 
-      const categoryStats = data.reduce((acc, item) => {
+      const categoryStats: Record<string, StockDistributionItem> = data.reduce((acc, item) => {
         const categoryName = item.feed_categories?.name || 'Others';
         const value = Number(item.current_stock) * Number(item.cost_per_unit || 0);
         
@@ -40,7 +52,7 @@ export const FeedReports = () => {
         }
         acc[categoryName].value += value;
         return acc;
-      }, {});
+      }, {} as Record<string, StockDistributionItem>);
 
       return {
         totalValue: Math.round(totalValue),
@@ -152,7 +164,7 @@ export const FeedReports = () => {
       if (error) throw error;
 
       const headers = ['feed_item_name', 'month', 'total_quantity', 'total_cost', 'average_cost_per_unit'];
-      const monthlyData = {};
+      const monthlyData: Record<string, any> = {};
 
       data.forEach(transaction => {
         const month = transaction.transaction_date.slice(0, 7);
