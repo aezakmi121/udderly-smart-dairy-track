@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMilkCollection } from '@/hooks/useMilkCollection';
+import { useMilkRateSettings } from '@/hooks/useMilkRateSettings';
 
 interface MilkCollectionFormProps {
   onSubmit: (data: any) => void;
@@ -23,22 +24,20 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
       quantity: '',
       fat_percentage: '',
       snf_percentage: '',
-      rate_per_liter: '',
       is_accepted: true,
       remarks: ''
     }
   });
 
   const { farmers } = useMilkCollection();
+  const { calculateRate } = useMilkRateSettings();
+  
   const quantity = watch('quantity');
-  const ratePerLiter = watch('rate_per_liter');
+  const fatPercentage = watch('fat_percentage');
+  const snfPercentage = watch('snf_percentage');
 
-  const calculateTotal = () => {
-    if (quantity && ratePerLiter) {
-      return (Number(quantity) * Number(ratePerLiter)).toFixed(2);
-    }
-    return '0.00';
-  };
+  const calculatedRate = calculateRate(Number(fatPercentage) || 0, Number(snfPercentage) || 0);
+  const totalAmount = (Number(quantity) || 0) * calculatedRate;
 
   const handleFormSubmit = (data: any) => {
     onSubmit({
@@ -46,7 +45,8 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
       quantity: Number(data.quantity),
       fat_percentage: Number(data.fat_percentage),
       snf_percentage: Number(data.snf_percentage),
-      rate_per_liter: Number(data.rate_per_liter)
+      rate_per_liter: calculatedRate,
+      total_amount: totalAmount
     });
     reset();
   };
@@ -126,19 +126,16 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
           </div>
 
           <div>
-            <Label htmlFor="rate_per_liter">Rate per Liter</Label>
-            <Input
-              type="number"
-              step="0.01"
-              {...register('rate_per_liter', { required: true })}
-              placeholder="Rate per liter"
-            />
+            <Label>Rate per Liter</Label>
+            <div className="text-lg font-medium text-blue-600">
+              ₹{calculatedRate.toFixed(2)}
+            </div>
           </div>
 
           <div>
             <Label>Total Amount</Label>
             <div className="text-lg font-semibold text-green-600">
-              ₹{calculateTotal()}
+              ₹{totalAmount.toFixed(2)}
             </div>
           </div>
 

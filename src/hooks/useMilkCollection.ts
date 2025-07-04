@@ -52,12 +52,10 @@ export const useMilkCollection = () => {
   });
 
   const addCollectionMutation = useMutation({
-    mutationFn: async (newCollection: Omit<MilkCollection, 'id' | 'total_amount'>) => {
-      const totalAmount = newCollection.quantity * newCollection.rate_per_liter;
-
+    mutationFn: async (newCollection: Omit<MilkCollection, 'id'>) => {
       const { data, error } = await supabase
         .from('milk_collections')
-        .insert({ ...newCollection, total_amount: totalAmount })
+        .insert(newCollection)
         .select()
         .single();
       

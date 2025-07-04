@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,9 @@ import {
   Users,
   ShoppingCart,
   Heart,
-  BarChart3
+  BarChart3,
+  Settings,
+  Package
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -29,8 +32,9 @@ const menuItems = [
   { id: 'ai-tracking', label: 'AI Tracking', icon: Heart },
   { id: 'farmers', label: 'Farmers', icon: Users },
   { id: 'milk-collection', label: 'Milk Collection', icon: ShoppingCart },
-  { id: 'feed-management', label: 'Feed & Stock', icon: ShoppingCart },
+  { id: 'feed-management', label: 'Feed & Stock', icon: Package },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
+  { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {

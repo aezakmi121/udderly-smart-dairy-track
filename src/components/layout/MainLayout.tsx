@@ -11,6 +11,9 @@ import { WeightLogsManagement } from '../weight/WeightLogsManagement';
 import { AITrackingManagement } from '../ai-tracking/AITrackingManagement';
 import { FarmersManagement } from '../farmers/FarmersManagement';
 import { MilkCollectionManagement } from '../milk-collection/MilkCollectionManagement';
+import { FeedManagement } from '../feed/FeedManagement';
+import { ReportsManagement } from '../reports/ReportsManagement';
+import { SettingsManagement } from '../settings/SettingsManagement';
 
 export const MainLayout = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -36,9 +39,11 @@ export const MainLayout = () => {
       case 'milk-collection':
         return <MilkCollectionManagement />;
       case 'feed-management':
-        return <div className="p-8 text-center text-muted-foreground">Feed & Stock Management - Coming Soon</div>;
+        return <FeedManagement />;
       case 'reports':
-        return <div className="p-8 text-center text-muted-foreground">Reports & Analytics - Coming Soon</div>;
+        return <ReportsManagement />;
+      case 'settings':
+        return <SettingsManagement />;
       default:
         return <Dashboard />;
     }
