@@ -22,7 +22,7 @@ export const useMilkRateSettings = () => {
     queryKey: ['milk-rate-settings'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('milk_rate_settings')
+        .from('milk_rates')
         .select('*')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
@@ -35,7 +35,7 @@ export const useMilkRateSettings = () => {
   const addRateSettingMutation = useMutation({
     mutationFn: async (newRateSetting: Omit<MilkRateSetting, 'id'>) => {
       const { data, error } = await supabase
-        .from('milk_rate_settings')
+        .from('milk_rates')
         .insert(newRateSetting)
         .select()
         .single();
