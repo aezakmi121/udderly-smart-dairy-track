@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Cow, Milk, Users, TrendingUp } from 'lucide-react';
+import { Beef, Milk, Users, TrendingUp } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -56,7 +55,7 @@ export const Dashboard = () => {
       title: "Total Cows",
       value: cowsCount?.toString() || "0",
       description: "Active cows in the farm",
-      icon: Cow,
+      icon: Beef,
       color: "text-blue-600"
     },
     {

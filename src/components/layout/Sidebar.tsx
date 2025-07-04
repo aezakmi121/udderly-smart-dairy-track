@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
-  Cow,
+  Beef,
   Baby,
   Syringe,
   Scale,
@@ -22,7 +21,7 @@ interface SidebarProps {
 
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'cows', label: 'Cows', icon: Cow },
+  { id: 'cows', label: 'Cows', icon: Beef },
   { id: 'calves', label: 'Calves', icon: Baby },
   { id: 'milk-production', label: 'Milk Production', icon: Milk },
   { id: 'vaccination', label: 'Vaccination', icon: Syringe },
