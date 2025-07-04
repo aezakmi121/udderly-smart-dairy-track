@@ -3,6 +3,7 @@ import React from 'react';
 import { MilkRateForm } from './MilkRateForm';
 import { MilkRateTable } from './MilkRateTable';
 import { useMilkRateSettings } from '@/hooks/useMilkRateSettings';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export const MilkRateSettings = () => {
   const { rateSettings, isLoading, addRateSettingMutation } = useMilkRateSettings();
@@ -18,14 +19,14 @@ export const MilkRateSettings = () => {
         isLoading={addRateSettingMutation.isPending}
       />
       
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b">
-          <h3 className="text-lg font-semibold">Rate Settings</h3>
-        </div>
-        <div className="p-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Current Rate Settings</CardTitle>
+        </CardHeader>
+        <CardContent>
           <MilkRateTable rateSettings={rateSettings || []} isLoading={isLoading} />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
