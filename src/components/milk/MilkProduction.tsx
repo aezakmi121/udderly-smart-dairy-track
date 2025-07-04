@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -157,7 +156,7 @@ export const MilkProduction = () => {
     const formData = new FormData(e.currentTarget);
     
     const recordData = {
-      cow_id: formData.get('cow_id') as string || null,
+      cow_id: formData.get('cow_id') as string === 'bulk' ? null : formData.get('cow_id') as string,
       production_date: formData.get('production_date') as string,
       session: formData.get('session') as 'morning' | 'evening',
       quantity: parseFloat(formData.get('quantity') as string),
@@ -218,12 +217,12 @@ export const MilkProduction = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <Label htmlFor="cow_id">Cow</Label>
-                  <Select name="cow_id" defaultValue={selectedRecord?.cow_id || ''}>
+                  <Select name="cow_id" defaultValue={selectedRecord?.cow_id || 'bulk'}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select cow" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All cows (bulk entry)</SelectItem>
+                      <SelectItem value="bulk">All cows (bulk entry)</SelectItem>
                       {cows?.map((cow) => (
                         <SelectItem key={cow.id} value={cow.id}>
                           {cow.cow_number}
@@ -247,7 +246,7 @@ export const MilkProduction = () => {
                   
                   <div>
                     <Label htmlFor="session">Session *</Label>
-                    <Select name="session" defaultValue={selectedRecord?.session || ''} required>
+                    <Select name="session" defaultValue={selectedRecord?.session || 'morning'} required>
                       <SelectTrigger>
                         <SelectValue placeholder="Select session" />
                       </SelectTrigger>

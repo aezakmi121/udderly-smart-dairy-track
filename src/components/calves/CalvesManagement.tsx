@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -163,7 +162,7 @@ export const CalvesManagement = () => {
       calf_number: formData.get('calf_number') as string,
       gender: formData.get('gender') as 'male' | 'female',
       date_of_birth: formData.get('date_of_birth') as string,
-      mother_cow_id: formData.get('mother_cow_id') as string || null,
+      mother_cow_id: formData.get('mother_cow_id') as string === 'none' ? null : formData.get('mother_cow_id') as string,
       breed: formData.get('breed') as string,
       birth_weight: parseFloat(formData.get('birth_weight') as string) || null,
       status: formData.get('status') as 'alive' | 'dead' | 'sold',
@@ -245,7 +244,7 @@ export const CalvesManagement = () => {
                 
                 <div>
                   <Label htmlFor="gender">Gender *</Label>
-                  <Select name="gender" defaultValue={selectedCalf?.gender || ''} required>
+                  <Select name="gender" defaultValue={selectedCalf?.gender || 'male'} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
@@ -271,12 +270,12 @@ export const CalvesManagement = () => {
                 
                 <div>
                   <Label htmlFor="mother_cow_id">Mother Cow</Label>
-                  <Select name="mother_cow_id" defaultValue={selectedCalf?.mother_cow_id || ''}>
+                  <Select name="mother_cow_id" defaultValue={selectedCalf?.mother_cow_id || 'none'}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select mother cow" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No mother selected</SelectItem>
+                      <SelectItem value="none">No mother selected</SelectItem>
                       {cows?.map((cow) => (
                         <SelectItem key={cow.id} value={cow.id}>
                           {cow.cow_number}
