@@ -85,6 +85,20 @@ export type Database = {
             referencedRelation: "cows"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_ai_records_calf_id"
+            columns: ["calf_id"]
+            isOneToOne: false
+            referencedRelation: "calves"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ai_records_cow_id"
+            columns: ["cow_id"]
+            isOneToOne: false
+            referencedRelation: "cows"
+            referencedColumns: ["id"]
+          },
         ]
       }
       calves: {
@@ -390,6 +404,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_milk_collections_farmer_id"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "farmers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "milk_collections_farmer_id_fkey"
             columns: ["farmer_id"]
             isOneToOne: false
@@ -565,6 +586,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_vaccination_records_cow_id"
+            columns: ["cow_id"]
+            isOneToOne: false
+            referencedRelation: "cows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_vaccination_records_schedule_id"
+            columns: ["vaccination_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "vaccination_schedules"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "vaccination_records_cow_id_fkey"
             columns: ["cow_id"]
             isOneToOne: false
@@ -639,6 +674,13 @@ export type Database = {
           notes?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_weight_logs_cow_id"
+            columns: ["cow_id"]
+            isOneToOne: false
+            referencedRelation: "cows"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "weight_logs_cow_id_fkey"
             columns: ["cow_id"]

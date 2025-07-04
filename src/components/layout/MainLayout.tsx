@@ -6,7 +6,11 @@ import { Dashboard } from '../dashboard/Dashboard';
 import { CowsManagement } from '../cows/CowsManagement';
 import { CalvesManagement } from '../calves/CalvesManagement';
 import { MilkProduction } from '../milk/MilkProduction';
+import { VaccinationManagement } from '../vaccination/VaccinationManagement';
+import { WeightLogsManagement } from '../weight/WeightLogsManagement';
+import { AITrackingManagement } from '../ai-tracking/AITrackingManagement';
 import { FarmersManagement } from '../farmers/FarmersManagement';
+import { MilkCollectionManagement } from '../milk-collection/MilkCollectionManagement';
 
 export const MainLayout = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -22,15 +26,15 @@ export const MainLayout = () => {
       case 'milk-production':
         return <MilkProduction />;
       case 'vaccination':
-        return <div className="p-8 text-center text-muted-foreground">Vaccination Management - Coming Soon</div>;
+        return <VaccinationManagement />;
       case 'weight-logs':
-        return <div className="p-8 text-center text-muted-foreground">Weight Logs - Coming Soon</div>;
+        return <WeightLogsManagement />;
       case 'ai-tracking':
-        return <div className="p-8 text-center text-muted-foreground">AI Tracking - Coming Soon</div>;
+        return <AITrackingManagement />;
       case 'farmers':
         return <FarmersManagement />;
       case 'milk-collection':
-        return <div className="p-8 text-center text-muted-foreground">Milk Collection - Coming Soon</div>;
+        return <MilkCollectionManagement />;
       case 'feed-management':
         return <div className="p-8 text-center text-muted-foreground">Feed & Stock Management - Coming Soon</div>;
       case 'reports':
