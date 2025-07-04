@@ -14,10 +14,6 @@ interface MilkRateFormProps {
 export const MilkRateForm: React.FC<MilkRateFormProps> = ({ onSubmit, isLoading }) => {
   const { register, handleSubmit, reset } = useForm({
     defaultValues: {
-      fat_min: '',
-      fat_max: '',
-      snf_min: '',
-      snf_max: '',
       rate_per_liter: '',
       effective_from: new Date().toISOString().split('T')[0]
     }
@@ -26,11 +22,12 @@ export const MilkRateForm: React.FC<MilkRateFormProps> = ({ onSubmit, isLoading 
   const handleFormSubmit = (data: any) => {
     onSubmit({
       ...data,
-      fat_min: Number(data.fat_min),
-      fat_max: Number(data.fat_max),
-      snf_min: Number(data.snf_min),
-      snf_max: Number(data.snf_max),
       rate_per_liter: Number(data.rate_per_liter),
+      // Set default values for fat/SNF ranges to maintain database compatibility
+      fat_min: 0,
+      fat_max: 100,
+      snf_min: 0,
+      snf_max: 100,
       is_active: true
     });
     reset();
@@ -42,54 +39,14 @@ export const MilkRateForm: React.FC<MilkRateFormProps> = ({ onSubmit, isLoading 
         <CardTitle>Add Rate Setting</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="fat_min">Fat Min %</Label>
-            <Input
-              type="number"
-              step="0.1"
-              {...register('fat_min', { required: true })}
-              placeholder="Min fat %"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="fat_max">Fat Max %</Label>
-            <Input
-              type="number"
-              step="0.1"
-              {...register('fat_max', { required: true })}
-              placeholder="Max fat %"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="snf_min">SNF Min %</Label>
-            <Input
-              type="number"
-              step="0.1"
-              {...register('snf_min', { required: true })}
-              placeholder="Min SNF %"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="snf_max">SNF Max %</Label>
-            <Input
-              type="number"
-              step="0.1"
-              {...register('snf_max', { required: true })}
-              placeholder="Max SNF %"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="rate_per_liter">Rate per Liter</Label>
+            <Label htmlFor="rate_per_liter">Rate per Liter (₹)</Label>
             <Input
               type="number"
               step="0.01"
               {...register('rate_per_liter', { required: true })}
-              placeholder="Rate per liter"
+              placeholder="Enter rate per liter"
             />
           </div>
 
@@ -101,7 +58,7 @@ export const MilkRateForm: React.FC<MilkRateFormProps> = ({ onSubmit, isLoading 
             />
           </div>
 
-          <div className="md:col-span-3">
+          <div className="md:col-span-2">
             <Button type="submit" disabled={isLoading}>
               {isLoading ? 'Adding...' : 'Add Rate Setting'}
             </Button>

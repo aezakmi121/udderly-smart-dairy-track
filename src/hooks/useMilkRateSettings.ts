@@ -49,17 +49,12 @@ export const useMilkRateSettings = () => {
     }
   });
 
+  // Simplified rate calculation - just use the most recent active rate
   const calculateRate = (fatPercentage: number, snfPercentage: number) => {
-    if (!rateSettings) return 0;
+    if (!rateSettings || rateSettings.length === 0) return 0;
     
-    const matchingSetting = rateSettings.find(setting => 
-      fatPercentage >= setting.fat_min && 
-      fatPercentage <= setting.fat_max &&
-      snfPercentage >= setting.snf_min && 
-      snfPercentage <= setting.snf_max
-    );
-    
-    return matchingSetting ? matchingSetting.rate_per_liter : 0;
+    // For now, just return the most recent rate (first in the ordered list)
+    return rateSettings[0]?.rate_per_liter || 0;
   };
 
   return {

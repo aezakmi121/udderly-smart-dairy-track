@@ -113,6 +113,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
               {...register('fat_percentage', { required: true })}
               placeholder="Fat percentage"
             />
+            <p className="text-xs text-muted-foreground mt-1">For record keeping only</p>
           </div>
 
           <div>
@@ -123,6 +124,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
               {...register('snf_percentage', { required: true })}
               placeholder="SNF percentage"
             />
+            <p className="text-xs text-muted-foreground mt-1">For record keeping only</p>
           </div>
 
           <div>
@@ -130,6 +132,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
             <div className="text-lg font-medium text-blue-600">
               ₹{calculatedRate.toFixed(2)}
             </div>
+            <p className="text-xs text-muted-foreground">Based on current rate setting</p>
           </div>
 
           <div>
