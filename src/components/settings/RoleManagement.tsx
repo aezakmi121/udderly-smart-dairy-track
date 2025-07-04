@@ -9,10 +9,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus } from 'lucide-react';
 
+type UserRole = 'admin' | 'farmer' | 'worker';
+
 export const RoleManagement = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState('');
-  const [selectedRole, setSelectedRole] = useState('');
+  const [selectedRole, setSelectedRole] = useState<UserRole | ''>('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -29,7 +31,7 @@ export const RoleManagement = () => {
   });
 
   const assignRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
+    mutationFn: async ({ userId, role }: { userId: string; role: UserRole }) => {
       // First insert or update in user_roles table
       const { error: roleError } = await supabase
         .from('user_roles')
@@ -68,7 +70,7 @@ export const RoleManagement = () => {
 
   const handleAssignRole = () => {
     if (selectedUser && selectedRole) {
-      assignRoleMutation.mutate({ userId: selectedUser, role: selectedRole });
+      assignRoleMutation.mutate({ userId: selectedUser, role: selectedRole as UserRole });
     }
   };
 
@@ -104,7 +106,7 @@ export const RoleManagement = () => {
 
           <div>
             <Label htmlFor="role-select">Select Role</Label>
-            <Select onValueChange={setSelectedRole}>
+            <Select onValueChange={(value: UserRole) => setSelectedRole(value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose a role" />
               </SelectTrigger>

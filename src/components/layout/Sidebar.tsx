@@ -3,7 +3,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { 
   Home, 
-  Cow, 
+  Beef, 
   Baby, 
   Milk, 
   Syringe, 
@@ -38,7 +38,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, canAccess }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home, show: canAccess.dashboard },
-    { id: 'cows', label: 'Cows', icon: Cow, show: canAccess.cows },
+    { id: 'cows', label: 'Cows', icon: Beef, show: canAccess.cows },
     { id: 'calves', label: 'Calves', icon: Baby, show: canAccess.calves },
     { id: 'milk-production', label: 'Milk Production', icon: Milk, show: canAccess.milkProduction },
     { id: 'vaccination', label: 'Vaccination', icon: Syringe, show: canAccess.vaccination },
