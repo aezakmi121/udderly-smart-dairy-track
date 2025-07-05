@@ -37,12 +37,18 @@ export const usePOSData = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Mock data for now - will be replaced with actual database calls
-  const { data: products } = useQuery({
+  // Fetch products from database or use mock data for now
+  const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['pos-products'],
     queryFn: async () => {
-      // Mock data
-      return [
+      // For now, using localStorage to persist data until we create proper database tables
+      const savedProducts = localStorage.getItem('pos-products');
+      if (savedProducts) {
+        return JSON.parse(savedProducts) as POSProduct[];
+      }
+      
+      // Default mock data
+      const defaultProducts = [
         {
           id: '1',
           name: 'Cow Milk',
@@ -74,6 +80,9 @@ export const usePOSData = () => {
           created_at: new Date().toISOString(),
         }
       ] as POSProduct[];
+      
+      localStorage.setItem('pos-products', JSON.stringify(defaultProducts));
+      return defaultProducts;
     }
   });
 
@@ -100,19 +109,80 @@ export const usePOSData = () => {
   });
 
   const addProductMutation = useMutation({
-    mutationFn: async (productData: Partial<POSProduct>) => {
-      // Mock implementation
-      console.log('Adding product:', productData);
+    mutationFn: async (productData: Omit<POSProduct, 'id' | 'created_at'>) => {
+      const newProduct: POSProduct = {
+        ...productData,
+        id: Date.now().toString(),
+        created_at: new Date().toISOString(),
+      };
+      
+      const currentProducts = products || [];
+      const updatedProducts = [...currentProducts, newProduct];
+      localStorage.setItem('pos-products', JSON.stringify(updatedProducts));
+      
+      return newProduct;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pos-products'] });
       toast({ title: "Product added successfully!" });
+    },
+    onError: () => {
+      toast({ title: "Failed to add product", variant: "destructive" });
+    }
+  });
+
+  const updateProductMutation = useMutation({
+    mutationFn: async ({ id, productData }: { id: string; productData: Partial<POSProduct> }) => {
+      const currentProducts = products || [];
+      const updatedProducts = currentProducts.map(product => 
+        product.id === id ? { ...product, ...productData } : product
+      );
+      localStorage.setItem('pos-products', JSON.stringify(updatedProducts));
+      return { id, productData };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pos-products'] });
+      toast({ title: "Product updated successfully!" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update product", variant: "destructive" });
+    }
+  });
+
+  const deleteProductMutation = useMutation({
+    mutationFn: async (productId: string) => {
+      const currentProducts = products || [];
+      const updatedProducts = currentProducts.filter(product => product.id !== productId);
+      localStorage.setItem('pos-products', JSON.stringify(updatedProducts));
+      return productId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pos-products'] });
+      toast({ title: "Product deleted successfully!" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete product", variant: "destructive" });
     }
   });
 
   const updateStockMutation = useMutation({
     mutationFn: async ({ variantId, quantity, type }: { variantId: string; quantity: number; type: 'add' | 'remove' }) => {
-      console.log('Updating stock:', { variantId, quantity, type });
+      const currentProducts = products || [];
+      const updatedProducts = currentProducts.map(product => ({
+        ...product,
+        variants: product.variants.map(variant => {
+          if (variant.id === variantId) {
+            const newQuantity = type === 'add' 
+              ? variant.stock_quantity + quantity 
+              : Math.max(0, variant.stock_quantity - quantity);
+            return { ...variant, stock_quantity: newQuantity };
+          }
+          return variant;
+        })
+      }));
+      
+      localStorage.setItem('pos-products', JSON.stringify(updatedProducts));
+      return { variantId, quantity, type };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pos-products'] });
@@ -137,7 +207,10 @@ export const usePOSData = () => {
   return {
     products,
     categories,
+    productsLoading,
     addProductMutation,
+    updateProductMutation,
+    deleteProductMutation,
     updateStockMutation,
     categoryMutation
   };

@@ -2,76 +2,73 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Package, Edit2, AlertTriangle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { usePOSData } from '@/hooks/usePOSData';
+import { ProductForm } from './products/ProductForm';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
-interface ProductVariant {
+interface Product {
   id: string;
   name: string;
-  size: number;
-  unit: string;
-  cost_price: number;
-  selling_price: number;
-  stock_quantity: number;
-  low_stock_alert: number;
-  barcode?: string;
+  category: string;
+  variants: any[];
+  unit_type: 'weight' | 'volume' | 'piece';
+  fractional_allowed: boolean;
+  created_at: string;
 }
 
 export const POSProducts = () => {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deleteProduct, setDeleteProduct] = useState<Product | null>(null);
   const { toast } = useToast();
-  const { products, addProductMutation } = usePOSData();
+  const { 
+    products, 
+    productsLoading,
+    addProductMutation, 
+    updateProductMutation,
+    deleteProductMutation
+  } = usePOSData();
 
-  const addVariant = () => {
-    const newVariant: ProductVariant = {
-      id: Date.now().toString(),
-      name: '',
-      size: 0,
-      unit: '',
-      cost_price: 0,
-      selling_price: 0,
-      stock_quantity: 0,
-      low_stock_alert: 0,
-    };
-    setVariants([...variants, newVariant]);
+  const openAddForm = () => {
+    setEditingProduct(null);
+    setIsFormOpen(true);
   };
 
-  const updateVariant = (id: string, field: keyof ProductVariant, value: string | number) => {
-    setVariants(variants.map(variant => 
-      variant.id === id ? { ...variant, [field]: value } : variant
-    ));
+  const openEditForm = (product: Product) => {
+    setEditingProduct(product);
+    setIsFormOpen(true);
   };
 
-  const removeVariant = (id: string) => {
-    setVariants(variants.filter(variant => variant.id !== id));
-  };
-
-  const handleSaveProduct = () => {
-    const formData = new FormData(document.querySelector('form') as HTMLFormElement);
-    
-    const productData = {
-      name: formData.get('name') as string,
-      category: formData.get('category') as string,
-      unit_type: formData.get('unit_type') as 'weight' | 'volume' | 'piece',
-      fractional_allowed: formData.get('fractional') === 'on',
-      variants: variants.filter(v => v.name && v.size > 0)
-    };
-
-    if (!productData.name || !productData.category || variants.length === 0) {
-      toast({ title: "Please fill all required fields and add at least one variant", variant: "destructive" });
-      return;
+  const handleSaveProduct = (productData: any) => {
+    if (editingProduct) {
+      updateProductMutation.mutate({
+        id: editingProduct.id,
+        productData
+      });
+    } else {
+      addProductMutation.mutate(productData);
     }
+    setIsFormOpen(false);
+    setEditingProduct(null);
+  };
 
-    addProductMutation.mutate(productData);
-    setIsDialogOpen(false);
-    setVariants([]);
+  const handleDeleteProduct = () => {
+    if (deleteProduct) {
+      deleteProductMutation.mutate(deleteProduct.id);
+      setDeleteProduct(null);
+    }
   };
 
   const getLowStockVariants = () => {
@@ -88,6 +85,10 @@ export const POSProducts = () => {
 
   const lowStockItems = getLowStockVariants();
 
+  if (productsLoading) {
+    return <div className="text-center py-4">Loading products...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -95,136 +96,10 @@ export const POSProducts = () => {
           <h2 className="text-2xl font-bold">Products</h2>
           <p className="text-muted-foreground">Manage your store products and variants</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Product
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Add New Product</DialogTitle>
-            </DialogHeader>
-            <form className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Product Name *</Label>
-                  <Input name="name" placeholder="Enter product name" required />
-                </div>
-                <div>
-                  <Label>Category *</Label>
-                  <Select name="category" required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dairy">Dairy</SelectItem>
-                      <SelectItem value="snacks">Snacks</SelectItem>
-                      <SelectItem value="beverages">Beverages</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Unit Type *</Label>
-                  <Select name="unit_type" required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select unit type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="weight">Weight (kg, g)</SelectItem>
-                      <SelectItem value="volume">Volume (L, ml)</SelectItem>
-                      <SelectItem value="piece">Piece</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input type="checkbox" id="fractional" name="fractional" />
-                  <Label htmlFor="fractional">Allow Fractional Quantities</Label>
-                </div>
-              </div>
-              
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-medium">Product Variants</h3>
-                  <Button type="button" onClick={addVariant} variant="outline" size="sm">
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add Variant
-                  </Button>
-                </div>
-                
-                {variants.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-7 gap-2 text-sm font-medium">
-                      <div>Name *</div>
-                      <div>Size *</div>
-                      <div>Unit *</div>
-                      <div>Cost Price *</div>
-                      <div>Selling Price *</div>
-                      <div>Stock *</div>
-                      <div>Action</div>
-                    </div>
-                    {variants.map((variant) => (
-                      <div key={variant.id} className="grid grid-cols-7 gap-2">
-                        <Input 
-                          placeholder="1L Pouch" 
-                          value={variant.name}
-                          onChange={(e) => updateVariant(variant.id, 'name', e.target.value)}
-                        />
-                        <Input 
-                          placeholder="1" 
-                          type="number"
-                          value={variant.size || ''}
-                          onChange={(e) => updateVariant(variant.id, 'size', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                          placeholder="L" 
-                          value={variant.unit}
-                          onChange={(e) => updateVariant(variant.id, 'unit', e.target.value)}
-                        />
-                        <Input 
-                          placeholder="45" 
-                          type="number"
-                          value={variant.cost_price || ''}
-                          onChange={(e) => updateVariant(variant.id, 'cost_price', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                          placeholder="55" 
-                          type="number"
-                          value={variant.selling_price || ''}
-                          onChange={(e) => updateVariant(variant.id, 'selling_price', parseFloat(e.target.value) || 0)}
-                        />
-                        <Input 
-                          placeholder="50" 
-                          type="number"
-                          value={variant.stock_quantity || ''}
-                          onChange={(e) => updateVariant(variant.id, 'stock_quantity', parseFloat(e.target.value) || 0)}
-                        />
-                        <Button 
-                          type="button"
-                          onClick={() => removeVariant(variant.id)} 
-                          variant="destructive" 
-                          size="sm"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="button" onClick={handleSaveProduct}>
-                  Save Product
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={openAddForm}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Product
+        </Button>
       </div>
 
       {/* Low Stock Alerts */}
@@ -261,9 +136,19 @@ export const POSProducts = () => {
                   <Package className="h-5 w-5" />
                   {product.name}
                 </div>
-                <Button size="sm" variant="outline">
-                  <Edit2 className="h-3 w-3" />
-                </Button>
+                <div className="flex gap-1">
+                  <Button size="sm" variant="outline" onClick={() => openEditForm(product)}>
+                    <Edit2 className="h-3 w-3" />
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => setDeleteProduct(product)}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
               </CardTitle>
               <Badge variant="secondary">{product.category}</Badge>
             </CardHeader>
@@ -290,7 +175,7 @@ export const POSProducts = () => {
                           </Badge>
                         </div>
                         <div className="text-muted-foreground mt-1">
-                          Cost: ₹{variant.cost_price} • Sell: ₹{variant.selling_price}
+                          Size: {variant.size} {variant.unit} • Cost: ₹{variant.cost_price} • Sell: ₹{variant.selling_price}
                         </div>
                       </div>
                     ))}
@@ -301,6 +186,36 @@ export const POSProducts = () => {
           </Card>
         ))}
       </div>
+
+      {/* Product Form Dialog */}
+      <ProductForm
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        product={editingProduct}
+        onSave={handleSaveProduct}
+        isLoading={addProductMutation.isPending || updateProductMutation.isPending}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteProduct} onOpenChange={() => setDeleteProduct(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteProduct?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteProduct}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
