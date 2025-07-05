@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMilkSchemes } from '@/hooks/useMilkSchemes';
@@ -39,8 +40,8 @@ export const MilkSchemeSettings = () => {
     
     const schemeData = {
       scheme_name: formData.get('scheme_name') as string,
-      cow_milk_rate: parseFloat(formData.get('cow_milk_rate') as string),
-      buffalo_milk_rate: parseFloat(formData.get('buffalo_milk_rate') as string),
+      cow_milk_rate: 60, // Default values since we removed the fields
+      buffalo_milk_rate: 75, // Default values since we removed the fields
       discount_type: formData.get('discount_type') as 'amount' | 'percentage',
       discount_value: parseFloat(formData.get('discount_value') as string) || 0,
       is_active: formData.get('is_active') === 'true'

@@ -49,7 +49,7 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
   const addProductDiscount = () => {
     setProductDiscounts([...productDiscounts, {
       product_id: '',
-      variant_id: '',
+      variant_id: undefined,
       discount_type: 'percentage',
       discount_value: 0
     }]);
@@ -96,31 +96,6 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="cow_milk_rate">Cow Milk Rate (₹/L) *</Label>
-              <Input
-                id="cow_milk_rate"
-                name="cow_milk_rate"
-                type="number"
-                step="0.01"
-                defaultValue={selectedScheme?.cow_milk_rate || 60}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="buffalo_milk_rate">Buffalo Milk Rate (₹/L) *</Label>
-              <Input
-                id="buffalo_milk_rate"
-                name="buffalo_milk_rate"
-                type="number"
-                step="0.01"
-                defaultValue={selectedScheme?.buffalo_milk_rate || 75}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
               <Label htmlFor="discount_type">Default Discount Type</Label>
               <Select name="discount_type" defaultValue={selectedScheme?.discount_type || 'amount'}>
                 <SelectTrigger>
@@ -161,7 +136,7 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
                       value={discount.product_id}
                       onValueChange={(value) => {
                         updateProductDiscount(index, 'product_id', value);
-                        updateProductDiscount(index, 'variant_id', ''); // Reset variant when product changes
+                        updateProductDiscount(index, 'variant_id', undefined); // Reset variant when product changes
                       }}
                     >
                       <SelectTrigger>
@@ -180,14 +155,14 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
                   <div>
                     <Label>Variant</Label>
                     <Select 
-                      value={discount.variant_id || ''}
-                      onValueChange={(value) => updateProductDiscount(index, 'variant_id', value)}
+                      value={discount.variant_id || 'all_variants'}
+                      onValueChange={(value) => updateProductDiscount(index, 'variant_id', value === 'all_variants' ? undefined : value)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="All variants" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Variants</SelectItem>
+                        <SelectItem value="all_variants">All Variants</SelectItem>
                         {getSelectedProduct(discount.product_id)?.variants?.map((variant) => (
                           <SelectItem key={variant.id} value={variant.id}>
                             {variant.name} - ₹{variant.selling_price}

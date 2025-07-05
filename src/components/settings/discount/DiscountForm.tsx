@@ -75,12 +75,12 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
           {selectedProduct?.variants && selectedProduct.variants.length > 0 && (
             <div>
               <Label htmlFor="variant_id">Variant (Optional)</Label>
-              <Select name="variant_id" defaultValue={selectedDiscount?.variant_id || ''}>
+              <Select name="variant_id" defaultValue={selectedDiscount?.variant_id || 'all_variants'}>
                 <SelectTrigger>
                   <SelectValue placeholder="Apply to all variants or select specific" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Variants</SelectItem>
+                  <SelectItem value="all_variants">All Variants</SelectItem>
                   {selectedProduct.variants.map((variant) => (
                     <SelectItem key={variant.id} value={variant.id}>
                       {variant.name} - ₹{variant.selling_price}
