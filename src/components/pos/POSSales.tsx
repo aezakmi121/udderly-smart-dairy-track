@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Plus, Minus, Trash2, ShoppingCart, Receipt } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCustomers } from '@/hooks/useCustomers';
+import { CustomerSelector } from './CustomerSelector';
+import { useCreditTransactions } from '@/hooks/useCreditTransactions';
 
 interface SaleItem {
   id: string;
@@ -27,7 +28,7 @@ export const POSSales = () => {
   const [paymentMode, setPaymentMode] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const { toast } = useToast();
-  const { customers } = useCustomers();
+  const { addTransaction } = useCreditTransactions();
 
   const subtotal = saleItems.reduce((sum, item) => sum + item.total, 0);
   const totalDiscount = discount + saleItems.reduce((sum, item) => sum + (item.discount || 0), 0);
@@ -68,7 +69,7 @@ export const POSSales = () => {
     setSelectedCustomer('');
   };
 
-  const processSale = () => {
+  const processSale = async () => {
     if (saleItems.length === 0) {
       toast({ title: "No items in cart", variant: "destructive" });
       return;
@@ -84,9 +85,30 @@ export const POSSales = () => {
       return;
     }
 
-    // Process the sale and generate receipt
-    toast({ title: "Sale processed successfully!", description: "Receipt generated" });
-    clearAll();
+    try {
+      // If it's a credit sale, record the credit transaction
+      if (paymentMode === 'credit' && selectedCustomer) {
+        await addTransaction.mutateAsync({
+          customer_id: selectedCustomer,
+          transaction_type: 'credit_sale',
+          amount: grandTotal,
+          description: `POS Sale - ${saleItems.length} items`,
+          reference_id: `sale_${Date.now()}`
+        });
+      }
+
+      toast({ 
+        title: "Sale processed successfully!", 
+        description: paymentMode === 'credit' ? "Credit transaction recorded" : "Payment received"
+      });
+      clearAll();
+    } catch (error: any) {
+      toast({ 
+        title: "Failed to process sale", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
   };
 
   return (
@@ -230,18 +252,10 @@ export const POSSales = () => {
             {paymentMode === 'credit' && (
               <div>
                 <Label>Select Customer</Label>
-                <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select customer for credit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers?.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name} - {customer.phone_number}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CustomerSelector
+                  selectedCustomerId={selectedCustomer}
+                  onCustomerSelect={setSelectedCustomer}
+                />
               </div>
             )}
 

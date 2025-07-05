@@ -4,8 +4,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Edit2, Eye, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Edit2, Eye, Trash2, CreditCard } from 'lucide-react';
 import { useMilkSchemes } from '@/hooks/useMilkSchemes';
+import { CustomerCreditManager } from './CustomerCreditManager';
 
 interface Customer {
   id: string;
@@ -24,6 +26,8 @@ interface Customer {
   milk_type: string;
   created_at: string;
   updated_at: string;
+  current_credit: number;
+  last_payment_date: string | null;
 }
 
 interface CustomersTableProps {
@@ -40,6 +44,7 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
   canEdit
 }) => {
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
+  const [selectedCreditCustomer, setSelectedCreditCustomer] = useState<Customer | null>(null);
   const { schemes } = useMilkSchemes();
 
   const handleSelectAll = (checked: boolean) => {
@@ -110,6 +115,7 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
             <TableHead>Daily Qty</TableHead>
             <TableHead>Scheme</TableHead>
             <TableHead>Rate/L</TableHead>
+            <TableHead>Credit</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -141,6 +147,35 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                 </Badge>
               </TableCell>
               <TableCell>₹{customer.rate_per_liter}</TableCell>
+              <TableCell>
+                {customer.current_credit > 0 ? (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => setSelectedCreditCustomer(customer)}
+                      >
+                        <CreditCard className="h-3 w-3 mr-1" />
+                        ₹{customer.current_credit}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Credit Management - {customer.name}</DialogTitle>
+                      </DialogHeader>
+                      {selectedCreditCustomer && (
+                        <CustomerCreditManager customer={selectedCreditCustomer} />
+                      )}
+                    </DialogContent>
+                  </Dialog>
+                ) : (
+                  <Badge variant="outline" className="text-green-600">
+                    Clear
+                  </Badge>
+                )}
+              </TableCell>
               <TableCell>
                 <Badge variant={customer.is_active ? 'default' : 'secondary'}>
                   {customer.is_active ? 'Active' : 'Inactive'}

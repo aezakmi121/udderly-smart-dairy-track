@@ -20,6 +20,8 @@ interface Customer {
   milk_type: string;
   created_at: string;
   updated_at: string;
+  current_credit: number;
+  last_payment_date: string | null;
 }
 
 interface CustomerInsert {
@@ -45,7 +47,7 @@ export const useCustomers = () => {
   const { data: customers, isLoading } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('customers')
         .select('*')
         .order('created_at', { ascending: false });
@@ -62,13 +64,13 @@ export const useCustomers = () => {
       id?: string 
     }) => {
       if (isUpdate && id) {
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from('customers')
           .update(customerData)
           .eq('id', id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from('customers')
           .insert([customerData as CustomerInsert]);
         if (error) throw error;
@@ -79,11 +81,20 @@ export const useCustomers = () => {
       toast({ title: `Customer ${isUpdate ? 'updated' : 'added'} successfully!` });
     },
     onError: (error: any, { isUpdate }) => {
-      toast({ 
-        title: `Failed to ${isUpdate ? 'update' : 'add'} customer`, 
-        description: error.message,
-        variant: "destructive" 
-      });
+      // Handle phone number duplicate error specifically
+      if (error.message?.includes('unique_phone_number')) {
+        toast({ 
+          title: `Failed to ${isUpdate ? 'update' : 'add'} customer`, 
+          description: "A customer with this phone number already exists.",
+          variant: "destructive" 
+        });
+      } else {
+        toast({ 
+          title: `Failed to ${isUpdate ? 'update' : 'add'} customer`, 
+          description: error.message,
+          variant: "destructive" 
+        });
+      }
     }
   });
 

@@ -304,17 +304,60 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_credit_transactions: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          customer_id: string | null
+          description: string | null
+          id: string
+          reference_id: string | null
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_credit_transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string
           area: string | null
           created_at: string | null
           credit_limit: number | null
+          current_credit: number | null
           customer_code: string
           daily_quantity: number | null
           delivery_time: string | null
           id: string
           is_active: boolean | null
+          last_payment_date: string | null
           milk_type: string | null
           name: string
           phone_number: string
@@ -328,11 +371,13 @@ export type Database = {
           area?: string | null
           created_at?: string | null
           credit_limit?: number | null
+          current_credit?: number | null
           customer_code: string
           daily_quantity?: number | null
           delivery_time?: string | null
           id?: string
           is_active?: boolean | null
+          last_payment_date?: string | null
           milk_type?: string | null
           name: string
           phone_number: string
@@ -346,11 +391,13 @@ export type Database = {
           area?: string | null
           created_at?: string | null
           credit_limit?: number | null
+          current_credit?: number | null
           customer_code?: string
           daily_quantity?: number | null
           delivery_time?: string | null
           id?: string
           is_active?: boolean | null
+          last_payment_date?: string | null
           milk_type?: string | null
           name?: string
           phone_number?: string
