@@ -14,7 +14,7 @@ interface ProductVariant {
   name: string;
   size: number;
   unit: string;
-  cost_price: number;
+  cost_price?: number;
   selling_price: number;
   stock_quantity: number;
   low_stock_alert: number;
@@ -42,7 +42,18 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const { products, categories } = usePOSData();
+  const { products, categories, productsLoading } = usePOSData();
+
+  // Add loading and error states
+  if (productsLoading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <div className="text-center py-4">Loading products...</div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   const filteredProducts = products?.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -149,7 +160,10 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
 
           {filteredProducts.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              No products found matching your criteria.
+              {products?.length === 0 ? 
+                "No products available. Please add products first." : 
+                "No products found matching your criteria."
+              }
             </div>
           )}
         </div>

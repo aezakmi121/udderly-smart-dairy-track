@@ -2,19 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { ProductBasicInfo } from './ProductBasicInfo';
+import { VariantsList } from './VariantsList';
 
 interface ProductVariant {
   id: string;
   name: string;
   size: number;
   unit: string;
-  cost_price: number;
+  cost_price?: number;
   selling_price: number;
   stock_quantity: number;
   low_stock_alert: number;
@@ -82,7 +79,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       name: '',
       size: 0,
       unit: UNIT_OPTIONS[unitType][0],
-      cost_price: 0,
       selling_price: 0,
       stock_quantity: 0,
       low_stock_alert: 0,
@@ -100,15 +96,24 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     setVariants(variants.filter(variant => variant.id !== id));
   };
 
+  const handleUnitTypeChange = (value: 'weight' | 'volume' | 'piece') => {
+    setUnitType(value);
+    // Update existing variants to use appropriate units
+    setVariants(variants.map(variant => ({
+      ...variant,
+      unit: UNIT_OPTIONS[value][0]
+    })));
+  };
+
   const handleSave = () => {
     if (!productName || !category || variants.length === 0) {
       toast({ title: "Please fill all required fields and add at least one variant", variant: "destructive" });
       return;
     }
 
-    const validVariants = variants.filter(v => v.name && v.size > 0);
+    const validVariants = variants.filter(v => v.name && v.size > 0 && v.selling_price > 0);
     if (validVariants.length === 0) {
-      toast({ title: "Please add at least one valid variant", variant: "destructive" });
+      toast({ title: "Please add at least one valid variant with name, size, and selling price", variant: "destructive" });
       return;
     }
 
@@ -133,150 +138,24 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         </DialogHeader>
         
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Product Name *</Label>
-              <Input 
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                placeholder="Enter product name" 
-                required 
-              />
-            </div>
-            <div>
-              <Label>Category *</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dairy">Dairy</SelectItem>
-                  <SelectItem value="snacks">Snacks</SelectItem>
-                  <SelectItem value="beverages">Beverages</SelectItem>
-                  <SelectItem value="grains">Grains</SelectItem>
-                  <SelectItem value="vegetables">Vegetables</SelectItem>
-                  <SelectItem value="fruits">Fruits</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Unit Type *</Label>
-              <Select value={unitType} onValueChange={(value: 'weight' | 'volume' | 'piece') => {
-                setUnitType(value);
-                // Update existing variants to use appropriate units
-                setVariants(variants.map(variant => ({
-                  ...variant,
-                  unit: UNIT_OPTIONS[value][0]
-                })));
-              }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select unit type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weight">Weight (kg, g, etc.)</SelectItem>
-                  <SelectItem value="volume">Volume (L, ml, etc.)</SelectItem>
-                  <SelectItem value="piece">Piece (pcs, pack, etc.)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center space-x-2">
-              <input 
-                type="checkbox" 
-                id="fractional" 
-                checked={fractionalAllowed}
-                onChange={(e) => setFractionalAllowed(e.target.checked)}
-              />
-              <Label htmlFor="fractional">Allow Fractional Quantities</Label>
-            </div>
-          </div>
+          <ProductBasicInfo
+            productName={productName}
+            category={category}
+            unitType={unitType}
+            fractionalAllowed={fractionalAllowed}
+            onProductNameChange={setProductName}
+            onCategoryChange={setCategory}
+            onUnitTypeChange={handleUnitTypeChange}
+            onFractionalAllowedChange={setFractionalAllowed}
+          />
           
-          <div className="border-t pt-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-medium">Product Variants</h3>
-              <Button type="button" onClick={addVariant} variant="outline" size="sm">
-                <Plus className="h-3 w-3 mr-1" />
-                Add Variant
-              </Button>
-            </div>
-            
-            {variants.length > 0 && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-8 gap-2 text-sm font-medium">
-                  <div>Name *</div>
-                  <div>Size *</div>
-                  <div>Unit *</div>
-                  <div>Cost Price *</div>
-                  <div>Selling Price *</div>
-                  <div>Stock *</div>
-                  <div>Low Stock Alert</div>
-                  <div>Action</div>
-                </div>
-                {variants.map((variant) => (
-                  <div key={variant.id} className="grid grid-cols-8 gap-2">
-                    <Input 
-                      placeholder="1L Pouch" 
-                      value={variant.name}
-                      onChange={(e) => updateVariant(variant.id, 'name', e.target.value)}
-                    />
-                    <Input 
-                      placeholder="1" 
-                      type="number"
-                      step="0.01"
-                      value={variant.size || ''}
-                      onChange={(e) => updateVariant(variant.id, 'size', parseFloat(e.target.value) || 0)}
-                    />
-                    <Select 
-                      value={variant.unit} 
-                      onValueChange={(value) => updateVariant(variant.id, 'unit', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {UNIT_OPTIONS[unitType].map(unit => (
-                          <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input 
-                      placeholder="45" 
-                      type="number"
-                      step="0.01"
-                      value={variant.cost_price || ''}
-                      onChange={(e) => updateVariant(variant.id, 'cost_price', parseFloat(e.target.value) || 0)}
-                    />
-                    <Input 
-                      placeholder="55" 
-                      type="number"
-                      step="0.01"
-                      value={variant.selling_price || ''}
-                      onChange={(e) => updateVariant(variant.id, 'selling_price', parseFloat(e.target.value) || 0)}
-                    />
-                    <Input 
-                      placeholder="50" 
-                      type="number"
-                      value={variant.stock_quantity || ''}
-                      onChange={(e) => updateVariant(variant.id, 'stock_quantity', parseFloat(e.target.value) || 0)}
-                    />
-                    <Input 
-                      placeholder="10" 
-                      type="number"
-                      value={variant.low_stock_alert || ''}
-                      onChange={(e) => updateVariant(variant.id, 'low_stock_alert', parseFloat(e.target.value) || 0)}
-                    />
-                    <Button 
-                      type="button"
-                      onClick={() => removeVariant(variant.id)} 
-                      variant="destructive" 
-                      size="sm"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <VariantsList
+            variants={variants}
+            unitType={unitType}
+            onAddVariant={addVariant}
+            onUpdateVariant={updateVariant}
+            onRemoveVariant={removeVariant}
+          />
           
           <div className="flex justify-end space-x-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

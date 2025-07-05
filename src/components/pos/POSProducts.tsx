@@ -175,7 +175,9 @@ export const POSProducts = () => {
                           </Badge>
                         </div>
                         <div className="text-muted-foreground mt-1">
-                          Size: {variant.size} {variant.unit} • Cost: ₹{variant.cost_price} • Sell: ₹{variant.selling_price}
+                          Size: {variant.size} {variant.unit} • 
+                          {variant.cost_price && ` Cost: ₹${variant.cost_price} •`} 
+                          Sell: ₹{variant.selling_price}
                         </div>
                       </div>
                     ))}
@@ -186,6 +188,12 @@ export const POSProducts = () => {
           </Card>
         ))}
       </div>
+
+      {products?.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground">
+          No products available. Click "Add Product" to get started.
+        </div>
+      )}
 
       {/* Product Form Dialog */}
       <ProductForm
