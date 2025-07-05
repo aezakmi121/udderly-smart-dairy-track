@@ -61,13 +61,14 @@ export const RoleManagement = () => {
 
       // Then add the new roles
       if (roles.length > 0) {
-        const { error: insertError } = await supabase
+        const { data: currentUser } = await supabase.auth.getUser();
+        const { error: insertError } = await (supabase as any)
           .from('user_roles')
           .insert(
             roles.map(role => ({
               user_id: userId,
               role: role,
-              assigned_by: (await supabase.auth.getUser()).data.user?.id
+              assigned_by: currentUser.user?.id
             }))
           );
         
@@ -77,7 +78,7 @@ export const RoleManagement = () => {
       // Update the profiles table with the primary role (first one)
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ role: roles[0] || 'worker' })
+        .update({ role: roles[0] as any || 'worker' })
         .eq('id', userId);
       
       if (profileError) throw profileError;
@@ -116,7 +117,7 @@ export const RoleManagement = () => {
   const handleUserSelect = (userId: string) => {
     setSelectedUser(userId);
     const user = users?.find(u => u.id === userId);
-    setSelectedRoles(user?.roles || []);
+    setSelectedRoles(user?.roles as UserRole[] || []);
   };
 
   return (

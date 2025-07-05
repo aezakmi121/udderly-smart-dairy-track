@@ -23,11 +23,11 @@ export const useUserPermissions = () => {
   });
 
   const roles = userRoles || [];
-  const isAdmin = roles.includes('admin');
-  const isFarmWorker = roles.includes('worker');
-  const isCollectionCentre = roles.includes('farmer');
-  const isDeliveryBoy = roles.includes('delivery_boy');
-  const isStoreManager = roles.includes('store_manager');
+  const isAdmin = roles.includes('admin' as any);
+  const isFarmWorker = roles.includes('worker' as any);
+  const isCollectionCentre = roles.includes('farmer' as any);
+  const isDeliveryBoy = roles.includes('delivery_boy' as any);
+  const isStoreManager = roles.includes('store_manager' as any);
 
   const canAccess = {
     // Admin has access to everything

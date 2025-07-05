@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -83,7 +82,7 @@ export const AccessControlSettings = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {users?.filter(user => user.roles.includes('admin')).length || 0}
+              {users?.filter(user => user.roles.includes('admin' as any)).length || 0}
             </div>
             <p className="text-xs text-muted-foreground">Full system access</p>
           </CardContent>
@@ -96,7 +95,7 @@ export const AccessControlSettings = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {users?.filter(user => user.roles.includes('store_manager')).length || 0}
+              {users?.filter(user => user.roles.includes('store_manager' as any)).length || 0}
             </div>
             <p className="text-xs text-muted-foreground">Delivery management</p>
           </CardContent>
@@ -109,7 +108,7 @@ export const AccessControlSettings = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {users?.filter(user => user.roles.includes('worker')).length || 0}
+              {users?.filter(user => user.roles.includes('worker' as any)).length || 0}
             </div>
             <p className="text-xs text-muted-foreground">Farm operations access</p>
           </CardContent>
@@ -122,7 +121,7 @@ export const AccessControlSettings = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {users?.filter(user => user.roles.includes('farmer')).length || 0}
+              {users?.filter(user => user.roles.includes('farmer' as any)).length || 0}
             </div>
             <p className="text-xs text-muted-foreground">Collection access</p>
           </CardContent>
@@ -135,7 +134,7 @@ export const AccessControlSettings = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {users?.filter(user => user.roles.includes('delivery_boy')).length || 0}
+              {users?.filter(user => user.roles.includes('delivery_boy' as any)).length || 0}
             </div>
             <p className="text-xs text-muted-foreground">Delivery access</p>
           </CardContent>
@@ -187,11 +186,11 @@ export const AccessControlSettings = () => {
                       {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {user.roles.includes('admin') && 'Full Access'}
-                      {user.roles.includes('store_manager') && !user.roles.includes('admin') && 'Store Management'}
-                      {user.roles.includes('worker') && !user.roles.includes('admin') && !user.roles.includes('store_manager') && 'Farm Operations'}
-                      {user.roles.includes('farmer') && 'Collection Operations'}
-                      {user.roles.includes('delivery_boy') && 'Delivery Operations'}
+                      {user.roles.includes('admin' as any) && 'Full Access'}
+                      {user.roles.includes('store_manager' as any) && !user.roles.includes('admin' as any) && 'Store Management'}
+                      {user.roles.includes('worker' as any) && !user.roles.includes('admin' as any) && !user.roles.includes('store_manager' as any) && 'Farm Operations'}
+                      {user.roles.includes('farmer' as any) && 'Collection Operations'}
+                      {user.roles.includes('delivery_boy' as any) && 'Delivery Operations'}
                       {user.roles.length === 0 && 'Limited Access'}
                     </TableCell>
                   </TableRow>
