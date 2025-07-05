@@ -15,7 +15,7 @@ export const DailyFeedManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFeedItem, setSelectedFeedItem] = useState('');
   const [dailyQuantity, setDailyQuantity] = useState('');
-  const { feedItems, isLoading } = useFeedManagement();
+  const { feedItems, isLoading, addTransactionMutation } = useFeedManagement();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,27 +52,19 @@ export const DailyFeedManagement = () => {
     }
 
     try {
-      // Create outgoing transaction for daily feed
-      const { error } = await supabase
-        .from('feed_transactions')
-        .insert({
-          feed_item_id: selectedFeedItem,
-          transaction_type: 'outgoing',
-          quantity: quantity,
-          transaction_date: new Date().toISOString().split('T')[0],
-          notes: 'Daily feed allocation',
-          supplier_name: 'Daily Feed Usage'
-        });
-
-      if (error) throw error;
+      await addTransactionMutation.mutateAsync({
+        feed_item_id: selectedFeedItem,
+        transaction_type: 'outgoing',
+        quantity: quantity,
+        transaction_date: new Date().toISOString().split('T')[0],
+        notes: 'Daily feed allocation',
+        supplier_name: 'Daily Feed Usage'
+      });
 
       toast({ title: "Daily feed allocated successfully!" });
       setIsDialogOpen(false);
       setSelectedFeedItem('');
       setDailyQuantity('');
-      
-      // Refresh the page to update stock levels
-      window.location.reload();
     } catch (error: any) {
       toast({ 
         title: "Failed to allocate daily feed", 
@@ -142,8 +134,8 @@ export const DailyFeedManagement = () => {
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit">
-                    Allocate Feed
+                  <Button type="submit" disabled={addTransactionMutation.isPending}>
+                    {addTransactionMutation.isPending ? 'Allocating...' : 'Allocate Feed'}
                   </Button>
                 </div>
               </form>
