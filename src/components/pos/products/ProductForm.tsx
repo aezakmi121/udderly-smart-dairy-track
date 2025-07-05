@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { ProductFormHeader } from './ProductFormHeader';
 import { ProductBasicInfo } from './ProductBasicInfo';
 import { VariantsList } from './VariantsList';
+import { ProductFormActions } from './ProductFormActions';
 import { usePOSData } from '@/hooks/usePOSData';
 
 interface ProductVariant {
@@ -92,7 +93,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   }, [fractionalAllowed, productName, unitType, variants.length]);
 
   const addVariant = () => {
-    // Don't allow adding variants for fractional products
     if (fractionalAllowed) {
       toast({ 
         title: "Fractional products can only have one bulk variant", 
@@ -120,7 +120,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const removeVariant = (id: string) => {
-    // Don't allow removing the only variant for fractional products
     if (fractionalAllowed && variants.length === 1) {
       toast({ 
         title: "Fractional products must have at least one variant", 
@@ -133,7 +132,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
 
   const handleUnitTypeChange = (value: 'weight' | 'volume' | 'piece') => {
     setUnitType(value);
-    // Update existing variants to use appropriate units
     setVariants(variants.map(variant => ({
       ...variant,
       unit: UNIT_OPTIONS[value][0]
@@ -144,7 +142,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     setFractionalAllowed(value);
     
     if (value) {
-      // Clear existing variants and create a default one
       const defaultVariant: ProductVariant = {
         id: Date.now().toString(),
         name: `Bulk ${productName || 'Product'}`,
@@ -175,7 +172,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       return;
     }
 
-    // For fractional products, ensure the variant name is set
     const finalVariants = validVariants.map(variant => ({
       ...variant,
       name: variant.name || `Bulk ${productName}`
@@ -195,11 +191,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {product ? 'Edit Product' : 'Add New Product'}
-          </DialogTitle>
-        </DialogHeader>
+        <ProductFormHeader product={product} />
         
         <div className="space-y-4">
           <ProductBasicInfo
@@ -223,14 +215,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             onRemoveVariant={removeVariant}
           />
           
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={handleSave} disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Product'}
-            </Button>
-          </div>
+          <ProductFormActions
+            onCancel={() => onOpenChange(false)}
+            onSave={handleSave}
+            isLoading={isLoading}
+          />
         </div>
       </DialogContent>
     </Dialog>

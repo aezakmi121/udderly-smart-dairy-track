@@ -1,12 +1,12 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Package, Edit2, AlertTriangle, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { usePOSData } from '@/hooks/usePOSData';
 import { ProductForm } from './products/ProductForm';
+import { ProductCard } from './products/ProductCard';
+import { LowStockAlert } from './products/LowStockAlert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -102,90 +102,16 @@ export const POSProducts = () => {
         </Button>
       </div>
 
-      {/* Low Stock Alerts */}
-      {lowStockItems.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-orange-700">
-              <AlertTriangle className="h-5 w-5" />
-              Low Stock Alerts ({lowStockItems.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {lowStockItems.map(({ product, variant }) => (
-                <div key={`${product.id}-${variant.id}`} className="flex justify-between items-center">
-                  <span>{product.name} - {variant.name}</span>
-                  <Badge variant="destructive">
-                    {variant.stock_quantity} left (Alert: {variant.low_stock_alert})
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <LowStockAlert lowStockItems={lowStockItems} />
 
-      {/* Products List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {products?.map((product) => (
-          <Card key={product.id}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  {product.name}
-                </div>
-                <div className="flex gap-1">
-                  <Button size="sm" variant="outline" onClick={() => openEditForm(product)}>
-                    <Edit2 className="h-3 w-3" />
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={() => setDeleteProduct(product)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </CardTitle>
-              <Badge variant="secondary">{product.category}</Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="text-sm">
-                  <span className="font-medium">Unit Type:</span> {product.unit_type}
-                  {product.fractional_allowed && (
-                    <Badge variant="outline" className="ml-2">Fractional</Badge>
-                  )}
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-sm mb-2">Variants ({product.variants.length})</h4>
-                  <div className="space-y-2">
-                    {product.variants.map((variant) => (
-                      <div key={variant.id} className="text-sm p-2 bg-muted rounded">
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">{variant.name}</span>
-                          <Badge 
-                            variant={variant.stock_quantity <= variant.low_stock_alert ? "destructive" : "default"}
-                          >
-                            {variant.stock_quantity} in stock
-                          </Badge>
-                        </div>
-                        <div className="text-muted-foreground mt-1">
-                          Size: {variant.size} {variant.unit} • 
-                          {variant.cost_price && ` Cost: ₹${variant.cost_price} •`} 
-                          Sell: ₹{variant.selling_price}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <ProductCard
+            key={product.id}
+            product={product}
+            onEdit={openEditForm}
+            onDelete={setDeleteProduct}
+          />
         ))}
       </div>
 
@@ -195,7 +121,6 @@ export const POSProducts = () => {
         </div>
       )}
 
-      {/* Product Form Dialog */}
       <ProductForm
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
@@ -204,7 +129,6 @@ export const POSProducts = () => {
         isLoading={addProductMutation.isPending || updateProductMutation.isPending}
       />
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteProduct} onOpenChange={() => setDeleteProduct(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

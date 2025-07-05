@@ -3,10 +3,10 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { usePOSData } from '@/hooks/usePOSData';
 import { CategoryCard } from './categories/CategoryCard';
 import { CategoryForm } from './categories/CategoryForm';
+import { CategoryActions } from './categories/CategoryActions';
 
 interface Category {
   id: string;
@@ -19,7 +19,6 @@ interface Category {
 export const POSCategories = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const { toast } = useToast();
   const { categories, categoryMutation, deleteCategoryMutation, products } = usePOSData();
 
   const openAddDialog = () => {
@@ -33,20 +32,7 @@ export const POSCategories = () => {
   };
 
   const handleDeleteCategory = (category: Category) => {
-    const productsInCategory = products?.filter(product => product.category === category.name) || [];
-    
-    if (productsInCategory.length > 0) {
-      toast({ 
-        title: "Cannot delete category", 
-        description: `This category has ${productsInCategory.length} products. Please delete or move the products first.`,
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    if (confirm(`Are you sure you want to delete "${category.name}"?`)) {
-      deleteCategoryMutation.mutate(category.name);
-    }
+    deleteCategoryMutation.mutate(category.name);
   };
 
   const handleSaveCategory = (categoryData: { name: string; description: string }) => {
@@ -63,6 +49,10 @@ export const POSCategories = () => {
 
     setIsDialogOpen(false);
     setEditingCategory(null);
+  };
+
+  const getProductsInCategory = (categoryName: string) => {
+    return products?.filter(product => product.category === categoryName).length || 0;
   };
 
   return (
@@ -96,34 +86,23 @@ export const POSCategories = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {categories?.map((category) => (
-          <CategoryCard
-            key={category.id}
-            category={category}
-            onEdit={openEditDialog}
-            onDelete={handleDeleteCategory}
-          />
+          <div key={category.id} className="relative">
+            <CategoryCard
+              category={category}
+              onEdit={openEditDialog}
+              onDelete={handleDeleteCategory}
+            />
+            <div className="absolute top-2 right-2">
+              <CategoryActions
+                category={category}
+                productsInCategory={getProductsInCategory(category.name)}
+                onEdit={openEditDialog}
+                onDelete={handleDeleteCategory}
+              />
+            </div>
+          </div>
         ))}
       </div>
-
-      {/* Show products in each category for debugging */}
-      {products && products.length > 0 && (
-        <div className="mt-8 p-4 bg-muted rounded-lg">
-          <h3 className="font-medium mb-2">Product Distribution:</h3>
-          {categories?.map((category) => {
-            const categoryProducts = products.filter(p => p.category === category.name);
-            return (
-              <div key={category.id} className="text-sm">
-                <strong>{category.name}:</strong> {categoryProducts.length} products
-                {categoryProducts.length > 0 && (
-                  <span className="ml-2 text-muted-foreground">
-                    ({categoryProducts.map(p => p.name).join(', ')})
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 };
