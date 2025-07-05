@@ -16,7 +16,7 @@ interface SaleItem {
   fractionalAllowed: boolean;
 }
 
-interface SaleProcessingProps {
+interface UseSaleProcessingProps {
   saleItems: SaleItem[];
   paymentMode: string;
   selectedCustomer: string;
@@ -24,13 +24,13 @@ interface SaleProcessingProps {
   onClearAll: () => void;
 }
 
-export const SaleProcessing: React.FC<SaleProcessingProps> = ({
+export const useSaleProcessing = ({
   saleItems,
   paymentMode,
   selectedCustomer,
   grandTotal,
   onClearAll
-}) => {
+}: UseSaleProcessingProps) => {
   const { toast } = useToast();
   const { addTransaction } = useCreditTransactions();
 
