@@ -34,14 +34,24 @@ export const useDeliveryBoys = () => {
   const { data: deliveryBoys, isLoading } = useQuery({
     queryKey: ['delivery-boys'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('delivery_boys')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as DeliveryBoy[];
-    }
+      try {
+        const { data, error } = await supabase
+          .from('delivery_boys')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('Error fetching delivery boys:', error);
+          return [];
+        }
+        return data as DeliveryBoy[];
+      } catch (error) {
+        console.error('Failed to fetch delivery boys:', error);
+        return [];
+      }
+    },
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const deliveryBoyMutation = useMutation({
@@ -51,13 +61,13 @@ export const useDeliveryBoys = () => {
       id?: string 
     }) => {
       if (isUpdate && id) {
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from('delivery_boys')
           .update(deliveryBoyData)
           .eq('id', id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from('delivery_boys')
           .insert([deliveryBoyData]);
         if (error) throw error;
@@ -68,16 +78,17 @@ export const useDeliveryBoys = () => {
       toast({ title: `Delivery boy ${isUpdate ? 'updated' : 'added'} successfully!` });
     },
     onError: (error: any, { isUpdate }) => {
+      console.error('Delivery boy mutation error:', error);
       toast({ 
         title: `Failed to ${isUpdate ? 'update' : 'add'} delivery boy`, 
-        description: error.message,
+        description: error.message || 'Please check your permissions',
         variant: "destructive" 
       });
     }
   });
 
   return {
-    deliveryBoys,
+    deliveryBoys: deliveryBoys || [],
     isLoading,
     deliveryBoyMutation
   };

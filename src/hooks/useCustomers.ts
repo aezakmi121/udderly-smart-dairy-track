@@ -9,57 +9,51 @@ interface Customer {
   name: string;
   phone_number: string;
   address: string;
-  area: string | null;
-  daily_quantity: number;
-  delivery_time: string;
-  subscription_type: string;
+  area?: string;
   rate_per_liter: number;
-  credit_limit: number;
+  daily_quantity?: number;
+  subscription_type?: string;
+  delivery_time?: string;
+  milk_type?: string;
+  scheme_id?: string;
+  current_credit?: number;
+  credit_limit?: number;
+  last_payment_date?: string;
   is_active: boolean;
-  scheme_id: string | null;
-  milk_type: string;
   created_at: string;
   updated_at: string;
-  current_credit: number;
-  last_payment_date: string | null;
-}
-
-interface CustomerInsert {
-  customer_code: string;
-  name: string;
-  phone_number: string;
-  address: string;
-  area?: string | null;
-  daily_quantity?: number;
-  delivery_time?: string;
-  subscription_type?: string;
-  rate_per_liter: number;
-  credit_limit?: number;
-  is_active?: boolean;
-  scheme_id?: string | null;
-  milk_type?: string;
 }
 
 export const useCustomers = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: customers, isLoading } = useQuery({
+  const { data: customers, isLoading, error } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as Customer[];
-    }
+      try {
+        const { data, error } = await supabase
+          .from('customers')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('Error fetching customers:', error);
+          return [];
+        }
+        return data as Customer[];
+      } catch (error) {
+        console.error('Failed to fetch customers:', error);
+        return [];
+      }
+    },
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const customerMutation = useMutation({
     mutationFn: async ({ customerData, isUpdate, id }: { 
-      customerData: Partial<CustomerInsert>, 
+      customerData: Partial<Customer>, 
       isUpdate: boolean, 
       id?: string 
     }) => {
@@ -72,7 +66,7 @@ export const useCustomers = () => {
       } else {
         const { error } = await supabase
           .from('customers')
-          .insert([customerData as CustomerInsert]);
+          .insert([customerData]);
         if (error) throw error;
       }
     },
@@ -81,32 +75,65 @@ export const useCustomers = () => {
       toast({ title: `Customer ${isUpdate ? 'updated' : 'added'} successfully!` });
     },
     onError: (error: any, { isUpdate }) => {
-      // Handle phone number duplicate error specifically
-      if (error.message?.includes('unique_phone_number')) {
-        toast({ 
-          title: `Failed to ${isUpdate ? 'update' : 'add'} customer`, 
-          description: "A customer with this phone number already exists.",
-          variant: "destructive" 
-        });
-      } else {
-        toast({ 
-          title: `Failed to ${isUpdate ? 'update' : 'add'} customer`, 
-          description: error.message,
-          variant: "destructive" 
-        });
-      }
+      console.error('Customer mutation error:', error);
+      toast({ 
+        title: `Failed to ${isUpdate ? 'update' : 'add'} customer`, 
+        description: error.message || 'Please check your permissions',
+        variant: "destructive" 
+      });
     }
   });
 
-  const generateCustomerCode = () => {
-    const timestamp = Date.now().toString().slice(-6);
-    return `CUST${timestamp}`;
-  };
+  const deleteCustomer = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('customers')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      toast({ title: "Customer deleted successfully!" });
+    },
+    onError: (error: any) => {
+      console.error('Delete customer error:', error);
+      toast({ 
+        title: "Failed to delete customer", 
+        description: error.message || 'Please check your permissions',
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Bulk upload customers
+  const bulkUploadCustomers = useMutation({
+    mutationFn: async (customers: Partial<Customer>[]) => {
+      const { error } = await supabase
+        .from('customers')
+        .insert(customers);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      toast({ title: "Customers uploaded successfully!" });
+    },
+    onError: (error: any) => {
+      console.error('Bulk upload error:', error);
+      toast({ 
+        title: "Failed to upload customers", 
+        description: error.message || 'Please check your data and permissions',
+        variant: "destructive" 
+      });
+    }
+  });
 
   return {
-    customers,
+    customers: customers || [],
     isLoading,
+    error,
     customerMutation,
-    generateCustomerCode
+    deleteCustomer,
+    bulkUploadCustomers
   };
 };
