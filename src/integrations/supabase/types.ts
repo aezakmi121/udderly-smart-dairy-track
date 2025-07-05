@@ -217,6 +217,179 @@ export type Database = {
         }
         Relationships: []
       }
+      customers: {
+        Row: {
+          address: string
+          area: string | null
+          created_at: string | null
+          credit_limit: number | null
+          customer_code: string
+          daily_quantity: number | null
+          delivery_time: string | null
+          id: string
+          is_active: boolean | null
+          milk_type: string | null
+          name: string
+          phone_number: string
+          rate_per_liter: number
+          scheme_id: string | null
+          subscription_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address: string
+          area?: string | null
+          created_at?: string | null
+          credit_limit?: number | null
+          customer_code: string
+          daily_quantity?: number | null
+          delivery_time?: string | null
+          id?: string
+          is_active?: boolean | null
+          milk_type?: string | null
+          name: string
+          phone_number: string
+          rate_per_liter?: number
+          scheme_id?: string | null
+          subscription_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string
+          area?: string | null
+          created_at?: string | null
+          credit_limit?: number | null
+          customer_code?: string
+          daily_quantity?: number | null
+          delivery_time?: string | null
+          id?: string
+          is_active?: boolean | null
+          milk_type?: string | null
+          name?: string
+          phone_number?: string
+          rate_per_liter?: number
+          scheme_id?: string | null
+          subscription_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_scheme_id_fkey"
+            columns: ["scheme_id"]
+            isOneToOne: false
+            referencedRelation: "milk_schemes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_boys: {
+        Row: {
+          assigned_area: string | null
+          created_at: string | null
+          daily_capacity: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          phone_number: string
+          updated_at: string | null
+          user_id: string | null
+          vehicle_number: string | null
+          vehicle_type: string | null
+        }
+        Insert: {
+          assigned_area?: string | null
+          created_at?: string | null
+          daily_capacity?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          phone_number: string
+          updated_at?: string | null
+          user_id?: string | null
+          vehicle_number?: string | null
+          vehicle_type?: string | null
+        }
+        Update: {
+          assigned_area?: string | null
+          created_at?: string | null
+          daily_capacity?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          phone_number?: string
+          updated_at?: string | null
+          user_id?: string | null
+          vehicle_number?: string | null
+          vehicle_type?: string | null
+        }
+        Relationships: []
+      }
+      delivery_orders: {
+        Row: {
+          amount_collected: number | null
+          created_at: string | null
+          customer_id: string | null
+          delivery_boy_id: string | null
+          delivery_time: string | null
+          id: string
+          notes: string | null
+          order_date: string | null
+          payment_status: string | null
+          quantity: number
+          rate_per_liter: number
+          status: string | null
+          total_amount: number
+          updated_at: string | null
+        }
+        Insert: {
+          amount_collected?: number | null
+          created_at?: string | null
+          customer_id?: string | null
+          delivery_boy_id?: string | null
+          delivery_time?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string | null
+          payment_status?: string | null
+          quantity: number
+          rate_per_liter: number
+          status?: string | null
+          total_amount: number
+          updated_at?: string | null
+        }
+        Update: {
+          amount_collected?: number | null
+          created_at?: string | null
+          customer_id?: string | null
+          delivery_boy_id?: string | null
+          delivery_time?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string | null
+          payment_status?: string | null
+          quantity?: number
+          rate_per_liter?: number
+          status?: string | null
+          total_amount?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_orders_delivery_boy_id_fkey"
+            columns: ["delivery_boy_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_boys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farmers: {
         Row: {
           address: string | null
@@ -496,6 +669,42 @@ export type Database = {
           rate_per_liter?: number
           snf_max?: number
           snf_min?: number
+        }
+        Relationships: []
+      }
+      milk_schemes: {
+        Row: {
+          buffalo_milk_rate: number
+          cow_milk_rate: number
+          created_at: string | null
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean | null
+          scheme_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          buffalo_milk_rate?: number
+          cow_milk_rate?: number
+          created_at?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean | null
+          scheme_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          buffalo_milk_rate?: number
+          cow_milk_rate?: number
+          created_at?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean | null
+          scheme_name?: string
+          updated_at?: string | null
         }
         Relationships: []
       }

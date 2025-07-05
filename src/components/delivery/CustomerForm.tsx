@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useMilkSchemes } from '@/hooks/useMilkSchemes';
 
 interface Customer {
   id: string;
@@ -18,6 +19,8 @@ interface Customer {
   rate_per_liter: number;
   credit_limit: number;
   is_active: boolean;
+  scheme_id: string | null;
+  milk_type: string;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +38,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   onCancel,
   isLoading
 }) => {
+  const { schemes } = useMilkSchemes();
+
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -88,6 +93,38 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             step="0.1"
             defaultValue={selectedCustomer?.daily_quantity || ''}
           />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="milk_type">Milk Type</Label>
+          <Select name="milk_type" defaultValue={selectedCustomer?.milk_type || 'cow'}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cow">Cow Milk</SelectItem>
+              <SelectItem value="buffalo">Buffalo Milk</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label htmlFor="scheme_id">Pricing Scheme</Label>
+          <Select name="scheme_id" defaultValue={selectedCustomer?.scheme_id || ''}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select scheme" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">No Scheme</SelectItem>
+              {schemes?.filter(scheme => scheme.is_active).map((scheme) => (
+                <SelectItem key={scheme.id} value={scheme.id}>
+                  {scheme.scheme_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

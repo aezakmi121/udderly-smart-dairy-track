@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,6 +6,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Users, Plus } from 'lucide-react';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useMilkSchemes } from '@/hooks/useMilkSchemes';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { CustomerForm } from './CustomerForm';
 import { CustomersTable } from './CustomersTable';
 import { CustomerBulkUpload } from './CustomerBulkUpload';
@@ -22,6 +26,8 @@ interface Customer {
   rate_per_liter: number;
   credit_limit: number;
   is_active: boolean;
+  scheme_id: string | null;
+  milk_type: string;
   created_at: string;
   updated_at: string;
 }
@@ -31,10 +37,37 @@ export const CustomersManagement = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const { canEdit } = useUserPermissions();
   const { customers, isLoading, customerMutation, generateCustomerCode } = useCustomers();
+  const { schemes } = useMilkSchemes();
+  const { toast } = useToast();
+
+  const calculateRate = (milkType: string, schemeId: string | null) => {
+    if (!schemeId) {
+      return milkType === 'cow' ? 60 : 75; // Default rates
+    }
+    
+    const scheme = schemes?.find(s => s.id === schemeId);
+    if (!scheme) return milkType === 'cow' ? 60 : 75;
+    
+    let baseRate = milkType === 'cow' ? scheme.cow_milk_rate : scheme.buffalo_milk_rate;
+    
+    if (scheme.discount_value > 0) {
+      if (scheme.discount_type === 'percentage') {
+        baseRate = baseRate - (baseRate * scheme.discount_value / 100);
+      } else {
+        baseRate = baseRate - scheme.discount_value;
+      }
+    }
+    
+    return Math.max(0, baseRate); // Ensure rate doesn't go negative
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    
+    const milkType = formData.get('milk_type') as string;
+    const schemeId = formData.get('scheme_id') as string || null;
+    const calculatedRate = calculateRate(milkType, schemeId);
     
     const customerData = {
       customer_code: selectedCustomer?.customer_code || generateCustomerCode(),
@@ -45,9 +78,11 @@ export const CustomersManagement = () => {
       daily_quantity: parseFloat(formData.get('daily_quantity') as string) || 0,
       delivery_time: formData.get('delivery_time') as string || 'morning',
       subscription_type: formData.get('subscription_type') as string || 'daily',
-      rate_per_liter: parseFloat(formData.get('rate_per_liter') as string),
+      rate_per_liter: parseFloat(formData.get('rate_per_liter') as string) || calculatedRate,
       credit_limit: parseFloat(formData.get('credit_limit') as string) || 0,
-      is_active: formData.get('is_active') === 'true'
+      is_active: formData.get('is_active') === 'true',
+      scheme_id: schemeId,
+      milk_type: milkType
     };
 
     customerMutation.mutate({
@@ -59,6 +94,28 @@ export const CustomersManagement = () => {
     if (!customerMutation.isPending) {
       setIsDialogOpen(false);
       setSelectedCustomer(null);
+    }
+  };
+
+  const handleBulkDelete = async (customerIds: string[]) => {
+    try {
+      const { error } = await supabase
+        .from('customers')
+        .delete()
+        .in('id', customerIds);
+      
+      if (error) throw error;
+      
+      toast({ title: `Successfully deleted ${customerIds.length} customer(s)` });
+      
+      // Refresh the customers list
+      window.location.reload();
+    } catch (error: any) {
+      toast({
+        title: "Failed to delete customers",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
 
@@ -126,6 +183,7 @@ export const CustomersManagement = () => {
             <CustomersTable
               customers={customers || []}
               onEdit={openDialog}
+              onBulkDelete={handleBulkDelete}
               canEdit={canEdit.customers}
             />
           )}

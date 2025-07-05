@@ -16,6 +16,8 @@ interface Customer {
   rate_per_liter: number;
   credit_limit: number;
   is_active: boolean;
+  scheme_id: string | null;
+  milk_type: string;
   created_at: string;
   updated_at: string;
 }
@@ -32,6 +34,8 @@ interface CustomerInsert {
   rate_per_liter: number;
   credit_limit?: number;
   is_active?: boolean;
+  scheme_id?: string | null;
+  milk_type?: string;
 }
 
 export const useCustomers = () => {
