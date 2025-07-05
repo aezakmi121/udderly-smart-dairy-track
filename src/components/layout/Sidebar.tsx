@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { 
   Home, 
@@ -15,102 +14,127 @@ import {
   BarChart3,
   Settings,
   Wheat,
-  Grid2X2
+  Grid2X2,
+  ShoppingCart
 } from 'lucide-react';
-import { useUserPermissions } from '@/hooks/useUserPermissions';
 
-const Sidebar = () => {
-  const location = useLocation();
-  const { canAccess } = useUserPermissions();
+interface SidebarProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  canAccess: {
+    dashboard: boolean;
+    cows: boolean;
+    calves: boolean;
+    milkProduction: boolean;
+    vaccination: boolean;
+    weightLogs: boolean;
+    aiTracking: boolean;
+    farmers: boolean;
+    milkCollection: boolean;
+    feedManagement: boolean;
+    cowGrouping: boolean;
+    deliveryBoys: boolean;
+    customers: boolean;
+    reports: boolean;
+    settings: boolean;
+  };
+}
 
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, canAccess }) => {
   const menuItems = [
     { 
+      id: 'dashboard',
       name: 'Dashboard', 
-      href: '/', 
       icon: Home,
       show: canAccess.dashboard
     },
     { 
+      id: 'cows',
       name: 'Cows', 
-      href: '/cows', 
       icon: Users,
       show: canAccess.cows
     },
     { 
+      id: 'calves',
       name: 'Calves', 
-      href: '/calves', 
       icon: Baby,
       show: canAccess.calves
     },
     { 
+      id: 'milk-production',
       name: 'Milk Production', 
-      href: '/milk-production', 
       icon: Milk,
       show: canAccess.milkProduction
     },
     { 
+      id: 'vaccination',
       name: 'Vaccination', 
-      href: '/vaccination', 
       icon: Syringe,
       show: canAccess.vaccination
     },
     { 
+      id: 'weight-logs',
       name: 'Weight Logs', 
-      href: '/weight-logs', 
       icon: Weight,
       show: canAccess.weightLogs
     },
     { 
+      id: 'ai-tracking',
       name: 'AI Tracking', 
-      href: '/ai-tracking', 
       icon: Heart,
       show: canAccess.aiTracking
     },
     { 
+      id: 'farmers',
       name: 'Farmers', 
-      href: '/farmers', 
       icon: UserPlus,
       show: canAccess.farmers
     },
     { 
+      id: 'milk-collection',
       name: 'Milk Collection', 
-      href: '/milk-collection', 
       icon: Milk,
       show: canAccess.milkCollection
     },
     { 
+      id: 'feed-management',
       name: 'Feed Management', 
-      href: '/feed-management', 
       icon: Wheat,
       show: canAccess.feedManagement
     },
     { 
+      id: 'cow-grouping',
       name: 'Cow Grouping', 
-      href: '/cow-grouping', 
       icon: Grid2X2,
       show: canAccess.cowGrouping
     },
     { 
+      id: 'delivery-boys',
       name: 'Delivery Boys', 
-      href: '/delivery-boys', 
       icon: Truck,
       show: canAccess.deliveryBoys
     },
     { 
+      id: 'customers',
       name: 'Customer Management', 
-      href: '/customers', 
       icon: Users,
       show: canAccess.customers
     },
     { 
+      id: 'pos',
+      name: 'POS System', 
+      icon: ShoppingCart,
+      show: true
+    },
+    { 
+      id: 'reports',
       name: 'Reports', 
-      href: '/reports', 
       icon: BarChart3,
       show: canAccess.reports
     },
     { 
+      id: 'settings',
       name: 'Settings', 
-      href: '/settings', 
       icon: Settings,
       show: canAccess.settings
     },
@@ -124,19 +148,19 @@ const Sidebar = () => {
         {visibleMenuItems.map((item) => {
           const Icon = item.icon;
           return (
-            <Link
-              key={item.name}
-              to={item.href}
+            <button
+              key={item.id}
+              onClick={() => onTabChange(item.id)}
               className={cn(
-                'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                location.pathname === item.href
+                'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors w-full text-left',
+                activeTab === item.id
                   ? 'bg-blue-100 text-blue-700'
                   : 'text-gray-700 hover:bg-gray-100'
               )}
             >
               <Icon className="mr-3 h-5 w-5" />
               {item.name}
-            </Link>
+            </button>
           );
         })}
       </div>
