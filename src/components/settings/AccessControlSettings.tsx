@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, UserPlus, Settings } from 'lucide-react';
+import { Shield, UserPlus, Settings, Truck, Store } from 'lucide-react';
 import { RoleManagement } from './RoleManagement';
 
 export const AccessControlSettings = () => {
   const { data: users, isLoading } = useQuery({
     queryKey: ['users-with-roles'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select(`
           id,
@@ -24,8 +24,18 @@ export const AccessControlSettings = () => {
         `)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      return data;
+      if (profilesError) throw profilesError;
+
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+      
+      if (rolesError) throw rolesError;
+
+      return profiles?.map(profile => ({
+        ...profile,
+        roles: userRoles?.filter(ur => ur.user_id === profile.id).map(ur => ur.role) || []
+      })) || [];
     }
   });
 
@@ -33,10 +43,14 @@ export const AccessControlSettings = () => {
     switch (role) {
       case 'admin':
         return 'destructive';
-      case 'farmer':
+      case 'store_manager':
         return 'default';
+      case 'farmer':
+        return 'secondary';
       case 'worker':
         return 'secondary';
+      case 'delivery_boy':
+        return 'outline';
       default:
         return 'outline';
     }
@@ -50,6 +64,10 @@ export const AccessControlSettings = () => {
         return 'Collection Centre';
       case 'worker':
         return 'Farm Worker';
+      case 'delivery_boy':
+        return 'Delivery Boy';
+      case 'store_manager':
+        return 'Store Manager';
       default:
         return 'No Role';
     }
@@ -57,7 +75,7 @@ export const AccessControlSettings = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Admin Users</CardTitle>
@@ -65,9 +83,22 @@ export const AccessControlSettings = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {users?.filter(user => user.role === 'admin').length || 0}
+              {users?.filter(user => user.roles.includes('admin')).length || 0}
             </div>
             <p className="text-xs text-muted-foreground">Full system access</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Store Managers</CardTitle>
+            <Store className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {users?.filter(user => user.roles.includes('store_manager')).length || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">Delivery management</p>
           </CardContent>
         </Card>
 
@@ -78,7 +109,7 @@ export const AccessControlSettings = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {users?.filter(user => user.role === 'worker').length || 0}
+              {users?.filter(user => user.roles.includes('worker')).length || 0}
             </div>
             <p className="text-xs text-muted-foreground">Farm operations access</p>
           </CardContent>
@@ -87,13 +118,26 @@ export const AccessControlSettings = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Collection Centre</CardTitle>
-            <Settings className="h-4 w-4 text-blue-600" />
+            <Settings className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {users?.filter(user => user.role === 'farmer').length || 0}
+              {users?.filter(user => user.roles.includes('farmer')).length || 0}
             </div>
             <p className="text-xs text-muted-foreground">Collection access</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Delivery Boys</CardTitle>
+            <Truck className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {users?.filter(user => user.roles.includes('delivery_boy')).length || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">Delivery access</p>
           </CardContent>
         </Card>
       </div>
@@ -116,7 +160,7 @@ export const AccessControlSettings = () => {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>Role</TableHead>
+                  <TableHead>Roles</TableHead>
                   <TableHead>Joined</TableHead>
                   <TableHead>Access Level</TableHead>
                 </TableRow>
@@ -127,18 +171,28 @@ export const AccessControlSettings = () => {
                     <TableCell className="font-medium">{user.full_name}</TableCell>
                     <TableCell>{user.phone_number || 'N/A'}</TableCell>
                     <TableCell>
-                      <Badge variant={getRoleBadgeVariant(user.role || 'worker')}>
-                        {getRoleDisplayName(user.role || 'worker')}
-                      </Badge>
+                      <div className="flex flex-wrap gap-1">
+                        {user.roles.length > 0 ? (
+                          user.roles.map((role: string) => (
+                            <Badge key={role} variant={getRoleBadgeVariant(role)}>
+                              {getRoleDisplayName(role)}
+                            </Badge>
+                          ))
+                        ) : (
+                          <Badge variant="outline">No Roles</Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {user.role === 'admin' && 'Full Access'}
-                      {user.role === 'worker' && 'Farm Operations'}
-                      {user.role === 'farmer' && 'Collection Only'}
-                      {!user.role && 'Limited Access'}
+                      {user.roles.includes('admin') && 'Full Access'}
+                      {user.roles.includes('store_manager') && !user.roles.includes('admin') && 'Store Management'}
+                      {user.roles.includes('worker') && !user.roles.includes('admin') && !user.roles.includes('store_manager') && 'Farm Operations'}
+                      {user.roles.includes('farmer') && 'Collection Operations'}
+                      {user.roles.includes('delivery_boy') && 'Delivery Operations'}
+                      {user.roles.length === 0 && 'Limited Access'}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -162,8 +216,18 @@ export const AccessControlSettings = () => {
                   <li>• User management</li>
                   <li>• Settings configuration</li>
                   <li>• All farm operations</li>
-                  <li>• All collection operations</li>
+                  <li>• All delivery operations</li>
                   <li>• Reports & analytics</li>
+                </ul>
+              </div>
+              <div className="p-4 border rounded-lg">
+                <h4 className="font-semibold text-blue-600 mb-2">Store Manager</h4>
+                <ul className="text-sm space-y-1">
+                  <li>• Delivery boys management</li>
+                  <li>• Customer management</li>
+                  <li>• Delivery orders</li>
+                  <li>• Inventory allocation</li>
+                  <li>• Performance tracking</li>
                 </ul>
               </div>
               <div className="p-4 border rounded-lg">
@@ -177,14 +241,26 @@ export const AccessControlSettings = () => {
                   <li>• Feed management</li>
                 </ul>
               </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-4 border rounded-lg">
-                <h4 className="font-semibold text-blue-600 mb-2">Collection Centre</h4>
+                <h4 className="font-semibold text-purple-600 mb-2">Collection Centre</h4>
                 <ul className="text-sm space-y-1">
                   <li>• Add farmers (no edit/delete)</li>
                   <li>• View farmers list</li>
                   <li>• Add milk collections</li>
                   <li>• View collection records</li>
                   <li>• Limited reporting</li>
+                </ul>
+              </div>
+              <div className="p-4 border rounded-lg">
+                <h4 className="font-semibold text-orange-600 mb-2">Delivery Boy</h4>
+                <ul className="text-sm space-y-1">
+                  <li>• View customer details</li>
+                  <li>• Update delivery status</li>
+                  <li>• Record collections</li>
+                  <li>• View own orders</li>
+                  <li>• Basic reporting</li>
                 </ul>
               </div>
             </div>

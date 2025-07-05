@@ -6,26 +6,28 @@ import { useAuth } from '@/components/auth/AuthProvider';
 export const useUserPermissions = () => {
   const { user } = useAuth();
 
-  const { data: userRole, isLoading } = useQuery({
-    queryKey: ['user-role', user?.id],
+  const { data: userRoles, isLoading } = useQuery({
+    queryKey: ['user-roles', user?.id],
     queryFn: async () => {
-      if (!user?.id) return null;
+      if (!user?.id) return [];
       
       const { data, error } = await supabase
-        .from('profiles')
+        .from('user_roles')
         .select('role')
-        .eq('id', user.id)
-        .single();
+        .eq('user_id', user.id);
       
       if (error) throw error;
-      return data?.role || 'worker';
+      return data?.map(r => r.role) || [];
     },
     enabled: !!user?.id
   });
 
-  const isAdmin = userRole === 'admin';
-  const isFarmWorker = userRole === 'worker';
-  const isCollectionCentre = userRole === 'farmer';
+  const roles = userRoles || [];
+  const isAdmin = roles.includes('admin');
+  const isFarmWorker = roles.includes('worker');
+  const isCollectionCentre = roles.includes('farmer');
+  const isDeliveryBoy = roles.includes('delivery_boy');
+  const isStoreManager = roles.includes('store_manager');
 
   const canAccess = {
     // Admin has access to everything
@@ -45,26 +47,39 @@ export const useUserPermissions = () => {
     farmers: isAdmin || isCollectionCentre,
     milkCollection: isAdmin || isCollectionCentre,
     
+    // Delivery management - Admin, Store Manager, Delivery Boy
+    deliveryBoys: isAdmin || isStoreManager,
+    customers: isAdmin || isStoreManager || isDeliveryBoy,
+    deliveryOrders: isAdmin || isStoreManager || isDeliveryBoy,
+    
     // Reports - Admin only for now, can be extended
     reports: isAdmin
   };
 
   const canDelete = {
     farmers: isAdmin,
-    milkCollection: isAdmin
+    milkCollection: isAdmin,
+    deliveryBoys: isAdmin,
+    customers: isAdmin || isStoreManager,
+    deliveryOrders: isAdmin || isStoreManager
   };
 
   const canEdit = {
     farmers: isAdmin,
-    milkCollection: isAdmin
+    milkCollection: isAdmin,
+    deliveryBoys: isAdmin || isStoreManager,
+    customers: isAdmin || isStoreManager,
+    deliveryOrders: isAdmin || isStoreManager || isDeliveryBoy
   };
 
   return {
-    userRole,
+    userRoles: roles,
     isLoading,
     isAdmin,
     isFarmWorker,
     isCollectionCentre,
+    isDeliveryBoy,
+    isStoreManager,
     canAccess,
     canDelete,
     canEdit

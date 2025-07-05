@@ -4,74 +4,119 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus } from 'lucide-react';
 
-type UserRole = 'admin' | 'farmer' | 'worker';
+type UserRole = 'admin' | 'farmer' | 'worker' | 'delivery_boy' | 'store_manager';
+
+const roleLabels = {
+  admin: 'Admin',
+  farmer: 'Collection Centre',
+  worker: 'Farm Worker',
+  delivery_boy: 'Delivery Boy',
+  store_manager: 'Store Manager'
+};
 
 export const RoleManagement = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState('');
-  const [selectedRole, setSelectedRole] = useState<UserRole | ''>('');
+  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: users } = useQuery({
-    queryKey: ['all-users'],
+    queryKey: ['all-users-with-roles'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, full_name, role');
+        .select('id, full_name');
       
-      if (error) throw error;
-      return data;
+      if (profilesError) throw profilesError;
+
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+      
+      if (rolesError) throw rolesError;
+
+      return profiles?.map(profile => ({
+        ...profile,
+        roles: userRoles?.filter(ur => ur.user_id === profile.id).map(ur => ur.role) || []
+      })) || [];
     }
   });
 
-  const assignRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: UserRole }) => {
-      // First insert or update in user_roles table
-      const { error: roleError } = await supabase
+  const assignRolesMutation = useMutation({
+    mutationFn: async ({ userId, roles }: { userId: string; roles: UserRole[] }) => {
+      // First, remove all existing roles for this user
+      const { error: deleteError } = await supabase
         .from('user_roles')
-        .upsert({ 
-          user_id: userId, 
-          role: role,
-          assigned_by: (await supabase.auth.getUser()).data.user?.id
-        });
+        .delete()
+        .eq('user_id', userId);
       
-      if (roleError) throw roleError;
+      if (deleteError) throw deleteError;
 
-      // Then update the profiles table for consistency
+      // Then add the new roles
+      if (roles.length > 0) {
+        const { error: insertError } = await supabase
+          .from('user_roles')
+          .insert(
+            roles.map(role => ({
+              user_id: userId,
+              role: role,
+              assigned_by: (await supabase.auth.getUser()).data.user?.id
+            }))
+          );
+        
+        if (insertError) throw insertError;
+      }
+
+      // Update the profiles table with the primary role (first one)
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ role: role })
+        .update({ role: roles[0] || 'worker' })
         .eq('id', userId);
       
       if (profileError) throw profileError;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['all-users'] });
-      queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
-      toast({ title: "Role assigned successfully!" });
+      queryClient.invalidateQueries({ queryKey: ['all-users-with-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['user-roles'] });
+      toast({ title: "Roles assigned successfully!" });
       setIsOpen(false);
       setSelectedUser('');
-      setSelectedRole('');
+      setSelectedRoles([]);
     },
     onError: (error) => {
       toast({ 
-        title: "Failed to assign role", 
+        title: "Failed to assign roles", 
         description: error.message,
         variant: "destructive" 
       });
     }
   });
 
-  const handleAssignRole = () => {
-    if (selectedUser && selectedRole) {
-      assignRoleMutation.mutate({ userId: selectedUser, role: selectedRole as UserRole });
+  const handleRoleToggle = (role: UserRole, checked: boolean) => {
+    if (checked) {
+      setSelectedRoles(prev => [...prev, role]);
+    } else {
+      setSelectedRoles(prev => prev.filter(r => r !== role));
     }
+  };
+
+  const handleAssignRoles = () => {
+    if (selectedUser && selectedRoles.length > 0) {
+      assignRolesMutation.mutate({ userId: selectedUser, roles: selectedRoles });
+    }
+  };
+
+  const handleUserSelect = (userId: string) => {
+    setSelectedUser(userId);
+    const user = users?.find(u => u.id === userId);
+    setSelectedRoles(user?.roles || []);
   };
 
   return (
@@ -84,20 +129,20 @@ export const RoleManagement = () => {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Assign User Role</DialogTitle>
+          <DialogTitle>Assign User Roles</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
           <div>
             <Label htmlFor="user-select">Select User</Label>
-            <Select onValueChange={setSelectedUser}>
+            <Select onValueChange={handleUserSelect}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose a user" />
               </SelectTrigger>
               <SelectContent>
                 {users?.map((user) => (
                   <SelectItem key={user.id} value={user.id}>
-                    {user.full_name} ({user.role || 'No role'})
+                    {user.full_name} ({user.roles.length ? user.roles.map(r => roleLabels[r as UserRole]).join(', ') : 'No roles'})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -105,17 +150,19 @@ export const RoleManagement = () => {
           </div>
 
           <div>
-            <Label htmlFor="role-select">Select Role</Label>
-            <Select onValueChange={(value: UserRole) => setSelectedRole(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="worker">Farm Worker</SelectItem>
-                <SelectItem value="farmer">Collection Centre</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Select Roles (multiple allowed)</Label>
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              {Object.entries(roleLabels).map(([role, label]) => (
+                <div key={role} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={role}
+                    checked={selectedRoles.includes(role as UserRole)}
+                    onCheckedChange={(checked) => handleRoleToggle(role as UserRole, checked as boolean)}
+                  />
+                  <Label htmlFor={role} className="text-sm">{label}</Label>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="flex justify-end space-x-2">
@@ -123,10 +170,10 @@ export const RoleManagement = () => {
               Cancel
             </Button>
             <Button 
-              onClick={handleAssignRole}
-              disabled={!selectedUser || !selectedRole || assignRoleMutation.isPending}
+              onClick={handleAssignRoles}
+              disabled={!selectedUser || selectedRoles.length === 0 || assignRolesMutation.isPending}
             >
-              {assignRoleMutation.isPending ? 'Assigning...' : 'Assign Role'}
+              {assignRolesMutation.isPending ? 'Assigning...' : 'Assign Roles'}
             </Button>
           </div>
         </div>
