@@ -37,24 +37,22 @@ export const usePOSData = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch products from database or use mock data for now
+  // Fetch products from localStorage
   const { data: products, isLoading: productsLoading } = useQuery({
     queryKey: ['pos-products'],
     queryFn: async () => {
-      // For now, using localStorage to persist data until we create proper database tables
       const savedProducts = localStorage.getItem('pos-products');
       if (savedProducts) {
         return JSON.parse(savedProducts) as POSProduct[];
       }
       
-      // Default mock data
       const defaultProducts = [
         {
           id: '1',
           name: 'Cow Milk',
-          category: 'Dairy',
+          category: 'Dairy Products',
           unit_type: 'volume' as const,
-          fractional_allowed: true,
+          fractional_allowed: false,
           variants: [
             {
               id: '1-1',
@@ -78,6 +76,46 @@ export const usePOSData = () => {
             }
           ],
           created_at: new Date().toISOString(),
+        },
+        {
+          id: '2',
+          name: 'Buffalo Milk',
+          category: 'Dairy Products',
+          unit_type: 'volume' as const,
+          fractional_allowed: true,
+          variants: [
+            {
+              id: '2-1',
+              name: '1 Liter Bottle',
+              size: 1,
+              unit: 'L',
+              cost_price: 60,
+              selling_price: 75,
+              stock_quantity: 25,
+              low_stock_alert: 5,
+            }
+          ],
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: '3',
+          name: 'Chips',
+          category: 'Snacks',
+          unit_type: 'piece' as const,
+          fractional_allowed: false,
+          variants: [
+            {
+              id: '3-1',
+              name: 'Regular Pack',
+              size: 1,
+              unit: 'pack',
+              cost_price: 15,
+              selling_price: 20,
+              stock_quantity: 100,
+              low_stock_alert: 20,
+            }
+          ],
+          created_at: new Date().toISOString(),
         }
       ] as POSProduct[];
       
@@ -86,26 +124,47 @@ export const usePOSData = () => {
     }
   });
 
+  // Calculate categories with actual product counts
   const { data: categories } = useQuery({
-    queryKey: ['pos-categories'],
+    queryKey: ['pos-categories', products],
     queryFn: async () => {
+      const productsByCategory = products?.reduce((acc, product) => {
+        acc[product.category] = (acc[product.category] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>) || {};
+
       return [
         {
           id: '1',
           name: 'Dairy Products',
           description: 'Milk, curd, cheese and other dairy items',
-          product_count: 5,
+          product_count: productsByCategory['Dairy Products'] || 0,
           created_at: new Date().toISOString(),
         },
         {
           id: '2',
           name: 'Snacks',
           description: 'Chips, biscuits, and other snack items',
-          product_count: 12,
+          product_count: productsByCategory['Snacks'] || 0,
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: '3',
+          name: 'Beverages',
+          description: 'Soft drinks, juices, and other beverages',
+          product_count: productsByCategory['Beverages'] || 0,
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: '4',
+          name: 'Grains',
+          description: 'Rice, wheat, and other grain products',
+          product_count: productsByCategory['Grains'] || 0,
           created_at: new Date().toISOString(),
         }
       ] as POSCategory[];
-    }
+    },
+    enabled: !!products
   });
 
   const addProductMutation = useMutation({
@@ -124,6 +183,7 @@ export const usePOSData = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pos-products'] });
+      queryClient.invalidateQueries({ queryKey: ['pos-categories'] });
       toast({ title: "Product added successfully!" });
     },
     onError: () => {
@@ -142,6 +202,7 @@ export const usePOSData = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pos-products'] });
+      queryClient.invalidateQueries({ queryKey: ['pos-categories'] });
       toast({ title: "Product updated successfully!" });
     },
     onError: () => {
@@ -158,6 +219,7 @@ export const usePOSData = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pos-products'] });
+      queryClient.invalidateQueries({ queryKey: ['pos-categories'] });
       toast({ title: "Product deleted successfully!" });
     },
     onError: () => {
@@ -190,6 +252,30 @@ export const usePOSData = () => {
     }
   });
 
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (categoryName: string) => {
+      const currentProducts = products || [];
+      const productsInCategory = currentProducts.filter(product => product.category === categoryName);
+      
+      if (productsInCategory.length > 0) {
+        throw new Error(`Cannot delete category "${categoryName}" because it contains ${productsInCategory.length} products. Please delete or move the products first.`);
+      }
+      
+      return categoryName;
+    },
+    onSuccess: (categoryName) => {
+      queryClient.invalidateQueries({ queryKey: ['pos-categories'] });
+      toast({ title: `Category "${categoryName}" deleted successfully!` });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Cannot delete category", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
   const categoryMutation = useMutation({
     mutationFn: async ({ categoryData, isUpdate, id }: { 
       categoryData: Partial<POSCategory>, 
@@ -197,6 +283,7 @@ export const usePOSData = () => {
       id?: string 
     }) => {
       console.log('Category operation:', { categoryData, isUpdate, id });
+      return { categoryData, isUpdate, id };
     },
     onSuccess: (_, { isUpdate }) => {
       queryClient.invalidateQueries({ queryKey: ['pos-categories'] });
@@ -212,6 +299,7 @@ export const usePOSData = () => {
     updateProductMutation,
     deleteProductMutation,
     updateStockMutation,
-    categoryMutation
+    categoryMutation,
+    deleteCategoryMutation
   };
 };

@@ -9,12 +9,15 @@ import { PaymentSection } from './sales/PaymentSection';
 
 interface SaleItem {
   id: string;
+  productId: string;
+  variantId: string;
   name: string;
   price: number;
   quantity: number;
   unit: string;
   discount?: number;
   total: number;
+  fractionalAllowed: boolean;
 }
 
 export const POSSales = () => {
@@ -30,16 +33,8 @@ export const POSSales = () => {
   const totalDiscount = discount + saleItems.reduce((sum, item) => sum + (item.discount || 0), 0);
   const grandTotal = subtotal - totalDiscount + otherCharges;
 
-  const addItem = () => {
-    const newItem: SaleItem = {
-      id: Date.now().toString(),
-      name: 'Cow Milk 1L',
-      price: 55,
-      quantity: 1,
-      unit: 'L',
-      total: 55
-    };
-    setSaleItems([...saleItems, newItem]);
+  const addItem = (newItem: SaleItem) => {
+    setSaleItems(prevItems => [...prevItems, newItem]);
   };
 
   const updateQuantity = (id: string, quantity: number) => {
