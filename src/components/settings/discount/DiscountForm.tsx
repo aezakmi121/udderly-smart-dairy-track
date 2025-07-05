@@ -41,6 +41,49 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
   
   const selectedProduct = products?.find(p => p.id === selectedProductId);
 
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    
+    // Handle variant_id properly - convert "all_variants" to null
+    const variantIdValue = formData.get('variant_id') as string;
+    const variantId = variantIdValue === 'all_variants' ? null : variantIdValue;
+    
+    // Create a new FormData with the corrected variant_id
+    const correctedFormData = new FormData();
+    for (const [key, value] of formData.entries()) {
+      if (key === 'variant_id') {
+        // Only set variant_id if it's not null and not empty
+        if (variantId && variantId !== '') {
+          correctedFormData.set(key, variantId);
+        }
+      } else {
+        correctedFormData.set(key, value);
+      }
+    }
+    
+    // Create a new event with the corrected form data
+    const correctedEvent = {
+      ...e,
+      currentTarget: {
+        ...e.currentTarget,
+        // Override the FormData constructor to return our corrected data
+        constructor: FormData
+      }
+    };
+    
+    // Manually construct the event target with corrected form data
+    Object.defineProperty(correctedEvent, 'currentTarget', {
+      value: {
+        ...e.currentTarget,
+        // Add a method to get corrected FormData
+        getFormData: () => correctedFormData
+      }
+    });
+    
+    onSubmit(e);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
@@ -50,7 +93,7 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
           </DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="product_id">Product *</Label>
             <Select 
@@ -75,12 +118,12 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
           {selectedProduct?.variants && selectedProduct.variants.length > 0 && (
             <div>
               <Label htmlFor="variant_id">Variant (Optional)</Label>
-              <Select name="variant_id" defaultValue={selectedDiscount?.variant_id || 'all_variants'}>
+              <Select name="variant_id" defaultValue={selectedDiscount?.variant_id || ''}>
                 <SelectTrigger>
                   <SelectValue placeholder="Apply to all variants or select specific" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all_variants">All Variants</SelectItem>
+                  <SelectItem value="">All Variants</SelectItem>
                   {selectedProduct.variants.map((variant) => (
                     <SelectItem key={variant.id} value={variant.id}>
                       {variant.name} - ₹{variant.selling_price}
@@ -94,7 +137,7 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="discount_type">Discount Type</Label>
-              <Select name="discount_type" defaultValue={selectedDiscount?.discount_type || 'percentage'}>
+              <Select name="discount_type" defaultValue={selectedDiscount?.discount_type || 'amount'}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

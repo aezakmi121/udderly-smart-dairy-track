@@ -28,10 +28,23 @@ export const SchemeProductDiscounts: React.FC<SchemeProductDiscountsProps> = ({
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
+    // Get variant_id and properly handle empty string
+    const variantIdValue = formData.get('variant_id') as string;
+    const variantId = variantIdValue && variantIdValue.trim() !== '' ? variantIdValue : null;
+    
+    console.log('Form submission data:', {
+      scheme_id: schemeId,
+      product_id: formData.get('product_id') as string,
+      variant_id: variantId,
+      discount_type: formData.get('discount_type') as 'percentage' | 'amount',
+      discount_value: parseFloat(formData.get('discount_value') as string) || 0,
+      is_active: formData.get('is_active') === 'true'
+    });
+    
     const discountData = {
       scheme_id: schemeId,
       product_id: formData.get('product_id') as string,
-      variant_id: formData.get('variant_id') as string || null,
+      variant_id: variantId,
       discount_type: formData.get('discount_type') as 'percentage' | 'amount',
       discount_value: parseFloat(formData.get('discount_value') as string) || 0,
       is_active: formData.get('is_active') === 'true'
