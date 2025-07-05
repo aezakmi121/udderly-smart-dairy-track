@@ -40,7 +40,7 @@ interface Product {
 
 interface SaleItemsSectionProps {
   saleItems: SaleItem[];
-  onAddItem: (item: SaleItem) => void;
+  onAddItem: (product: Product, variant: ProductVariant) => void;
   onUpdateQuantity: (id: string, quantity: number) => void;
   onRemoveItem: (id: string) => void;
 }
@@ -55,18 +55,7 @@ export const SaleItemsSection: React.FC<SaleItemsSectionProps> = ({
 
   const handleProductSelect = (product: Product, variant: ProductVariant) => {
     try {
-      const newItem: SaleItem = {
-        id: `${product.id}-${variant.id}-${Date.now()}`,
-        productId: product.id,
-        variantId: variant.id,
-        name: `${product.name} - ${variant.name}`,
-        price: variant.selling_price,
-        quantity: 1,
-        unit: variant.unit,
-        total: variant.selling_price,
-        fractionalAllowed: product.fractional_allowed
-      };
-      onAddItem(newItem);
+      onAddItem(product, variant);
     } catch (error) {
       console.error('Error adding item:', error);
     }
