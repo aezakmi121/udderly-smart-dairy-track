@@ -24,35 +24,37 @@ export const SchemeProductDiscounts: React.FC<SchemeProductDiscountsProps> = ({
 
   const schemeDiscounts = discounts?.filter(d => d.scheme_id === schemeId) || [];
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    
-    // Get variant_id and properly handle empty string and "all_variants"
-    const variantIdValue = formData.get('variant_id') as string;
-    let variantId = null;
-    
-    // Only set variantId if it's a real variant ID (not null, empty, or "all_variants")
-    if (variantIdValue && variantIdValue.trim() !== '' && variantIdValue !== 'all_variants') {
-      variantId = variantIdValue;
-    }
-    
+  const handleSubmit = async (formData: {
+    product_id: string;
+    variant_id: string | null;
+    discount_type: 'percentage' | 'amount';
+    discount_value: number;
+    is_active: boolean;
+  }) => {
     console.log('Form submission data:', {
       scheme_id: schemeId,
-      product_id: formData.get('product_id') as string,
-      variant_id: variantId,
-      discount_type: formData.get('discount_type') as 'percentage' | 'amount',
-      discount_value: parseFloat(formData.get('discount_value') as string) || 0,
-      is_active: formData.get('is_active') === 'true'
+      ...formData
     });
+    
+    // Validate that we have a proper product_id
+    if (!formData.product_id || formData.product_id.trim() === '') {
+      console.error('Invalid product_id:', formData.product_id);
+      return;
+    }
+    
+    // Validate that if variant_id is provided, it's a proper UUID
+    if (formData.variant_id && formData.variant_id.length < 10) {
+      console.error('Invalid variant_id format:', formData.variant_id);
+      return;
+    }
     
     const discountData = {
       scheme_id: schemeId,
-      product_id: formData.get('product_id') as string,
-      variant_id: variantId,
-      discount_type: formData.get('discount_type') as 'percentage' | 'amount',
-      discount_value: parseFloat(formData.get('discount_value') as string) || 0,
-      is_active: formData.get('is_active') === 'true'
+      product_id: formData.product_id,
+      variant_id: formData.variant_id,
+      discount_type: formData.discount_type,
+      discount_value: formData.discount_value,
+      is_active: formData.is_active
     };
 
     try {

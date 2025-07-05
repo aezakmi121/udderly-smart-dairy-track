@@ -25,7 +25,13 @@ interface DiscountFormProps {
   onClose: () => void;
   selectedDiscount: any;
   products: Product[] | undefined;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit: (formData: {
+    product_id: string;
+    variant_id: string | null;
+    discount_type: 'percentage' | 'amount';
+    discount_value: number;
+    is_active: boolean;
+  }) => void;
   isLoading: boolean;
 }
 
@@ -38,31 +44,38 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
   isLoading
 }) => {
   const [selectedProductId, setSelectedProductId] = useState(selectedDiscount?.product_id || '');
+  const [selectedVariantId, setSelectedVariantId] = useState(selectedDiscount?.variant_id || 'all_variants');
+  const [discountType, setDiscountType] = useState(selectedDiscount?.discount_type || 'amount');
+  const [discountValue, setDiscountValue] = useState(selectedDiscount?.discount_value || 0);
+  const [isActive, setIsActive] = useState(selectedDiscount?.is_active?.toString() || 'true');
   
   const selectedProduct = products?.find(p => p.id === selectedProductId);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
     
-    // Handle variant_id properly - convert "all_variants" to null
-    const variantIdValue = formData.get('variant_id') as string;
-    const variantId = variantIdValue === 'all_variants' ? null : (variantIdValue || null);
-    
-    // Create a new FormData with the corrected variant_id
-    const correctedFormData = new FormData();
-    for (const [key, value] of formData.entries()) {
-      if (key === 'variant_id') {
-        // Only set variant_id if it's a specific variant (not null/all_variants)
-        if (variantId && variantId !== 'all_variants') {
-          correctedFormData.set(key, variantId);
-        }
-      } else {
-        correctedFormData.set(key, value);
-      }
+    // Validate required fields
+    if (!selectedProductId || selectedProductId.trim() === '') {
+      console.error('Product is required');
+      return;
     }
     
-    onSubmit(e);
+    if (discountValue <= 0) {
+      console.error('Discount value must be greater than 0');
+      return;
+    }
+    
+    // Prepare the form data
+    const formData = {
+      product_id: selectedProductId,
+      variant_id: selectedVariantId === 'all_variants' ? null : selectedVariantId,
+      discount_type: discountType as 'percentage' | 'amount',
+      discount_value: Number(discountValue),
+      is_active: isActive === 'true'
+    };
+    
+    console.log('Submitting form data:', formData);
+    onSubmit(formData);
   };
 
   return (
@@ -78,7 +91,6 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
           <div>
             <Label htmlFor="product_id">Product *</Label>
             <Select 
-              name="product_id" 
               value={selectedProductId}
               onValueChange={setSelectedProductId}
               required
@@ -99,7 +111,7 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
           {selectedProduct?.variants && selectedProduct.variants.length > 0 && (
             <div>
               <Label htmlFor="variant_id">Variant (Optional)</Label>
-              <Select name="variant_id" defaultValue={selectedDiscount?.variant_id || 'all_variants'}>
+              <Select value={selectedVariantId} onValueChange={setSelectedVariantId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Apply to all variants or select specific" />
                 </SelectTrigger>
@@ -118,7 +130,7 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="discount_type">Discount Type</Label>
-              <Select name="discount_type" defaultValue={selectedDiscount?.discount_type || 'amount'}>
+              <Select value={discountType} onValueChange={setDiscountType}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -132,10 +144,10 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
               <Label htmlFor="discount_value">Discount Value *</Label>
               <Input
                 id="discount_value"
-                name="discount_value"
                 type="number"
                 step="0.01"
-                defaultValue={selectedDiscount?.discount_value || 0}
+                value={discountValue}
+                onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
                 required
               />
             </div>
@@ -143,7 +155,7 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
 
           <div>
             <Label htmlFor="is_active">Status</Label>
-            <Select name="is_active" defaultValue={selectedDiscount?.is_active?.toString() || 'true'}>
+            <Select value={isActive} onValueChange={setIsActive}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
