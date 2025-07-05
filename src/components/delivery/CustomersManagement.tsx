@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
@@ -10,8 +10,6 @@ import { CustomerForm } from './CustomerForm';
 import { CustomerBulkUpload } from './CustomerBulkUpload';
 import { CustomerSearch } from './customers/CustomerSearch';
 import { CustomerFilters } from './customers/CustomerFilters';
-
-// Remove the local Customer interface - we'll use the one from useCustomers hook
 
 export const CustomersManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -110,6 +108,9 @@ export const CustomersManagement = () => {
                   <DialogTitle>
                     {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
                   </DialogTitle>
+                  <DialogDescription>
+                    {editingCustomer ? 'Update customer information and delivery preferences.' : 'Enter customer details to add them to the system.'}
+                  </DialogDescription>
                 </DialogHeader>
                 <CustomerForm
                   selectedCustomer={editingCustomer}
