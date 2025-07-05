@@ -27,6 +27,17 @@ interface DeliveryBoy {
   created_at: string;
 }
 
+interface DeliveryBoyInsert {
+  user_id?: string;
+  name: string;
+  phone_number: string;
+  vehicle_type?: string;
+  vehicle_number?: string;
+  assigned_area?: string;
+  daily_capacity?: number;
+  is_active?: boolean;
+}
+
 export const DeliveryBoysManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDeliveryBoy, setSelectedDeliveryBoy] = useState<DeliveryBoy | null>(null);
@@ -37,26 +48,26 @@ export const DeliveryBoysManagement = () => {
   const { data: deliveryBoys, isLoading } = useQuery({
     queryKey: ['delivery-boys'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('delivery_boys')
         .select('*')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+      return data as DeliveryBoy[];
     }
   });
 
   const deliveryBoyMutation = useMutation({
-    mutationFn: async (deliveryBoyData: Partial<DeliveryBoy>) => {
+    mutationFn: async (deliveryBoyData: Partial<DeliveryBoyInsert>) => {
       if (selectedDeliveryBoy) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('delivery_boys')
           .update(deliveryBoyData)
           .eq('id', selectedDeliveryBoy.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('delivery_boys')
           .insert([deliveryBoyData]);
         if (error) throw error;
@@ -68,7 +79,7 @@ export const DeliveryBoysManagement = () => {
       setIsDialogOpen(false);
       setSelectedDeliveryBoy(null);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({ 
         title: `Failed to ${selectedDeliveryBoy ? 'update' : 'add'} delivery boy`, 
         description: error.message,
@@ -81,7 +92,7 @@ export const DeliveryBoysManagement = () => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    const deliveryBoyData = {
+    const deliveryBoyData: Partial<DeliveryBoyInsert> = {
       name: formData.get('name') as string,
       phone_number: formData.get('phone_number') as string,
       vehicle_type: formData.get('vehicle_type') as string,

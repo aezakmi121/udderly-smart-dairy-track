@@ -56,7 +56,7 @@ export const CustomersManagement = () => {
   const { data: customers, isLoading } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('customers')
         .select('*')
         .order('created_at', { ascending: false });
@@ -69,13 +69,13 @@ export const CustomersManagement = () => {
   const customerMutation = useMutation({
     mutationFn: async (customerData: Partial<CustomerInsert>) => {
       if (selectedCustomer) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('customers')
           .update(customerData)
           .eq('id', selectedCustomer.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('customers')
           .insert([customerData as CustomerInsert]);
         if (error) throw error;
