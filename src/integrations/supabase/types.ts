@@ -872,6 +872,92 @@ export type Database = {
         }
         Relationships: []
       }
+      pos_product_variants: {
+        Row: {
+          cost_price: number | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          low_stock_alert: number | null
+          name: string
+          product_id: string | null
+          selling_price: number
+          size: number
+          stock_quantity: number | null
+          unit: string
+          updated_at: string | null
+        }
+        Insert: {
+          cost_price?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          low_stock_alert?: number | null
+          name: string
+          product_id?: string | null
+          selling_price: number
+          size?: number
+          stock_quantity?: number | null
+          unit: string
+          updated_at?: string | null
+        }
+        Update: {
+          cost_price?: number | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          low_stock_alert?: number | null
+          name?: string
+          product_id?: string | null
+          selling_price?: number
+          size?: number
+          stock_quantity?: number | null
+          unit?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "pos_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_products: {
+        Row: {
+          category: string
+          created_at: string | null
+          fractional_allowed: boolean | null
+          id: string
+          is_active: boolean | null
+          name: string
+          unit_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          fractional_allowed?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          unit_type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          fractional_allowed?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          unit_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -898,6 +984,54 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      scheme_product_discounts: {
+        Row: {
+          created_at: string | null
+          discount_type: string
+          discount_value: number
+          id: string
+          is_active: boolean | null
+          product_id: string | null
+          scheme_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean | null
+          product_id?: string | null
+          scheme_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_active?: boolean | null
+          product_id?: string | null
+          scheme_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheme_product_discounts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "pos_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheme_product_discounts_scheme_id_fkey"
+            columns: ["scheme_id"]
+            isOneToOne: false
+            referencedRelation: "milk_schemes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

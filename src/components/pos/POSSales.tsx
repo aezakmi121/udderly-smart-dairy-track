@@ -1,8 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useCreditTransactions } from '@/hooks/useCreditTransactions';
 import { useMilkSchemes } from '@/hooks/useMilkSchemes';
+import { useCustomers } from '@/hooks/useCustomers';
+import { useSchemeDiscounts } from '@/hooks/useSchemeDiscounts';
 import { SaleItemsSection } from './sales/SaleItemsSection';
 import { AdditionalChargesSection } from './sales/AdditionalChargesSection';
 import { BillSummarySection } from './sales/BillSummarySection';
@@ -30,22 +32,91 @@ export const POSSales = () => {
   const { toast } = useToast();
   const { addTransaction } = useCreditTransactions();
   const { schemes } = useMilkSchemes();
+  const { customers } = useCustomers();
+  const { getDiscountForProduct } = useSchemeDiscounts();
 
   const subtotal = saleItems.reduce((sum, item) => sum + item.total, 0);
   const totalDiscount = discount + saleItems.reduce((sum, item) => sum + (item.discount || 0), 0);
   const grandTotal = subtotal - totalDiscount + otherCharges;
 
+  // Apply scheme discounts when customer or items change
+  useEffect(() => {
+    if (selectedCustomer && saleItems.length > 0) {
+      const customer = customers?.find(c => c.id === selectedCustomer);
+      if (customer?.scheme_id) {
+        const updatedItems = saleItems.map(item => {
+          const discount = getDiscountForProduct(customer.scheme_id!, item.productId);
+          if (discount) {
+            const discountAmount = discount.discount_type === 'percentage' 
+              ? (item.price * item.quantity * discount.discount_value) / 100
+              : discount.discount_value * item.quantity;
+            
+            return {
+              ...item,
+              discount: discountAmount,
+              total: (item.price * item.quantity) - discountAmount
+            };
+          }
+          return { ...item, discount: 0, total: item.price * item.quantity };
+        });
+        setSaleItems(updatedItems);
+      }
+    }
+  }, [selectedCustomer, customers, getDiscountForProduct]);
+
   const addItem = (newItem: SaleItem) => {
+    // Check if customer has a scheme and apply discount
+    if (selectedCustomer) {
+      const customer = customers?.find(c => c.id === selectedCustomer);
+      if (customer?.scheme_id) {
+        const discountRule = getDiscountForProduct(customer.scheme_id, newItem.productId);
+        if (discountRule) {
+          const discountAmount = discountRule.discount_type === 'percentage' 
+            ? (newItem.price * newItem.quantity * discountRule.discount_value) / 100
+            : discountRule.discount_value * newItem.quantity;
+          
+          newItem.discount = discountAmount;
+          newItem.total = (newItem.price * newItem.quantity) - discountAmount;
+        }
+      }
+    }
+    
     setSaleItems(prevItems => [...prevItems, newItem]);
   };
 
   const updateQuantity = (id: string, quantity: number) => {
     setSaleItems(items => 
-      items.map(item => 
-        item.id === id 
-          ? { ...item, quantity, total: item.price * quantity - (item.discount || 0) }
-          : item
-      )
+      items.map(item => {
+        if (item.id === id) {
+          let updatedItem = { ...item, quantity };
+          
+          // Recalculate discount if customer has scheme
+          if (selectedCustomer) {
+            const customer = customers?.find(c => c.id === selectedCustomer);
+            if (customer?.scheme_id) {
+              const discountRule = getDiscountForProduct(customer.scheme_id, item.productId);
+              if (discountRule) {
+                const discountAmount = discountRule.discount_type === 'percentage' 
+                  ? (item.price * quantity * discountRule.discount_value) / 100
+                  : discountRule.discount_value * quantity;
+                
+                updatedItem.discount = discountAmount;
+                updatedItem.total = (item.price * quantity) - discountAmount;
+              } else {
+                updatedItem.discount = 0;
+                updatedItem.total = item.price * quantity;
+              }
+            } else {
+              updatedItem.total = item.price * quantity - (item.discount || 0);
+            }
+          } else {
+            updatedItem.total = item.price * quantity - (item.discount || 0);
+          }
+          
+          return updatedItem;
+        }
+        return item;
+      })
     );
   };
 

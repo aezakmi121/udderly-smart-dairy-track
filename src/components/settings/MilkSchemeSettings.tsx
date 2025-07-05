@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,9 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Settings } from 'lucide-react';
 import { useMilkSchemes } from '@/hooks/useMilkSchemes';
+import { SchemeProductDiscounts } from './SchemeProductDiscounts';
 
 interface MilkScheme {
   id: string;
@@ -27,6 +26,7 @@ interface MilkScheme {
 export const MilkSchemeSettings = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedScheme, setSelectedScheme] = useState<MilkScheme | null>(null);
+  const [showDiscounts, setShowDiscounts] = useState<string | null>(null);
   const { schemes, isLoading, schemeMutation, deleteScheme } = useMilkSchemes();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -64,6 +64,26 @@ export const MilkSchemeSettings = () => {
       deleteScheme.mutate(id);
     }
   };
+
+  if (showDiscounts) {
+    const scheme = schemes?.find(s => s.id === showDiscounts);
+    if (scheme) {
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={() => setShowDiscounts(null)}>
+              ← Back to Schemes
+            </Button>
+            <h3 className="text-lg font-medium">Configure Product Discounts</h3>
+          </div>
+          <SchemeProductDiscounts 
+            schemeId={scheme.id} 
+            schemeName={scheme.scheme_name} 
+          />
+        </div>
+      );
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -214,6 +234,13 @@ export const MilkSchemeSettings = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowDiscounts(scheme.id)}
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
