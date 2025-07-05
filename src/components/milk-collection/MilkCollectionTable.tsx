@@ -27,6 +27,12 @@ export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({
     return <div className="text-center py-4">No milk collections found.</div>;
   }
 
+  const handleDelete = (id: string) => {
+    if (onDelete && confirm('Are you sure you want to delete this collection record?')) {
+      onDelete(id);
+    }
+  };
+
   return (
     <Table>
       <TableHeader>
@@ -75,11 +81,7 @@ export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    if (onDelete && confirm('Are you sure you want to delete this collection record?')) {
-                      onDelete(collection.id);
-                    }
-                  }}
+                  onClick={() => handleDelete(collection.id)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

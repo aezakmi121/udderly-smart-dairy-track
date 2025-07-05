@@ -7,11 +7,15 @@ import { useMilkCollection } from '@/hooks/useMilkCollection';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 export const MilkCollectionManagement = () => {
-  const { collections, isLoading, addCollectionMutation } = useMilkCollection();
+  const { collections, isLoading, addCollectionMutation, deleteCollectionMutation } = useMilkCollection();
   const { canAccess, canDelete } = useUserPermissions();
 
   const handleAddCollection = (data: any) => {
     addCollectionMutation.mutate(data);
+  };
+
+  const handleDeleteCollection = (id: string) => {
+    deleteCollectionMutation.mutate(id);
   };
 
   if (!canAccess.milkCollection) {
@@ -48,6 +52,7 @@ export const MilkCollectionManagement = () => {
             collections={collections || []} 
             isLoading={isLoading}
             canDelete={canDelete.milkCollection}
+            onDelete={handleDeleteCollection}
           />
         </div>
       </div>

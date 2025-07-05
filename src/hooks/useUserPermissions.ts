@@ -23,8 +23,8 @@ export const useUserPermissions = () => {
   const isAdmin = userRole === 'admin';
   const isFarmer = userRole === 'farmer';
   const isWorker = userRole === 'worker';
-  const isDeliveryBoy = userRole === 'delivery_boy';
-  const isStoreManager = userRole === 'store_manager';
+  const isDeliveryBoy = userRole === 'delivery_boy' as any;
+  const isStoreManager = userRole === 'store_manager' as any;
 
   const canAccess = {
     dashboard: true, // Everyone can access dashboard
@@ -59,10 +59,27 @@ export const useUserPermissions = () => {
     settings: isAdmin
   };
 
+  const canDelete = {
+    cows: isAdmin,
+    calves: isAdmin,
+    milkProduction: isAdmin,
+    vaccination: isAdmin,
+    weightLogs: isAdmin,
+    aiTracking: isAdmin,
+    farmers: isAdmin,
+    milkCollection: isAdmin,
+    feedManagement: isAdmin,
+    deliveryBoys: isAdmin,
+    customers: isAdmin,
+    reports: isAdmin,
+    settings: isAdmin
+  };
+
   return {
     userRole,
     canAccess,
     canEdit,
+    canDelete,
     isLoading,
     isAdmin,
     isFarmer,

@@ -68,10 +68,33 @@ export const useMilkCollection = () => {
     }
   });
 
+  const deleteCollectionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('milk_collections')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['milk-collections'] });
+      toast({ title: "Collection record deleted successfully!" });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Failed to delete collection record", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
   return {
     collections,
     farmers,
     isLoading,
-    addCollectionMutation
+    addCollectionMutation,
+    deleteCollectionMutation
   };
 };
