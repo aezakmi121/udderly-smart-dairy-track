@@ -53,6 +53,7 @@ export const SchemeManagement = () => {
         id: selectedScheme?.id
       });
 
+      // Save product discounts if any
       if (productDiscounts.length > 0) {
         const schemeId = selectedScheme?.id || result.id;
         
@@ -84,7 +85,6 @@ export const SchemeManagement = () => {
     try {
       await schemeMutation.mutateAsync({
         schemeData: {
-          ...scheme,
           is_active: !scheme.is_active
         },
         isUpdate: true,

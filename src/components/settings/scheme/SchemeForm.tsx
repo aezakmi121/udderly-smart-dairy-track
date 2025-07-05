@@ -156,6 +156,90 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
                 </Button>
               </div>
             </CardHeader>
+            <CardContent>
+              {productDiscounts.length > 0 && (
+                <div className="space-y-4">
+                  {productDiscounts.map((discount, index) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end p-4 border rounded-lg">
+                      <div>
+                        <Label>Product</Label>
+                        <Select 
+                          value={discount.product_id} 
+                          onValueChange={(value) => updateProductDiscount(index, 'product_id', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select product" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {products?.map((product) => (
+                              <SelectItem key={product.id} value={product.id}>
+                                {product.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Variant (Optional)</Label>
+                        <Select 
+                          value={discount.variant_id || ''} 
+                          onValueChange={(value) => updateProductDiscount(index, 'variant_id', value || undefined)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select variant" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">All variants</SelectItem>
+                            {getProductVariants(discount.product_id).map((variant) => (
+                              <SelectItem key={variant.id} value={variant.id}>
+                                {variant.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Discount Type</Label>
+                        <Select 
+                          value={discount.discount_type} 
+                          onValueChange={(value) => updateProductDiscount(index, 'discount_type', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percentage">Percentage (%)</SelectItem>
+                            <SelectItem value="amount">Fixed Amount (₹)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Discount Value</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={discount.discount_value}
+                          onChange={(e) => updateProductDiscount(index, 'discount_value', parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeProductDiscount(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
           </Card>
 
           <div className="flex justify-end space-x-2">

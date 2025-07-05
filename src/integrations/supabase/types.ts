@@ -995,6 +995,7 @@ export type Database = {
           product_id: string | null
           scheme_id: string | null
           updated_at: string | null
+          variant_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -1005,6 +1006,7 @@ export type Database = {
           product_id?: string | null
           scheme_id?: string | null
           updated_at?: string | null
+          variant_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -1015,6 +1017,7 @@ export type Database = {
           product_id?: string | null
           scheme_id?: string | null
           updated_at?: string | null
+          variant_id?: string | null
         }
         Relationships: [
           {
@@ -1029,6 +1032,13 @@ export type Database = {
             columns: ["scheme_id"]
             isOneToOne: false
             referencedRelation: "milk_schemes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheme_product_discounts_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "pos_product_variants"
             referencedColumns: ["id"]
           },
         ]
