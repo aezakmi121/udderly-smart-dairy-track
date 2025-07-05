@@ -38,15 +38,28 @@ export const MilkSchemeSettings = () => {
       is_active: formData.get('is_active') === 'true'
     };
 
-    schemeMutation.mutate({
-      schemeData,
-      isUpdate: !!selectedScheme,
-      id: selectedScheme?.id
-    });
-
-    if (!schemeMutation.isPending) {
+    try {
+      await schemeMutation.mutateAsync({
+        schemeData,
+        isUpdate: !!selectedScheme,
+        id: selectedScheme?.id
+      });
+      
       setIsDialogOpen(false);
       setSelectedScheme(null);
+      
+      // If it's a new scheme, automatically show product discounts
+      if (!selectedScheme) {
+        // Get the newly created scheme (it will be at the top since sorted by created_at desc)
+        setTimeout(() => {
+          const newScheme = schemes?.[0];
+          if (newScheme) {
+            setShowDiscounts(newScheme.id);
+          }
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Error saving scheme:', error);
     }
   };
 
@@ -59,6 +72,10 @@ export const MilkSchemeSettings = () => {
     deleteScheme.mutate(id);
   };
 
+  const handleConfigureDiscounts = (schemeId: string) => {
+    setShowDiscounts(schemeId);
+  };
+
   if (showDiscounts) {
     const scheme = schemes?.find(s => s.id === showDiscounts);
     if (scheme) {
@@ -66,12 +83,12 @@ export const MilkSchemeSettings = () => {
         <div className="space-y-6">
           <div className="flex items-center gap-4">
             <button 
-              className="text-blue-600 hover:text-blue-800"
+              className="text-blue-600 hover:text-blue-800 text-sm"
               onClick={() => setShowDiscounts(null)}
             >
               ← Back to Schemes
             </button>
-            <h3 className="text-lg font-medium">Configure Product Discounts</h3>
+            <h3 className="text-lg font-medium">Configure Product Discounts - {scheme.scheme_name}</h3>
           </div>
           <SchemeProductDiscounts 
             schemeId={scheme.id} 
@@ -96,7 +113,7 @@ export const MilkSchemeSettings = () => {
             isLoading={isLoading}
             onEdit={openDialog}
             onDelete={handleDelete}
-            onConfigureDiscounts={setShowDiscounts}
+            onConfigureDiscounts={handleConfigureDiscounts}
           />
         </CardContent>
       </Card>

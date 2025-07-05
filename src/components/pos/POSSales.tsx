@@ -7,7 +7,6 @@ import { ShoppingCart, Trash2 } from 'lucide-react';
 import { usePOSData } from '@/hooks/usePOSData';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useSchemeDiscounts } from '@/hooks/useSchemeDiscounts';
-import { CategorySection } from './sales/CategorySection';
 import { SaleItemsSection } from './sales/SaleItemsSection';
 import { BillSummarySection } from './sales/BillSummarySection';
 import { PaymentSection } from './sales/PaymentSection';
@@ -30,29 +29,32 @@ export const POSSales: React.FC = () => {
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [paymentMode, setPaymentMode] = useState<string>('');
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
-  const { categories, products, productsLoading } = usePOSData();
+  const { products } = usePOSData();
   const { customers } = useCustomers();
   const { discounts } = useSchemeDiscounts();
 
-  const subTotal = saleItems.reduce((acc, item) => acc + (item.total || (item.price * item.quantity)), 0);
+  const selectedCustomerData = customers?.find(c => c.id === selectedCustomer);
 
-  const totalDiscount = saleItems.reduce((acc, item) => {
+  const calculateItemDiscount = (item: SaleItem) => {
+    if (!selectedCustomerData?.scheme_id) return 0;
+    
     const productDiscount = discounts?.find(
-      (discount) => discount.product_id === item.productId
+      (discount) => discount.scheme_id === selectedCustomerData.scheme_id && 
+                   discount.product_id === item.productId &&
+                   discount.is_active
     );
 
     if (productDiscount) {
-      const itemTotal = item.total || (item.price * item.quantity);
-      const discountValue = productDiscount.discount_type === 'percentage'
+      const itemTotal = item.price * item.quantity;
+      return productDiscount.discount_type === 'percentage'
         ? itemTotal * (productDiscount.discount_value / 100)
         : productDiscount.discount_value;
-      
-      return acc + discountValue;
     }
+    return 0;
+  };
 
-    return acc;
-  }, 0);
-
+  const subTotal = saleItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  const totalDiscount = saleItems.reduce((acc, item) => acc + calculateItemDiscount(item), 0);
   const grandTotal = subTotal - totalDiscount;
 
   const updateQuantity = (id: string, quantity: number) => {
@@ -105,22 +107,6 @@ export const POSSales: React.FC = () => {
     onClearAll
   });
 
-  // Group products by category for display
-  const groupedProducts = React.useMemo(() => {
-    const groups: Record<string, any[]> = {};
-    
-    if (products) {
-      products.forEach(product => {
-        if (!groups[product.category]) {
-          groups[product.category] = [];
-        }
-        groups[product.category].push(product);
-      });
-    }
-    
-    return groups;
-  }, [products]);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -136,34 +122,9 @@ export const POSSales: React.FC = () => {
   }, []);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-      {/* Left Panel - Categories and Products */}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+      {/* Left Panel - Cart and Checkout */}
       <div className="lg:col-span-2">
-        <Card className="h-full">
-          <CardHeader className="pb-3">
-            <CardTitle>Select Products</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col h-full">
-            {productsLoading ? (
-              <div className="text-center py-4">Loading products...</div>
-            ) : (
-              <div className="space-y-6">
-                {Object.entries(groupedProducts).map(([category, categoryProducts]) => (
-                  <CategorySection
-                    key={category}
-                    category={category}
-                    products={categoryProducts}
-                    onSelectVariant={addItemToSale}
-                  />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-      
-      {/* Right Panel - Cart and Checkout */}
-      <div className="lg:col-span-1">
         <Card className="h-full flex flex-col">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
@@ -216,7 +177,7 @@ export const POSSales: React.FC = () => {
                   onClick={processSale}
                   className="w-full" 
                   size="lg"
-                  disabled={saleItems.length === 0}
+                  disabled={saleItems.length === 0 || !paymentMode}
                 >
                   Complete Sale - ₹{grandTotal.toFixed(2)}
                 </Button>
