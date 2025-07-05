@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useCustomers } from '@/hooks/useCustomers';
 import { CustomerForm } from './CustomerForm';
 import { CustomersTable } from './CustomersTable';
+import { CustomerBulkUpload } from './CustomerBulkUpload';
 
 interface Customer {
   id: string;
@@ -72,6 +72,11 @@ export const CustomersManagement = () => {
     setSelectedCustomer(null);
   };
 
+  const handleBulkUploadComplete = () => {
+    // This will trigger a re-fetch of customers data
+    window.location.reload();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -80,28 +85,31 @@ export const CustomersManagement = () => {
           <h2 className="text-2xl font-bold">Customers Management</h2>
         </div>
         {canEdit.customers && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => openDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Customer
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>
-                  {selectedCustomer ? 'Edit Customer' : 'Add New Customer'}
-                </DialogTitle>
-              </DialogHeader>
-              
-              <CustomerForm
-                selectedCustomer={selectedCustomer}
-                onSubmit={handleSubmit}
-                onCancel={handleCancel}
-                isLoading={customerMutation.isPending}
-              />
-            </DialogContent>
-          </Dialog>
+          <div className="flex gap-2">
+            <CustomerBulkUpload onUploadComplete={handleBulkUploadComplete} />
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => openDialog()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Customer
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    {selectedCustomer ? 'Edit Customer' : 'Add New Customer'}
+                  </DialogTitle>
+                </DialogHeader>
+                
+                <CustomerForm
+                  selectedCustomer={selectedCustomer}
+                  onSubmit={handleSubmit}
+                  onCancel={handleCancel}
+                  isLoading={customerMutation.isPending}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
       </div>
 
