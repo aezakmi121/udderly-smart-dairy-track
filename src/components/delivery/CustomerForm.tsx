@@ -83,7 +83,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="daily_quantity" className="text-sm">Daily Quantity (L)</Label>
             <Input
@@ -96,57 +96,17 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             />
           </div>
           <div>
-            <Label htmlFor="delivery_time" className="text-sm">Delivery Time</Label>
-            <Select name="delivery_time" defaultValue={selectedCustomer?.delivery_time || 'morning'}>
-              <SelectTrigger className="h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="morning">Morning</SelectItem>
-                <SelectItem value="evening">Evening</SelectItem>
-                <SelectItem value="both">Both</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="rate_per_liter" className="text-sm">Rate per Liter (₹) *</Label>
+            <Input
+              id="rate_per_liter"
+              name="rate_per_liter"
+              type="number"
+              step="0.01"
+              defaultValue={selectedCustomer?.rate_per_liter || 50}
+              required
+              className="h-8"
+            />
           </div>
-          <div>
-            <Label htmlFor="subscription_type" className="text-sm">Subscription Type</Label>
-            <Select name="subscription_type" defaultValue={selectedCustomer?.subscription_type || 'daily'}>
-              <SelectTrigger className="h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="alternate">Alternate Days</SelectItem>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div>
-          <Label htmlFor="rate_per_liter" className="text-sm">Rate per Liter (₹) *</Label>
-          <Input
-            id="rate_per_liter"
-            name="rate_per_liter"
-            type="number"
-            step="0.01"
-            defaultValue={selectedCustomer?.rate_per_liter || 50}
-            required
-            className="h-8"
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="credit_limit" className="text-sm">Credit Limit (₹)</Label>
-          <Input
-            id="credit_limit"
-            name="credit_limit"
-            type="number"
-            step="0.01"
-            defaultValue={selectedCustomer?.credit_limit || 0}
-            className="h-8"
-          />
         </div>
 
         <div className="flex items-center space-x-2">

@@ -85,7 +85,6 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
             <TableHead>Daily Qty</TableHead>
             <TableHead>Rate/L</TableHead>
             <TableHead>Credit</TableHead>
-            <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -134,11 +133,6 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
                     Clear
                   </Badge>
                 )}
-              </TableCell>
-              <TableCell>
-                <Badge variant={customer.is_active ? 'default' : 'secondary'}>
-                  {customer.is_active ? 'Active' : 'Inactive'}
-                </Badge>
               </TableCell>
               <TableCell>
                 <div className="flex space-x-2">

@@ -9,13 +9,11 @@ import { CustomersTable } from './CustomersTable';
 import { CustomerForm } from './CustomerForm';
 import { CustomerBulkUpload } from './CustomerBulkUpload';
 import { CustomerSearch } from './customers/CustomerSearch';
-import { CustomerFilters } from './customers/CustomerFilters';
 
 export const CustomersManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   
   const { customers, isLoading, customerMutation } = useCustomers();
   const { canEdit } = useUserPermissions();
@@ -25,11 +23,7 @@ export const CustomersManagement = () => {
                          customer.phone_number.includes(searchTerm) ||
                          customer.customer_code.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || 
-                         (statusFilter === 'active' && customer.is_active) ||
-                         (statusFilter === 'inactive' && !customer.is_active);
-    
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   }) || [];
 
   const openAddDialog = () => {
@@ -62,10 +56,7 @@ export const CustomersManagement = () => {
       address: formData.get('address') as string,
       area: formData.get('area') as string || null,
       daily_quantity: parseFloat(formData.get('daily_quantity') as string) || 0,
-      delivery_time: formData.get('delivery_time') as string,
-      subscription_type: formData.get('subscription_type') as string,
       rate_per_liter: parseFloat(formData.get('rate_per_liter') as string),
-      credit_limit: parseFloat(formData.get('credit_limit') as string) || 0,
       is_active: formData.get('is_active') === 'true',
     };
 
@@ -122,21 +113,7 @@ export const CustomersManagement = () => {
       <div className="space-y-4">
         <CustomerSearch searchTerm={searchTerm} onSearchChange={setSearchTerm} />
         
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div>
-              <label className="text-sm font-medium">Status:</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="ml-2 border rounded px-3 py-1"
-              >
-                <option value="all">All</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
-          </div>
+        <div className="flex items-center justify-end">
           <div className="text-sm text-muted-foreground">
             Showing {filteredCustomers.length} of {customers?.length || 0} customers
           </div>
