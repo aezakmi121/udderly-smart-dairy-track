@@ -19,6 +19,7 @@ export interface ProductVariant {
   unit: string;
   selling_price: number;
   stock_quantity: number;
+  low_stock_alert: number;
 }
 
 export interface Product {
