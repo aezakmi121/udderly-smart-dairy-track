@@ -54,34 +54,50 @@ export const SaleItemsSection: React.FC<SaleItemsSectionProps> = ({
   const [isProductSelectorOpen, setIsProductSelectorOpen] = useState(false);
 
   const handleProductSelect = (product: Product, variant: ProductVariant) => {
-    const newItem: SaleItem = {
-      id: `${product.id}-${variant.id}-${Date.now()}`,
-      productId: product.id,
-      variantId: variant.id,
-      name: `${product.name} - ${variant.name}`,
-      price: variant.selling_price,
-      quantity: 1,
-      unit: variant.unit,
-      total: variant.selling_price,
-      fractionalAllowed: product.fractional_allowed
-    };
-    onAddItem(newItem);
+    try {
+      const newItem: SaleItem = {
+        id: `${product.id}-${variant.id}-${Date.now()}`,
+        productId: product.id,
+        variantId: variant.id,
+        name: `${product.name} - ${variant.name}`,
+        price: variant.selling_price,
+        quantity: 1,
+        unit: variant.unit,
+        total: variant.selling_price,
+        fractionalAllowed: product.fractional_allowed
+      };
+      onAddItem(newItem);
+    } catch (error) {
+      console.error('Error adding item:', error);
+    }
   };
 
   const handleQuantityChange = (item: SaleItem, increment: boolean) => {
-    const step = item.fractionalAllowed ? 0.1 : 1;
-    const newQuantity = increment 
-      ? item.quantity + step 
-      : Math.max(item.fractionalAllowed ? 0.1 : 1, item.quantity - step);
-    
-    onUpdateQuantity(item.id, parseFloat(newQuantity.toFixed(1)));
+    try {
+      const step = item.fractionalAllowed ? 0.1 : 1;
+      const newQuantity = increment 
+        ? item.quantity + step 
+        : Math.max(item.fractionalAllowed ? 0.1 : 1, item.quantity - step);
+      
+      const finalQuantity = item.fractionalAllowed 
+        ? parseFloat(newQuantity.toFixed(1))
+        : Math.round(newQuantity);
+      
+      onUpdateQuantity(item.id, finalQuantity);
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+    }
   };
 
   const handleDirectQuantityChange = (item: SaleItem, value: string) => {
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue) && numValue > 0) {
-      const finalValue = item.fractionalAllowed ? numValue : Math.round(numValue);
-      onUpdateQuantity(item.id, finalValue);
+    try {
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue) && numValue > 0) {
+        const finalValue = item.fractionalAllowed ? numValue : Math.round(numValue);
+        onUpdateQuantity(item.id, finalValue);
+      }
+    } catch (error) {
+      console.error('Error updating quantity:', error);
     }
   };
 

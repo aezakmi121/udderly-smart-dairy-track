@@ -44,7 +44,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   const [selectedCategory, setSelectedCategory] = useState('');
   const { products, categories, productsLoading } = usePOSData();
 
-  // Add loading and error states
+  // Early return with loading state
   if (productsLoading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -55,20 +55,40 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     );
   }
 
-  const filteredProducts = products?.filter(product => {
+  // Early return if no products
+  if (!products || products.length === 0) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Product</DialogTitle>
+          </DialogHeader>
+          <div className="text-center py-8 text-muted-foreground">
+            No products available. Please add products first.
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = !selectedCategory || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
-  }) || [];
+  });
 
   const handleVariantSelect = (product: Product, variant: ProductVariant) => {
     if (variant.stock_quantity <= 0) {
-      return; // Don't allow selection of out-of-stock items
+      return;
     }
-    onSelectProduct(product, variant);
-    onOpenChange(false);
-    setSearchTerm('');
-    setSelectedCategory('');
+    try {
+      onSelectProduct(product, variant);
+      onOpenChange(false);
+      setSearchTerm('');
+      setSelectedCategory('');
+    } catch (error) {
+      console.error('Error selecting product:', error);
+    }
   };
 
   return (
@@ -160,10 +180,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
 
           {filteredProducts.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              {products?.length === 0 ? 
-                "No products available. Please add products first." : 
-                "No products found matching your criteria."
-              }
+              No products found matching your criteria.
             </div>
           )}
         </div>
