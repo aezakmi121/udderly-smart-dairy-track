@@ -13,22 +13,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Users, Plus, Edit2, Eye } from 'lucide-react';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { Tables, TablesInsert } from '@/integrations/supabase/types';
 
-interface Customer {
-  id: string;
-  customer_code: string;
-  name: string;
-  phone_number: string;
-  address: string;
-  area?: string;
-  daily_quantity: number;
-  delivery_time: string;
-  subscription_type: string;
-  rate_per_liter: number;
-  credit_limit: number;
-  is_active: boolean;
-  created_at: string;
-}
+type Customer = Tables<'customers'>;
+type CustomerInsert = TablesInsert<'customers'>;
 
 export const CustomersManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -51,7 +39,7 @@ export const CustomersManagement = () => {
   });
 
   const customerMutation = useMutation({
-    mutationFn: async (customerData: Partial<Customer>) => {
+    mutationFn: async (customerData: Partial<CustomerInsert>) => {
       if (selectedCustomer) {
         const { error } = await supabase
           .from('customers')
@@ -61,7 +49,7 @@ export const CustomersManagement = () => {
       } else {
         const { error } = await supabase
           .from('customers')
-          .insert([customerData]);
+          .insert([customerData as CustomerInsert]);
         if (error) throw error;
       }
     },
@@ -71,7 +59,7 @@ export const CustomersManagement = () => {
       setIsDialogOpen(false);
       setSelectedCustomer(null);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({ 
         title: `Failed to ${selectedCustomer ? 'update' : 'add'} customer`, 
         description: error.message,
@@ -89,15 +77,15 @@ export const CustomersManagement = () => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    const customerData = {
+    const customerData: Partial<CustomerInsert> = {
       customer_code: selectedCustomer?.customer_code || generateCustomerCode(),
       name: formData.get('name') as string,
       phone_number: formData.get('phone_number') as string,
       address: formData.get('address') as string,
-      area: formData.get('area') as string,
+      area: formData.get('area') as string || null,
       daily_quantity: parseFloat(formData.get('daily_quantity') as string) || 0,
-      delivery_time: formData.get('delivery_time') as string,
-      subscription_type: formData.get('subscription_type') as string,
+      delivery_time: formData.get('delivery_time') as string || 'morning',
+      subscription_type: formData.get('subscription_type') as string || 'daily',
       rate_per_liter: parseFloat(formData.get('rate_per_liter') as string),
       credit_limit: parseFloat(formData.get('credit_limit') as string) || 0,
       is_active: formData.get('is_active') === 'true'
@@ -330,3 +318,4 @@ export const CustomersManagement = () => {
     </div>
   );
 };
+
