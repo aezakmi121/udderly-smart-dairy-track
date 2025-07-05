@@ -9,7 +9,7 @@ import { AccessControlSettings } from './AccessControlSettings';
 
 export const SettingsManagement = () => {
   const [openSections, setOpenSections] = useState({
-    milkRates: true,
+    milkRates: false,
     milkSchemes: false,
     accessControl: false,
   });

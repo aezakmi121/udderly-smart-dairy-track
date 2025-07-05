@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trash2, Plus } from 'lucide-react';
-import { usePOSProducts } from '@/hooks/pos/usePOSProducts';
+import { usePOSData } from '@/hooks/usePOSData';
 
 interface MilkScheme {
   id: string;
@@ -43,13 +43,19 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
   onSubmit,
   isLoading
 }) => {
-  const { products, productsLoading } = usePOSProducts();
+  const { products, productsLoading } = usePOSData();
   const [productDiscounts, setProductDiscounts] = useState<ProductDiscount[]>([]);
 
   useEffect(() => {
-    console.log('POS Products loaded in SchemeForm:', products);
+    console.log('Products in SchemeForm:', products);
     console.log('Products loading state:', productsLoading);
   }, [products, productsLoading]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setProductDiscounts([]);
+    }
+  }, [isOpen]);
 
   const addProductDiscount = () => {
     setProductDiscounts([...productDiscounts, {
