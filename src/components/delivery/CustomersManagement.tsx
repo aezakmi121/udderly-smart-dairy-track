@@ -11,30 +11,11 @@ import { CustomerBulkUpload } from './CustomerBulkUpload';
 import { CustomerSearch } from './customers/CustomerSearch';
 import { CustomerFilters } from './customers/CustomerFilters';
 
-interface Customer {
-  id: string;
-  customer_code: string;
-  name: string;
-  phone_number: string;
-  address: string;
-  area: string | null;
-  daily_quantity: number;
-  delivery_time: string;
-  subscription_type: string;
-  rate_per_liter: number;
-  credit_limit: number;
-  is_active: boolean;
-  scheme_id: string | null;
-  milk_type: string;
-  created_at: string;
-  updated_at: string;
-  current_credit: number;
-  last_payment_date: string | null;
-}
+// Remove the local Customer interface - we'll use the one from useCustomers hook
 
 export const CustomersManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [milkTypeFilter, setMilkTypeFilter] = useState('all');
@@ -61,7 +42,7 @@ export const CustomersManagement = () => {
     setIsDialogOpen(true);
   };
 
-  const openEditDialog = (customer: Customer) => {
+  const openEditDialog = (customer: any) => {
     setEditingCustomer(customer);
     setIsDialogOpen(true);
   };
