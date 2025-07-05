@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Tag, Edit2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { usePOSData } from '@/hooks/usePOSData';
 
 interface Category {
   id: string;
@@ -18,27 +19,63 @@ interface Category {
 
 export const POSCategories = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([
-    {
-      id: '1',
-      name: 'Dairy Products',
-      description: 'Milk, curd, cheese and other dairy items',
-      product_count: 5,
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: '2',
-      name: 'Snacks',
-      description: 'Chips, biscuits, and other snack items',
-      product_count: 12,
-      created_at: new Date().toISOString(),
-    }
-  ]);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categoryName, setCategoryName] = useState('');
+  const [categoryDescription, setCategoryDescription] = useState('');
   const { toast } = useToast();
+  const { categories, categoryMutation } = usePOSData();
 
-  const handleAddCategory = () => {
-    toast({ title: "Category added successfully!" });
+  const openAddDialog = () => {
+    setEditingCategory(null);
+    setCategoryName('');
+    setCategoryDescription('');
+    setIsDialogOpen(true);
+  };
+
+  const openEditDialog = (category: Category) => {
+    setEditingCategory(category);
+    setCategoryName(category.name);
+    setCategoryDescription(category.description);
+    setIsDialogOpen(true);
+  };
+
+  const handleSaveCategory = () => {
+    if (!categoryName.trim()) {
+      toast({ title: "Category name is required", variant: "destructive" });
+      return;
+    }
+
+    const categoryData = {
+      name: categoryName,
+      description: categoryDescription,
+      product_count: editingCategory?.product_count || 0
+    };
+
+    categoryMutation.mutate({
+      categoryData,
+      isUpdate: !!editingCategory,
+      id: editingCategory?.id
+    });
+
     setIsDialogOpen(false);
+    setCategoryName('');
+    setCategoryDescription('');
+    setEditingCategory(null);
+  };
+
+  const handleDeleteCategory = (category: Category) => {
+    if (category.product_count > 0) {
+      toast({ 
+        title: "Cannot delete category", 
+        description: "This category has products assigned to it.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete "${category.name}"?`)) {
+      toast({ title: "Category deleted successfully!" });
+    }
   };
 
   return (
@@ -50,29 +87,41 @@ export const POSCategories = () => {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={openAddDialog}>
               <Plus className="h-4 w-4 mr-2" />
               Add Category
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Category</DialogTitle>
+              <DialogTitle>
+                {editingCategory ? 'Edit Category' : 'Add New Category'}
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Category Name</Label>
-                <Input placeholder="Enter category name" />
+                <Label>Category Name *</Label>
+                <Input 
+                  placeholder="Enter category name" 
+                  value={categoryName}
+                  onChange={(e) => setCategoryName(e.target.value)}
+                />
               </div>
               <div>
                 <Label>Description</Label>
-                <Input placeholder="Enter category description" />
+                <Input 
+                  placeholder="Enter category description" 
+                  value={categoryDescription}
+                  onChange={(e) => setCategoryDescription(e.target.value)}
+                />
               </div>
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddCategory}>Save Category</Button>
+                <Button onClick={handleSaveCategory}>
+                  {editingCategory ? 'Update' : 'Save'} Category
+                </Button>
               </div>
             </div>
           </DialogContent>
@@ -80,7 +129,7 @@ export const POSCategories = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map((category) => (
+        {categories?.map((category) => (
           <Card key={category.id}>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
@@ -89,10 +138,14 @@ export const POSCategories = () => {
                   {category.name}
                 </div>
                 <div className="flex gap-1">
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" onClick={() => openEditDialog(category)}>
                     <Edit2 className="h-3 w-3" />
                   </Button>
-                  <Button size="sm" variant="outline">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleDeleteCategory(category)}
+                  >
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>

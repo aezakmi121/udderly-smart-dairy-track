@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Users, Plus } from 'lucide-react';
+import { Users, Plus, Search } from 'lucide-react';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useMilkSchemes } from '@/hooks/useMilkSchemes';
@@ -35,10 +36,18 @@ interface Customer {
 export const CustomersManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const { canEdit } = useUserPermissions();
   const { customers, isLoading, customerMutation, generateCustomerCode } = useCustomers();
   const { schemes } = useMilkSchemes();
   const { toast } = useToast();
+
+  // Filter customers based on search term
+  const filteredCustomers = customers?.filter(customer => 
+    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.phone_number.includes(searchTerm) ||
+    customer.customer_code.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
   const calculateRate = (milkType: string, schemeId: string | null) => {
     if (!schemeId || schemeId === 'none') {
@@ -140,7 +149,7 @@ export const CustomersManagement = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Users className="h-6 w-6" />
-          <h2 className="text-2xl font-bold">Customers Management</h2>
+          <h2 className="text-2xl font-bold">Customer Management</h2>
         </div>
         {canEdit.customers && (
           <div className="flex gap-2">
@@ -171,18 +180,45 @@ export const CustomersManagement = () => {
         )}
       </div>
 
+      {/* Search Bar */}
       <Card>
         <CardHeader>
-          <CardTitle>Customers List</CardTitle>
+          <CardTitle>Search Customers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search by name, phone number, or customer code..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            Customers List 
+            {searchTerm && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                ({filteredCustomers.length} of {customers?.length || 0} customers)
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-4">Loading customers...</div>
-          ) : customers?.length === 0 ? (
-            <div className="text-center py-4">No customers found.</div>
+          ) : filteredCustomers.length === 0 ? (
+            <div className="text-center py-4">
+              {searchTerm ? 'No customers found matching your search.' : 'No customers found.'}
+            </div>
           ) : (
             <CustomersTable
-              customers={customers || []}
+              customers={filteredCustomers}
               onEdit={openDialog}
               onBulkDelete={handleBulkDelete}
               canEdit={canEdit.customers}

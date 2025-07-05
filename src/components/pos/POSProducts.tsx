@@ -7,18 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Package, Edit2, AlertTriangle } from 'lucide-react';
+import { Plus, Package, Edit2, AlertTriangle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface Product {
-  id: string;
-  name: string;
-  category: string;
-  variants: ProductVariant[];
-  unit_type: 'weight' | 'volume' | 'piece';
-  fractional_allowed: boolean;
-  created_at: string;
-}
+import { usePOSData } from '@/hooks/usePOSData';
 
 interface ProductVariant {
   id: string;
@@ -34,48 +25,58 @@ interface ProductVariant {
 
 export const POSProducts = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: '1',
-      name: 'Cow Milk',
-      category: 'Dairy',
-      unit_type: 'volume',
-      fractional_allowed: true,
-      variants: [
-        {
-          id: '1-1',
-          name: '1 Liter Pouch',
-          size: 1,
-          unit: 'L',
-          cost_price: 45,
-          selling_price: 55,
-          stock_quantity: 50,
-          low_stock_alert: 10,
-        },
-        {
-          id: '1-2',
-          name: '500ml Pouch',
-          size: 0.5,
-          unit: 'L',
-          cost_price: 25,
-          selling_price: 30,
-          stock_quantity: 30,
-          low_stock_alert: 5,
-        }
-      ],
-      created_at: new Date().toISOString(),
-    }
-  ]);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
   const { toast } = useToast();
+  const { products, addProductMutation } = usePOSData();
 
-  const handleAddProduct = () => {
-    toast({ title: "Product form would open here" });
-    setIsDialogOpen(true);
+  const addVariant = () => {
+    const newVariant: ProductVariant = {
+      id: Date.now().toString(),
+      name: '',
+      size: 0,
+      unit: '',
+      cost_price: 0,
+      selling_price: 0,
+      stock_quantity: 0,
+      low_stock_alert: 0,
+    };
+    setVariants([...variants, newVariant]);
+  };
+
+  const updateVariant = (id: string, field: keyof ProductVariant, value: string | number) => {
+    setVariants(variants.map(variant => 
+      variant.id === id ? { ...variant, [field]: value } : variant
+    ));
+  };
+
+  const removeVariant = (id: string) => {
+    setVariants(variants.filter(variant => variant.id !== id));
+  };
+
+  const handleSaveProduct = () => {
+    const formData = new FormData(document.querySelector('form') as HTMLFormElement);
+    
+    const productData = {
+      name: formData.get('name') as string,
+      category: formData.get('category') as string,
+      unit_type: formData.get('unit_type') as 'weight' | 'volume' | 'piece',
+      fractional_allowed: formData.get('fractional') === 'on',
+      variants: variants.filter(v => v.name && v.size > 0)
+    };
+
+    if (!productData.name || !productData.category || variants.length === 0) {
+      toast({ title: "Please fill all required fields and add at least one variant", variant: "destructive" });
+      return;
+    }
+
+    addProductMutation.mutate(productData);
+    setIsDialogOpen(false);
+    setVariants([]);
   };
 
   const getLowStockVariants = () => {
-    const lowStock: { product: Product; variant: ProductVariant }[] = [];
-    products.forEach(product => {
+    const lowStock: { product: any; variant: any }[] = [];
+    products?.forEach(product => {
       product.variants.forEach(variant => {
         if (variant.stock_quantity <= variant.low_stock_alert) {
           lowStock.push({ product, variant });
@@ -96,7 +97,7 @@ export const POSProducts = () => {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleAddProduct}>
+            <Button>
               <Plus className="h-4 w-4 mr-2" />
               Add Product
             </Button>
@@ -105,15 +106,15 @@ export const POSProducts = () => {
             <DialogHeader>
               <DialogTitle>Add New Product</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <form className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Product Name</Label>
-                  <Input placeholder="Enter product name" />
+                  <Label>Product Name *</Label>
+                  <Input name="name" placeholder="Enter product name" required />
                 </div>
                 <div>
-                  <Label>Category</Label>
-                  <Select>
+                  <Label>Category *</Label>
+                  <Select name="category" required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
@@ -125,8 +126,8 @@ export const POSProducts = () => {
                   </Select>
                 </div>
                 <div>
-                  <Label>Unit Type</Label>
-                  <Select>
+                  <Label>Unit Type *</Label>
+                  <Select name="unit_type" required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select unit type" />
                     </SelectTrigger>
@@ -138,44 +139,90 @@ export const POSProducts = () => {
                   </Select>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input type="checkbox" id="fractional" />
+                  <input type="checkbox" id="fractional" name="fractional" />
                   <Label htmlFor="fractional">Allow Fractional Quantities</Label>
                 </div>
               </div>
               
               <div className="border-t pt-4">
-                <h3 className="font-medium mb-4">Product Variants</h3>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-6 gap-2 text-sm font-medium">
-                    <div>Variant Name</div>
-                    <div>Size & Unit</div>
-                    <div>Cost Price</div>
-                    <div>Selling Price</div>
-                    <div>Stock</div>
-                    <div>Low Stock Alert</div>
-                  </div>
-                  <div className="grid grid-cols-6 gap-2">
-                    <Input placeholder="e.g., 1L Pouch" />
-                    <Input placeholder="1 L" />
-                    <Input placeholder="45" type="number" />
-                    <Input placeholder="55" type="number" />
-                    <Input placeholder="50" type="number" />
-                    <Input placeholder="10" type="number" />
-                  </div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-medium">Product Variants</h3>
+                  <Button type="button" onClick={addVariant} variant="outline" size="sm">
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add Variant
+                  </Button>
                 </div>
-                <Button className="mt-2" variant="outline" size="sm">
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add Variant
-                </Button>
+                
+                {variants.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-7 gap-2 text-sm font-medium">
+                      <div>Name *</div>
+                      <div>Size *</div>
+                      <div>Unit *</div>
+                      <div>Cost Price *</div>
+                      <div>Selling Price *</div>
+                      <div>Stock *</div>
+                      <div>Action</div>
+                    </div>
+                    {variants.map((variant) => (
+                      <div key={variant.id} className="grid grid-cols-7 gap-2">
+                        <Input 
+                          placeholder="1L Pouch" 
+                          value={variant.name}
+                          onChange={(e) => updateVariant(variant.id, 'name', e.target.value)}
+                        />
+                        <Input 
+                          placeholder="1" 
+                          type="number"
+                          value={variant.size || ''}
+                          onChange={(e) => updateVariant(variant.id, 'size', parseFloat(e.target.value) || 0)}
+                        />
+                        <Input 
+                          placeholder="L" 
+                          value={variant.unit}
+                          onChange={(e) => updateVariant(variant.id, 'unit', e.target.value)}
+                        />
+                        <Input 
+                          placeholder="45" 
+                          type="number"
+                          value={variant.cost_price || ''}
+                          onChange={(e) => updateVariant(variant.id, 'cost_price', parseFloat(e.target.value) || 0)}
+                        />
+                        <Input 
+                          placeholder="55" 
+                          type="number"
+                          value={variant.selling_price || ''}
+                          onChange={(e) => updateVariant(variant.id, 'selling_price', parseFloat(e.target.value) || 0)}
+                        />
+                        <Input 
+                          placeholder="50" 
+                          type="number"
+                          value={variant.stock_quantity || ''}
+                          onChange={(e) => updateVariant(variant.id, 'stock_quantity', parseFloat(e.target.value) || 0)}
+                        />
+                        <Button 
+                          type="button"
+                          onClick={() => removeVariant(variant.id)} 
+                          variant="destructive" 
+                          size="sm"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               
               <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button>Save Product</Button>
+                <Button type="button" onClick={handleSaveProduct}>
+                  Save Product
+                </Button>
               </div>
-            </div>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -206,7 +253,7 @@ export const POSProducts = () => {
 
       {/* Products List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {products.map((product) => (
+        {products?.map((product) => (
           <Card key={product.id}>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">

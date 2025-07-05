@@ -6,12 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, BarChart3, TrendingUp, Receipt, Download } from 'lucide-react';
+import { Calendar, BarChart3, TrendingUp, Receipt, Download, FileText } from 'lucide-react';
+import { useReportExports } from '@/hooks/useReportExports';
 
 export const POSReports = () => {
   const [dateRange, setDateRange] = useState('today');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const { exportToCSV } = useReportExports();
 
   const salesData = {
     total_sales: 15850,
@@ -25,6 +27,46 @@ export const POSReports = () => {
     }
   };
 
+  const topSellingItems = [
+    { name: 'Cow Milk 1L', sold: 25, revenue: 1375 },
+    { name: 'Cow Milk 500ml', sold: 18, revenue: 540 },
+    { name: 'Dahi 250g', sold: 12, revenue: 480 },
+  ];
+
+  const generateReport = () => {
+    // Mock report generation
+    console.log('Generating report for:', { dateRange, fromDate, toDate });
+  };
+
+  const exportToPDF = () => {
+    // Mock PDF export
+    console.log('Exporting to PDF...');
+    // Here you would integrate with a PDF generation library like jsPDF
+    alert('PDF export functionality will be implemented');
+  };
+
+  const exportToExcel = () => {
+    const reportData = [
+      {
+        metric: 'Total Sales',
+        value: salesData.total_sales,
+        date: new Date().toISOString().split('T')[0]
+      },
+      {
+        metric: 'Total Receipts',
+        value: salesData.total_receipts,
+        date: new Date().toISOString().split('T')[0]
+      },
+      {
+        metric: 'Average Sale Value',
+        value: salesData.avg_sale_value,
+        date: new Date().toISOString().split('T')[0]
+      }
+    ];
+
+    exportToCSV(reportData, 'pos_sales_report', ['metric', 'value', 'date']);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -32,10 +74,16 @@ export const POSReports = () => {
           <h2 className="text-2xl font-bold">Store Reports</h2>
           <p className="text-muted-foreground">Analytics and reports for your store</p>
         </div>
-        <Button>
-          <Download className="h-4 w-4 mr-2" />
-          Export Report
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={exportToPDF} variant="outline">
+            <FileText className="h-4 w-4 mr-2" />
+            Export PDF
+          </Button>
+          <Button onClick={exportToExcel} variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Export Excel
+          </Button>
+        </div>
       </div>
 
       {/* Date Range Selector */}
@@ -86,7 +134,7 @@ export const POSReports = () => {
               </>
             )}
             <div className="flex items-end">
-              <Button>Generate Report</Button>
+              <Button onClick={generateReport}>Generate Report</Button>
             </div>
           </div>
         </CardContent>
@@ -172,11 +220,7 @@ export const POSReports = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[
-              { name: 'Cow Milk 1L', sold: 25, revenue: 1375 },
-              { name: 'Cow Milk 500ml', sold: 18, revenue: 540 },
-              { name: 'Dahi 250g', sold: 12, revenue: 480 },
-            ].map((item, index) => (
+            {topSellingItems.map((item, index) => (
               <div key={index} className="flex items-center justify-between">
                 <div>
                   <div className="font-medium">{item.name}</div>

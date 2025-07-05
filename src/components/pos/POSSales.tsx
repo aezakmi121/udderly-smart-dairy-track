@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Plus, Minus, Trash2, ShoppingCart, Receipt } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useCustomers } from '@/hooks/useCustomers';
 
 interface SaleItem {
   id: string;
@@ -26,14 +27,23 @@ export const POSSales = () => {
   const [paymentMode, setPaymentMode] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const { toast } = useToast();
+  const { customers } = useCustomers();
 
   const subtotal = saleItems.reduce((sum, item) => sum + item.total, 0);
   const totalDiscount = discount + saleItems.reduce((sum, item) => sum + (item.discount || 0), 0);
   const grandTotal = subtotal - totalDiscount + otherCharges;
 
   const addItem = () => {
-    // This would open a product selection dialog
-    toast({ title: "Product selection dialog would open here" });
+    // Mock adding an item
+    const newItem: SaleItem = {
+      id: Date.now().toString(),
+      name: 'Cow Milk 1L',
+      price: 55,
+      quantity: 1,
+      unit: 'L',
+      total: 55
+    };
+    setSaleItems([...saleItems, newItem]);
   };
 
   const updateQuantity = (id: string, quantity: number) => {
@@ -225,8 +235,11 @@ export const POSSales = () => {
                     <SelectValue placeholder="Select customer for credit" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="customer1">John Doe - 9876543210</SelectItem>
-                    <SelectItem value="customer2">Jane Smith - 9876543211</SelectItem>
+                    {customers?.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.name} - {customer.phone_number}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
