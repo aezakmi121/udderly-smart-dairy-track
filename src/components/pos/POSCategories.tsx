@@ -4,9 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus } from 'lucide-react';
 import { usePOSData } from '@/hooks/usePOSData';
-import { CategoryCard } from './categories/CategoryCard';
+import { CategoryWithActions } from './categories/CategoryWithActions';
 import { CategoryForm } from './categories/CategoryForm';
-import { CategoryActions } from './categories/CategoryActions';
 
 interface Category {
   id: string;
@@ -86,21 +85,13 @@ export const POSCategories = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {categories?.map((category) => (
-          <div key={category.id} className="relative">
-            <CategoryCard
-              category={category}
-              onEdit={openEditDialog}
-              onDelete={handleDeleteCategory}
-            />
-            <div className="absolute top-2 right-2">
-              <CategoryActions
-                category={category}
-                productsInCategory={getProductsInCategory(category.name)}
-                onEdit={openEditDialog}
-                onDelete={handleDeleteCategory}
-              />
-            </div>
-          </div>
+          <CategoryWithActions
+            key={category.id}
+            category={category}
+            productsInCategory={getProductsInCategory(category.name)}
+            onEdit={openEditDialog}
+            onDelete={handleDeleteCategory}
+          />
         ))}
       </div>
     </div>
