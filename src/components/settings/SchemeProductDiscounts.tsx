@@ -28,9 +28,14 @@ export const SchemeProductDiscounts: React.FC<SchemeProductDiscountsProps> = ({
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    // Get variant_id and properly handle empty string
+    // Get variant_id and properly handle empty string and "all_variants"
     const variantIdValue = formData.get('variant_id') as string;
-    const variantId = variantIdValue && variantIdValue.trim() !== '' ? variantIdValue : null;
+    let variantId = null;
+    
+    // Only set variantId if it's a real variant ID (not null, empty, or "all_variants")
+    if (variantIdValue && variantIdValue.trim() !== '' && variantIdValue !== 'all_variants') {
+      variantId = variantIdValue;
+    }
     
     console.log('Form submission data:', {
       scheme_id: schemeId,

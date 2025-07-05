@@ -47,39 +47,20 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
     
     // Handle variant_id properly - convert "all_variants" to null
     const variantIdValue = formData.get('variant_id') as string;
-    const variantId = variantIdValue === 'all_variants' ? null : variantIdValue;
+    const variantId = variantIdValue === 'all_variants' ? null : (variantIdValue || null);
     
     // Create a new FormData with the corrected variant_id
     const correctedFormData = new FormData();
     for (const [key, value] of formData.entries()) {
       if (key === 'variant_id') {
-        // Only set variant_id if it's not null and not empty
-        if (variantId && variantId !== '') {
+        // Only set variant_id if it's a specific variant (not null/all_variants)
+        if (variantId && variantId !== 'all_variants') {
           correctedFormData.set(key, variantId);
         }
       } else {
         correctedFormData.set(key, value);
       }
     }
-    
-    // Create a new event with the corrected form data
-    const correctedEvent = {
-      ...e,
-      currentTarget: {
-        ...e.currentTarget,
-        // Override the FormData constructor to return our corrected data
-        constructor: FormData
-      }
-    };
-    
-    // Manually construct the event target with corrected form data
-    Object.defineProperty(correctedEvent, 'currentTarget', {
-      value: {
-        ...e.currentTarget,
-        // Add a method to get corrected FormData
-        getFormData: () => correctedFormData
-      }
-    });
     
     onSubmit(e);
   };
@@ -118,12 +99,12 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
           {selectedProduct?.variants && selectedProduct.variants.length > 0 && (
             <div>
               <Label htmlFor="variant_id">Variant (Optional)</Label>
-              <Select name="variant_id" defaultValue={selectedDiscount?.variant_id || ''}>
+              <Select name="variant_id" defaultValue={selectedDiscount?.variant_id || 'all_variants'}>
                 <SelectTrigger>
                   <SelectValue placeholder="Apply to all variants or select specific" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Variants</SelectItem>
+                  <SelectItem value="all_variants">All Variants</SelectItem>
                   {selectedProduct.variants.map((variant) => (
                     <SelectItem key={variant.id} value={variant.id}>
                       {variant.name} - ₹{variant.selling_price}
