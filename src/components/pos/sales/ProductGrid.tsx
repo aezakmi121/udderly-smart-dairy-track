@@ -1,26 +1,7 @@
 
 import React from 'react';
 import { ProductCard } from './ProductCard';
-
-interface ProductVariant {
-  id: string;
-  name: string;
-  size: number;
-  unit: string;
-  cost_price?: number;
-  selling_price: number;
-  stock_quantity: number;
-  low_stock_alert: number;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  category: string;
-  variants: ProductVariant[];
-  unit_type: 'weight' | 'volume' | 'piece';
-  fractional_allowed: boolean;
-}
+import { Product, ProductVariant } from './types';
 
 interface ProductGridProps {
   products: Product[];

@@ -1,42 +1,11 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Plus, Minus, Trash2, ShoppingCart } from 'lucide-react';
+import { Plus, Minus, Trash2 } from 'lucide-react';
 import { ProductSelector } from './ProductSelector';
-
-interface SaleItem {
-  id: string;
-  productId: string;
-  variantId: string;
-  name: string;
-  price: number;
-  quantity: number;
-  unit: string;
-  discount?: number;
-  total: number;
-  fractionalAllowed: boolean;
-}
-
-interface ProductVariant {
-  id: string;
-  name: string;
-  size: number;
-  unit: string;
-  selling_price: number;
-  stock_quantity: number;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  category: string;
-  variants: ProductVariant[];
-  unit_type: 'weight' | 'volume' | 'piece';
-  fractional_allowed: boolean;
-}
+import { SaleItem, Product, ProductVariant } from './types';
 
 interface SaleItemsSectionProps {
   saleItems: SaleItem[];

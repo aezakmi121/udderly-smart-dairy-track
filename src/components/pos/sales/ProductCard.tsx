@@ -4,26 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Package } from 'lucide-react';
-
-interface ProductVariant {
-  id: string;
-  name: string;
-  size: number;
-  unit: string;
-  cost_price?: number;
-  selling_price: number;
-  stock_quantity: number;
-  low_stock_alert: number;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  category: string;
-  variants: ProductVariant[];
-  unit_type: 'weight' | 'volume' | 'piece';
-  fractional_allowed: boolean;
-}
+import { Product, ProductVariant } from './types';
 
 interface ProductCardProps {
   product: Product;
@@ -71,7 +52,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                       ₹{variant.selling_price}
                     </span>
                     <Badge 
-                      variant={variant.stock_quantity <= variant.low_stock_alert ? "destructive" : "default"}
+                      variant={variant.stock_quantity <= (variant.low_stock_alert || 0) ? "destructive" : "default"}
                       className="text-xs"
                     >
                       {variant.stock_quantity} left

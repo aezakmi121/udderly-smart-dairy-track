@@ -2,19 +2,7 @@
 import React from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useCreditTransactions } from '@/hooks/useCreditTransactions';
-
-interface SaleItem {
-  id: string;
-  productId: string;
-  variantId: string;
-  name: string;
-  price: number;
-  quantity: number;
-  unit: string;
-  discount?: number;
-  total: number;
-  fractionalAllowed: boolean;
-}
+import { SaleItem } from './types';
 
 interface UseSaleProcessingProps {
   saleItems: SaleItem[];
