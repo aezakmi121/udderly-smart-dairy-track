@@ -1,12 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Package, Search } from 'lucide-react';
 import { usePOSData } from '@/hooks/usePOSData';
-import { ProductCard } from './ProductCard';
+import { SearchBar } from './SearchBar';
+import { CategorySection } from './CategorySection';
+import { LoadingState, NoProductsState, NoSearchResultsState } from './EmptyStates';
 
 interface ProductVariant {
   id: string;
@@ -81,37 +79,32 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     }
   };
 
-  if (productsLoading) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center">
-              <Package className="h-8 w-8 mx-auto mb-2 animate-pulse" />
-              <p>Loading products...</p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  const renderContent = () => {
+    if (productsLoading) {
+      return <LoadingState />;
+    }
 
-  if (!products || products.length === 0) {
+    if (!products || products.length === 0) {
+      return <NoProductsState />;
+    }
+
+    if (Object.keys(groupedProducts).length === 0) {
+      return <NoSearchResultsState />;
+    }
+
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>Select Product</DialogTitle>
-          </DialogHeader>
-          <div className="text-center py-8 text-muted-foreground">
-            <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No products available.</p>
-            <p className="text-sm">Please add products first.</p>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <div className="space-y-6">
+        {Object.entries(groupedProducts).map(([category, categoryProducts]) => (
+          <CategorySection
+            key={category}
+            category={category}
+            products={categoryProducts}
+            onSelectVariant={handleSelectVariant}
+          />
+        ))}
+      </div>
     );
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -121,49 +114,10 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         </DialogHeader>
         
         <div className="space-y-4">
-          {/* Search Bar */}
-          <div className="relative">
-            <Label htmlFor="search">Search Products</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="search"
-                placeholder="Search by product name, category, or variant..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-
-          {/* Products Grid */}
+          <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+          
           <div className="overflow-y-auto max-h-[60vh] pr-2">
-            {Object.keys(groupedProducts).length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No products found matching your search.</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {Object.entries(groupedProducts).map(([category, categoryProducts]) => (
-                  <div key={category}>
-                    <div className="flex items-center gap-2 mb-4">
-                      <h3 className="text-lg font-semibold">{category}</h3>
-                      <Badge variant="outline">{categoryProducts.length} products</Badge>
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      {categoryProducts.map((product) => (
-                        <ProductCard
-                          key={product.id}
-                          product={product}
-                          onSelectVariant={handleSelectVariant}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            {renderContent()}
           </div>
         </div>
       </DialogContent>
