@@ -6,82 +6,68 @@ import { useAuth } from '@/components/auth/AuthProvider';
 export const useUserPermissions = () => {
   const { user } = useAuth();
 
-  const { data: userRoles, isLoading } = useQuery({
-    queryKey: ['user-roles', user?.id],
+  const { data: userRole, isLoading } = useQuery({
+    queryKey: ['user-role', user?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!user?.id) return null;
       
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
+      const { data } = await (supabase as any).rpc('get_user_role', {
+        _user_id: user.id
+      });
       
-      if (error) throw error;
-      return data?.map(r => r.role) || [];
+      return data;
     },
     enabled: !!user?.id
   });
 
-  const roles = userRoles || [];
-  const isAdmin = roles.includes('admin' as any);
-  const isFarmWorker = roles.includes('worker' as any);
-  const isCollectionCentre = roles.includes('farmer' as any);
-  const isDeliveryBoy = roles.includes('delivery_boy' as any);
-  const isStoreManager = roles.includes('store_manager' as any);
+  const isAdmin = userRole === 'admin';
+  const isFarmer = userRole === 'farmer';
+  const isWorker = userRole === 'worker';
+  const isDeliveryBoy = userRole === 'delivery_boy';
+  const isStoreManager = userRole === 'store_manager';
 
   const canAccess = {
-    // Admin has access to everything
-    dashboard: true,
-    settings: isAdmin,
-    
-    // Farm operations - Admin and Farm Workers
-    cows: isAdmin || isFarmWorker,
-    calves: isAdmin || isFarmWorker,
-    milkProduction: isAdmin || isFarmWorker,
-    vaccination: isAdmin || isFarmWorker,
-    weightLogs: isAdmin || isFarmWorker,
-    aiTracking: isAdmin || isFarmWorker,
-    feedManagement: isAdmin || isFarmWorker,
-    
-    // Collection centre operations - Admin and Collection Centre
-    farmers: isAdmin || isCollectionCentre,
-    milkCollection: isAdmin || isCollectionCentre,
-    
-    // Delivery management - Admin, Store Manager, Delivery Boy
+    dashboard: true, // Everyone can access dashboard
+    cows: isAdmin || isWorker,
+    calves: isAdmin || isWorker,
+    milkProduction: isAdmin || isWorker,
+    vaccination: isAdmin || isWorker,
+    weightLogs: isAdmin || isWorker,
+    aiTracking: isAdmin || isWorker,
+    farmers: isAdmin || isWorker || isFarmer,
+    milkCollection: isAdmin || isWorker || isFarmer,
+    feedManagement: isAdmin || isWorker,
     deliveryBoys: isAdmin || isStoreManager,
     customers: isAdmin || isStoreManager || isDeliveryBoy,
-    deliveryOrders: isAdmin || isStoreManager || isDeliveryBoy,
-    
-    // Reports - Admin only for now, can be extended
-    reports: isAdmin
-  };
-
-  const canDelete = {
-    farmers: isAdmin,
-    milkCollection: isAdmin,
-    deliveryBoys: isAdmin,
-    customers: isAdmin || isStoreManager,
-    deliveryOrders: isAdmin || isStoreManager
+    reports: isAdmin || isWorker || isFarmer,
+    settings: isAdmin
   };
 
   const canEdit = {
-    farmers: isAdmin,
-    milkCollection: isAdmin,
+    cows: isAdmin || isWorker,
+    calves: isAdmin || isWorker,
+    milkProduction: isAdmin || isWorker,
+    vaccination: isAdmin || isWorker,
+    weightLogs: isAdmin || isWorker,
+    aiTracking: isAdmin || isWorker,
+    farmers: isAdmin || isWorker,
+    milkCollection: isAdmin || isWorker || isFarmer,
+    feedManagement: isAdmin || isWorker,
     deliveryBoys: isAdmin || isStoreManager,
     customers: isAdmin || isStoreManager,
-    deliveryOrders: isAdmin || isStoreManager || isDeliveryBoy
+    reports: isAdmin,
+    settings: isAdmin
   };
 
   return {
-    userRoles: roles,
+    userRole,
+    canAccess,
+    canEdit,
     isLoading,
     isAdmin,
-    isFarmWorker,
-    isCollectionCentre,
+    isFarmer,
+    isWorker,
     isDeliveryBoy,
-    isStoreManager,
-    canAccess,
-    canDelete,
-    canEdit
+    isStoreManager
   };
 };

@@ -12,6 +12,8 @@ import { AITrackingManagement } from '../ai-tracking/AITrackingManagement';
 import { FarmersManagement } from '../farmers/FarmersManagement';
 import { MilkCollectionManagement } from '../milk-collection/MilkCollectionManagement';
 import { FeedManagement } from '../feed/FeedManagement';
+import { DeliveryBoysManagement } from '../delivery/DeliveryBoysManagement';
+import { CustomersManagement } from '../delivery/CustomersManagement';
 import { ReportsManagement } from '../reports/ReportsManagement';
 import { SettingsManagement } from '../settings/SettingsManagement';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
@@ -51,6 +53,10 @@ export const MainLayout = () => {
         return canAccess.milkCollection ? <MilkCollectionManagement /> : <AccessDenied />;
       case 'feed-management':
         return canAccess.feedManagement ? <FeedManagement /> : <AccessDenied />;
+      case 'delivery-boys':
+        return canAccess.deliveryBoys ? <DeliveryBoysManagement /> : <AccessDenied />;
+      case 'customers':
+        return canAccess.customers ? <CustomersManagement /> : <AccessDenied />;
       case 'reports':
         return canAccess.reports ? <ReportsManagement /> : <AccessDenied />;
       case 'settings':
