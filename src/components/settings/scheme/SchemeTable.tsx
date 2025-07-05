@@ -3,6 +3,7 @@ import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Edit, Trash2, Settings } from 'lucide-react';
 
 interface MilkScheme {
@@ -23,6 +24,7 @@ interface SchemeTableProps {
   onEdit: (scheme: MilkScheme) => void;
   onDelete: (id: string) => void;
   onConfigureDiscounts: (schemeId: string) => void;
+  onToggleActive: (scheme: MilkScheme) => void;
 }
 
 export const SchemeTable: React.FC<SchemeTableProps> = ({
@@ -30,7 +32,8 @@ export const SchemeTable: React.FC<SchemeTableProps> = ({
   isLoading,
   onEdit,
   onDelete,
-  onConfigureDiscounts
+  onConfigureDiscounts,
+  onToggleActive
 }) => {
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this scheme?')) {
@@ -71,9 +74,15 @@ export const SchemeTable: React.FC<SchemeTableProps> = ({
               }
             </TableCell>
             <TableCell>
-              <Badge variant={scheme.is_active ? 'default' : 'secondary'}>
-                {scheme.is_active ? 'Active' : 'Inactive'}
-              </Badge>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={scheme.is_active}
+                  onCheckedChange={() => onToggleActive(scheme)}
+                />
+                <Badge variant={scheme.is_active ? 'default' : 'secondary'}>
+                  {scheme.is_active ? 'Active' : 'Inactive'}
+                </Badge>
+              </div>
             </TableCell>
             <TableCell>
               <div className="flex space-x-2">

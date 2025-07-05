@@ -15,35 +15,36 @@ interface MilkScheme {
   updated_at: string;
 }
 
-interface MilkSchemeInsert {
-  scheme_name: string;
-  cow_milk_rate: number;
-  buffalo_milk_rate: number;
-  discount_type: 'amount' | 'percentage';
-  discount_value: number;
-  is_active?: boolean;
-}
-
 export const useMilkSchemes = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: schemes, isLoading } = useQuery({
+  const { data: schemes, isLoading, error } = useQuery({
     queryKey: ['milk-schemes'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('milk_schemes')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as MilkScheme[];
-    }
+      try {
+        const { data, error } = await supabase
+          .from('milk_schemes')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('Error fetching milk schemes:', error);
+          return [];
+        }
+        return data as MilkScheme[];
+      } catch (error) {
+        console.error('Failed to fetch milk schemes:', error);
+        return [];
+      }
+    },
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const schemeMutation = useMutation({
     mutationFn: async ({ schemeData, isUpdate, id }: { 
-      schemeData: Partial<MilkSchemeInsert>, 
+      schemeData: Partial<MilkScheme>, 
       isUpdate: boolean, 
       id?: string 
     }) => {
@@ -59,22 +60,22 @@ export const useMilkSchemes = () => {
       } else {
         const { data, error } = await supabase
           .from('milk_schemes')
-          .insert([schemeData as MilkSchemeInsert])
+          .insert(schemeData as any)
           .select()
           .single();
         if (error) throw error;
         return data;
       }
     },
-    onSuccess: (data, { isUpdate }) => {
+    onSuccess: (_, { isUpdate }) => {
       queryClient.invalidateQueries({ queryKey: ['milk-schemes'] });
-      toast({ title: `Scheme ${isUpdate ? 'updated' : 'added'} successfully!` });
-      return data; // Return the created/updated scheme
+      toast({ title: `Scheme ${isUpdate ? 'updated' : 'created'} successfully!` });
     },
     onError: (error: any, { isUpdate }) => {
+      console.error('Scheme mutation error:', error);
       toast({ 
-        title: `Failed to ${isUpdate ? 'update' : 'add'} scheme`, 
-        description: error.message,
+        title: `Failed to ${isUpdate ? 'update' : 'create'} scheme`, 
+        description: error.message || 'Please check your permissions',
         variant: "destructive" 
       });
     }
@@ -93,17 +94,19 @@ export const useMilkSchemes = () => {
       toast({ title: "Scheme deleted successfully!" });
     },
     onError: (error: any) => {
+      console.error('Delete scheme error:', error);
       toast({ 
         title: "Failed to delete scheme", 
-        description: error.message,
+        description: error.message || 'Please check your permissions',
         variant: "destructive" 
       });
     }
   });
 
   return {
-    schemes,
+    schemes: schemes || [],
     isLoading,
+    error,
     schemeMutation,
     deleteScheme
   };

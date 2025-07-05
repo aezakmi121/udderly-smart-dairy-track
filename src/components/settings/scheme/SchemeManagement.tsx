@@ -43,7 +43,7 @@ export const SchemeManagement = () => {
       buffalo_milk_rate: 75,
       discount_type: formData.get('discount_type') as 'amount' | 'percentage',
       discount_value: parseFloat(formData.get('discount_value') as string) || 0,
-      is_active: formData.get('is_active') === 'true'
+      is_active: false // Set schemes as inactive by default
     };
 
     try {
@@ -77,6 +77,21 @@ export const SchemeManagement = () => {
       setSelectedScheme(null);
     } catch (error) {
       console.error('Error saving scheme:', error);
+    }
+  };
+
+  const handleToggleActive = async (scheme: MilkScheme) => {
+    try {
+      await schemeMutation.mutateAsync({
+        schemeData: {
+          ...scheme,
+          is_active: !scheme.is_active
+        },
+        isUpdate: true,
+        id: scheme.id
+      });
+    } catch (error) {
+      console.error('Error toggling scheme status:', error);
     }
   };
 
@@ -126,6 +141,7 @@ export const SchemeManagement = () => {
         onEdit={openDialog}
         onDelete={handleDelete}
         onConfigureDiscounts={handleConfigureDiscounts}
+        onToggleActive={handleToggleActive}
       />
 
       <SchemeForm
