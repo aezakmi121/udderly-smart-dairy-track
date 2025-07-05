@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface Cow {
   id: string;
   cow_number: string;
+  status: string;
 }
 
 export const useCows = () => {
@@ -13,7 +14,7 @@ export const useCows = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('cows')
-        .select('id, cow_number')
+        .select('id, cow_number, status')
         .eq('status', 'active')
         .order('cow_number');
       
