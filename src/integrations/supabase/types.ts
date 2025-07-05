@@ -358,11 +358,9 @@ export type Database = {
           id: string
           is_active: boolean | null
           last_payment_date: string | null
-          milk_type: string | null
           name: string
           phone_number: string
           rate_per_liter: number
-          scheme_id: string | null
           subscription_type: string | null
           updated_at: string | null
         }
@@ -378,11 +376,9 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_payment_date?: string | null
-          milk_type?: string | null
           name: string
           phone_number: string
           rate_per_liter?: number
-          scheme_id?: string | null
           subscription_type?: string | null
           updated_at?: string | null
         }
@@ -398,23 +394,13 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_payment_date?: string | null
-          milk_type?: string | null
           name?: string
           phone_number?: string
           rate_per_liter?: number
-          scheme_id?: string | null
           subscription_type?: string | null
           updated_at?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "customers_scheme_id_fkey"
-            columns: ["scheme_id"]
-            isOneToOne: false
-            referencedRelation: "milk_schemes"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       delivery_boys: {
         Row: {
@@ -836,42 +822,6 @@ export type Database = {
         }
         Relationships: []
       }
-      milk_schemes: {
-        Row: {
-          buffalo_milk_rate: number
-          cow_milk_rate: number
-          created_at: string | null
-          discount_type: string
-          discount_value: number
-          id: string
-          is_active: boolean | null
-          scheme_name: string
-          updated_at: string | null
-        }
-        Insert: {
-          buffalo_milk_rate?: number
-          cow_milk_rate?: number
-          created_at?: string | null
-          discount_type?: string
-          discount_value?: number
-          id?: string
-          is_active?: boolean | null
-          scheme_name: string
-          updated_at?: string | null
-        }
-        Update: {
-          buffalo_milk_rate?: number
-          cow_milk_rate?: number
-          created_at?: string | null
-          discount_type?: string
-          discount_value?: number
-          id?: string
-          is_active?: boolean | null
-          scheme_name?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       pos_product_variants: {
         Row: {
           cost_price: number | null
@@ -984,64 +934,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
-      }
-      scheme_product_discounts: {
-        Row: {
-          created_at: string | null
-          discount_type: string
-          discount_value: number
-          id: string
-          is_active: boolean | null
-          product_id: string | null
-          scheme_id: string | null
-          updated_at: string | null
-          variant_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          discount_type?: string
-          discount_value?: number
-          id?: string
-          is_active?: boolean | null
-          product_id?: string | null
-          scheme_id?: string | null
-          updated_at?: string | null
-          variant_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          discount_type?: string
-          discount_value?: number
-          id?: string
-          is_active?: boolean | null
-          product_id?: string | null
-          scheme_id?: string | null
-          updated_at?: string | null
-          variant_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "scheme_product_discounts_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "pos_products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scheme_product_discounts_scheme_id_fkey"
-            columns: ["scheme_id"]
-            isOneToOne: false
-            referencedRelation: "milk_schemes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scheme_product_discounts_variant_id_fkey"
-            columns: ["variant_id"]
-            isOneToOne: false
-            referencedRelation: "pos_product_variants"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       user_roles: {
         Row: {

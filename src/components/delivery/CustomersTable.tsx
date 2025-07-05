@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Edit2, Eye, Trash2, CreditCard } from 'lucide-react';
-import { useMilkSchemes } from '@/hooks/useMilkSchemes';
 import { CustomerCreditManager } from './CustomerCreditManager';
 
 interface CustomersTableProps {
@@ -24,7 +23,6 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
 }) => {
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
   const [selectedCreditCustomer, setSelectedCreditCustomer] = useState<any>(null);
-  const { schemes } = useMilkSchemes();
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -49,12 +47,6 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
         setSelectedCustomers([]);
       }
     }
-  };
-
-  const getSchemeName = (schemeId: string | null) => {
-    if (!schemeId) return 'Regular';
-    const scheme = schemes?.find(s => s.id === schemeId);
-    return scheme?.scheme_name || 'Unknown';
   };
 
   return (
@@ -90,9 +82,7 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
             <TableHead>Name</TableHead>
             <TableHead>Phone</TableHead>
             <TableHead>Area</TableHead>
-            <TableHead>Milk Type</TableHead>
             <TableHead>Daily Qty</TableHead>
-            <TableHead>Scheme</TableHead>
             <TableHead>Rate/L</TableHead>
             <TableHead>Credit</TableHead>
             <TableHead>Status</TableHead>
@@ -114,17 +104,7 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
               <TableCell>{customer.name}</TableCell>
               <TableCell>{customer.phone_number}</TableCell>
               <TableCell>{customer.area || 'Not specified'}</TableCell>
-              <TableCell>
-                <Badge variant="outline">
-                  {customer.milk_type === 'cow' ? 'Cow' : 'Buffalo'}
-                </Badge>
-              </TableCell>
               <TableCell>{customer.daily_quantity}L</TableCell>
-              <TableCell>
-                <Badge variant="secondary">
-                  {getSchemeName(customer.scheme_id)}
-                </Badge>
-              </TableCell>
               <TableCell>₹{customer.rate_per_liter}</TableCell>
               <TableCell>
                 {customer.current_credit > 0 ? (

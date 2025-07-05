@@ -4,13 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { MilkRateSettings } from './MilkRateSettings';
-import { MilkSchemeSettings } from './MilkSchemeSettings';
 import { AccessControlSettings } from './AccessControlSettings';
 
 export const SettingsManagement = () => {
   const [openSections, setOpenSections] = useState({
     milkRates: false,
-    milkSchemes: false,
     accessControl: false,
   });
 
@@ -47,29 +45,6 @@ export const SettingsManagement = () => {
             <CollapsibleContent>
               <CardContent>
                 <MilkRateSettings />
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        {/* Milk Scheme Settings */}
-        <Collapsible open={openSections.milkSchemes} onOpenChange={() => toggleSection('milkSchemes')}>
-          <Card>
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Customer Pricing Schemes</CardTitle>
-                  {openSections.milkSchemes ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent>
-                <MilkSchemeSettings />
               </CardContent>
             </CollapsibleContent>
           </Card>

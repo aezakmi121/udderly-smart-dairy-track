@@ -16,7 +16,6 @@ export const CustomersManagement = () => {
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [milkTypeFilter, setMilkTypeFilter] = useState('all');
   
   const { customers, isLoading, customerMutation } = useCustomers();
   const { canEdit } = useUserPermissions();
@@ -30,9 +29,7 @@ export const CustomersManagement = () => {
                          (statusFilter === 'active' && customer.is_active) ||
                          (statusFilter === 'inactive' && !customer.is_active);
     
-    const matchesMilkType = milkTypeFilter === 'all' || customer.milk_type === milkTypeFilter;
-    
-    return matchesSearch && matchesStatus && matchesMilkType;
+    return matchesSearch && matchesStatus;
   }) || [];
 
   const openAddDialog = () => {
@@ -70,8 +67,6 @@ export const CustomersManagement = () => {
       rate_per_liter: parseFloat(formData.get('rate_per_liter') as string),
       credit_limit: parseFloat(formData.get('credit_limit') as string) || 0,
       is_active: formData.get('is_active') === 'true',
-      scheme_id: formData.get('scheme_id') === 'none' ? null : formData.get('scheme_id') as string,
-      milk_type: formData.get('milk_type') as string,
     };
 
     customerMutation.mutate({
@@ -127,14 +122,25 @@ export const CustomersManagement = () => {
       <div className="space-y-4">
         <CustomerSearch searchTerm={searchTerm} onSearchChange={setSearchTerm} />
         
-        <CustomerFilters
-          statusFilter={statusFilter}
-          milkTypeFilter={milkTypeFilter}
-          onStatusFilterChange={setStatusFilter}
-          onMilkTypeFilterChange={setMilkTypeFilter}
-          totalCount={customers?.length || 0}
-          filteredCount={filteredCustomers.length}
-        />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div>
+              <label className="text-sm font-medium">Status:</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="ml-2 border rounded px-3 py-1"
+              >
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            Showing {filteredCustomers.length} of {customers?.length || 0} customers
+          </div>
+        </div>
 
         <CustomersTable
           customers={filteredCustomers}

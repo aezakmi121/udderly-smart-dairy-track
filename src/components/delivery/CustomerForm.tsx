@@ -1,12 +1,11 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import { useCustomers } from '@/hooks/useCustomers';
-import { useMilkSchemes } from '@/hooks/useMilkSchemes';
 
 interface CustomerFormProps {
   selectedCustomer: any;
@@ -22,9 +21,6 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   isLoading
 }) => {
   const { generateCustomerCode } = useCustomers();
-  const { schemes } = useMilkSchemes();
-
-  const selectedScheme = schemes?.find(s => s.id === selectedCustomer?.scheme_id);
 
   return (
     <div className="max-h-[80vh] overflow-y-auto">
@@ -113,22 +109,6 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
             </Select>
           </div>
           <div>
-            <Label htmlFor="milk_type" className="text-sm">Milk Type</Label>
-            <Select name="milk_type" defaultValue={selectedCustomer?.milk_type || 'cow'}>
-              <SelectTrigger className="h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cow">Cow</SelectItem>
-                <SelectItem value="buffalo">Buffalo</SelectItem>
-                <SelectItem value="mixed">Mixed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
             <Label htmlFor="subscription_type" className="text-sm">Subscription Type</Label>
             <Select name="subscription_type" defaultValue={selectedCustomer?.subscription_type || 'daily'}>
               <SelectTrigger className="h-8">
@@ -142,53 +122,20 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label htmlFor="rate_per_liter" className="text-sm">Rate per Liter (₹) *</Label>
-            <Input
-              id="rate_per_liter"
-              name="rate_per_liter"
-              type="number"
-              step="0.01"
-              defaultValue={selectedCustomer?.rate_per_liter || (selectedScheme ? 
-                (selectedCustomer?.milk_type === 'buffalo' ? selectedScheme.buffalo_milk_rate : selectedScheme.cow_milk_rate) : 50)}
-              required
-              className="h-8"
-            />
-          </div>
         </div>
 
         <div>
-          <Label htmlFor="scheme_id" className="text-sm">Pricing Scheme</Label>
-          <Select name="scheme_id" defaultValue={selectedCustomer?.scheme_id || 'none'}>
-            <SelectTrigger className="h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No Scheme</SelectItem>
-              {schemes?.filter(s => s.is_active).map((scheme) => (
-                <SelectItem key={scheme.id} value={scheme.id}>
-                  {scheme.scheme_name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="rate_per_liter" className="text-sm">Rate per Liter (₹) *</Label>
+          <Input
+            id="rate_per_liter"
+            name="rate_per_liter"
+            type="number"
+            step="0.01"
+            defaultValue={selectedCustomer?.rate_per_liter || 50}
+            required
+            className="h-8"
+          />
         </div>
-
-        {selectedScheme && (
-          <div className="p-3 bg-muted rounded-lg">
-            <h4 className="font-medium mb-2 text-sm">Selected Scheme Details</h4>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>Cow Milk: ₹{selectedScheme.cow_milk_rate}/L</div>
-              <div>Buffalo Milk: ₹{selectedScheme.buffalo_milk_rate}/L</div>
-            </div>
-            {selectedScheme.discount_value > 0 && (
-              <Badge className="mt-2 text-xs">
-                {selectedScheme.discount_value}
-                {selectedScheme.discount_type === 'percentage' ? '%' : '₹'} Discount
-              </Badge>
-            )}
-          </div>
-        )}
 
         <div>
           <Label htmlFor="credit_limit" className="text-sm">Credit Limit (₹)</Label>
