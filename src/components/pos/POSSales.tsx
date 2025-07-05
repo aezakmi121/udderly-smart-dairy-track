@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,7 +31,7 @@ export const POSSales: React.FC = () => {
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [paymentMode, setPaymentMode] = useState<string>('');
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
-  const { categories, products, isLoading } = usePOSData();
+  const { categories, products, productsLoading } = usePOSData();
   const { customers } = useCustomers();
 	const { discounts } = useSchemeDiscounts();
 
@@ -101,6 +102,22 @@ export const POSSales: React.FC = () => {
     onClearAll
   });
 
+  // Group products by category for display
+  const groupedProducts = React.useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    
+    if (products) {
+      products.forEach(product => {
+        if (!groups[product.category]) {
+          groups[product.category] = [];
+        }
+        groups[product.category].push(product);
+      });
+    }
+    
+    return groups;
+  }, [products]);
+
   useEffect(() => {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
@@ -123,18 +140,23 @@ export const POSSales: React.FC = () => {
       <div className="lg:col-span-2">
         <Card className="h-full">
           <CardHeader className="pb-3">
-            <CardTitle>Select a Category</CardTitle>
+            <CardTitle>Select Products</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col h-full">
-            <CategorySection categories={categories || []} />
-            
-            <Separator className="my-4" />
-            
-            <ProductGrid 
-              products={products || []}
-              isLoading={isLoading}
-              addItemToSale={addItemToSale}
-            />
+            {productsLoading ? (
+              <div className="text-center py-4">Loading products...</div>
+            ) : (
+              <div className="space-y-6">
+                {Object.entries(groupedProducts).map(([category, categoryProducts]) => (
+                  <CategorySection
+                    key={category}
+                    category={category}
+                    products={categoryProducts}
+                    onSelectVariant={addItemToSale}
+                  />
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -163,6 +185,7 @@ export const POSSales: React.FC = () => {
             <div className="flex-1">
               <SaleItemsSection 
                 saleItems={saleItems}
+                onAddItem={addItemToSale}
                 onUpdateQuantity={updateQuantity}
                 onRemoveItem={removeItem}
               />
@@ -170,8 +193,9 @@ export const POSSales: React.FC = () => {
             
             <div className="border-t p-4 space-y-4 bg-gray-50/50">
               <BillSummarySection 
-                subTotal={subTotal}
+                subtotal={subTotal}
                 totalDiscount={totalDiscount}
+                otherCharges={0}
                 grandTotal={grandTotal}
               />
               
@@ -179,10 +203,11 @@ export const POSSales: React.FC = () => {
               
               <PaymentSection 
                 paymentMode={paymentMode}
-                setPaymentMode={setPaymentMode}
                 selectedCustomer={selectedCustomer}
-                setSelectedCustomer={setSelectedCustomer}
-                customers={customers || []}
+                onPaymentModeChange={setPaymentMode}
+                onCustomerSelect={setSelectedCustomer}
+                onProcessSale={processSale}
+                onClearAll={onClearAll}
               />
               
               <Button 
