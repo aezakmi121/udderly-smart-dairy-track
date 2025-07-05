@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { ProductBasicInfo } from './ProductBasicInfo';
 import { VariantsList } from './VariantsList';
+import { usePOSData } from '@/hooks/usePOSData';
 
 interface ProductVariant {
   id: string;
@@ -55,6 +56,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const [unitType, setUnitType] = useState<'weight' | 'volume' | 'piece'>('piece');
   const [fractionalAllowed, setFractionalAllowed] = useState(false);
   const { toast } = useToast();
+  const { categories } = usePOSData();
 
   useEffect(() => {
     if (product) {
@@ -143,6 +145,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             category={category}
             unitType={unitType}
             fractionalAllowed={fractionalAllowed}
+            categories={categories}
             onProductNameChange={setProductName}
             onCategoryChange={setCategory}
             onUnitTypeChange={handleUnitTypeChange}
