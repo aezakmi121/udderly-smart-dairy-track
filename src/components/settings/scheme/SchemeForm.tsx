@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,8 +43,13 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
   onSubmit,
   isLoading
 }) => {
-  const { products } = usePOSData();
+  const { products, productsLoading } = usePOSData();
   const [productDiscounts, setProductDiscounts] = useState<ProductDiscount[]>([]);
+
+  useEffect(() => {
+    console.log('Products in SchemeForm:', products);
+    console.log('Products loading:', productsLoading);
+  }, [products, productsLoading]);
 
   const addProductDiscount = () => {
     setProductDiscounts([...productDiscounts, {
@@ -128,6 +133,18 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
+              {productsLoading && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Loading products...
+                </p>
+              )}
+              
+              {!productsLoading && (!products || products.length === 0) && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No products available. Please add products in the POS Products section first.
+                </p>
+              )}
+
               {productDiscounts.map((discount, index) => (
                 <div key={index} className="grid grid-cols-5 gap-2 items-end p-3 border rounded">
                   <div>
@@ -210,7 +227,7 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
                 </div>
               ))}
               
-              {productDiscounts.length === 0 && (
+              {productDiscounts.length === 0 && !productsLoading && (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No product discounts added. Click "Add Product Discount" to configure specific product discounts.
                 </p>
