@@ -75,7 +75,32 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     }
   }, [product, open]);
 
+  // Auto-create default variant for fractional products
+  useEffect(() => {
+    if (fractionalAllowed && variants.length === 0 && productName) {
+      const defaultVariant: ProductVariant = {
+        id: Date.now().toString(),
+        name: `Bulk ${productName}`,
+        size: 1,
+        unit: UNIT_OPTIONS[unitType][0],
+        selling_price: 0,
+        stock_quantity: 0,
+        low_stock_alert: 0,
+      };
+      setVariants([defaultVariant]);
+    }
+  }, [fractionalAllowed, productName, unitType, variants.length]);
+
   const addVariant = () => {
+    // Don't allow adding variants for fractional products
+    if (fractionalAllowed) {
+      toast({ 
+        title: "Fractional products can only have one bulk variant", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     const newVariant: ProductVariant = {
       id: Date.now().toString(),
       name: '',
@@ -95,6 +120,14 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   const removeVariant = (id: string) => {
+    // Don't allow removing the only variant for fractional products
+    if (fractionalAllowed && variants.length === 1) {
+      toast({ 
+        title: "Fractional products must have at least one variant", 
+        variant: "destructive" 
+      });
+      return;
+    }
     setVariants(variants.filter(variant => variant.id !== id));
   };
 
@@ -107,24 +140,53 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     })));
   };
 
+  const handleFractionalAllowedChange = (value: boolean) => {
+    setFractionalAllowed(value);
+    
+    if (value) {
+      // Clear existing variants and create a default one
+      const defaultVariant: ProductVariant = {
+        id: Date.now().toString(),
+        name: `Bulk ${productName || 'Product'}`,
+        size: 1,
+        unit: UNIT_OPTIONS[unitType][0],
+        selling_price: 0,
+        stock_quantity: 0,
+        low_stock_alert: 0,
+      };
+      setVariants([defaultVariant]);
+    }
+  };
+
   const handleSave = () => {
-    if (!productName || !category || variants.length === 0) {
-      toast({ title: "Please fill all required fields and add at least one variant", variant: "destructive" });
+    if (!productName || !category) {
+      toast({ title: "Please fill all required fields", variant: "destructive" });
       return;
     }
 
-    const validVariants = variants.filter(v => v.name && v.size > 0 && v.selling_price > 0);
-    if (validVariants.length === 0) {
-      toast({ title: "Please add at least one valid variant with name, size, and selling price", variant: "destructive" });
+    if (variants.length === 0) {
+      toast({ title: "Please add at least one variant", variant: "destructive" });
       return;
     }
+
+    const validVariants = variants.filter(v => v.size > 0 && v.selling_price > 0);
+    if (validVariants.length === 0) {
+      toast({ title: "Please add at least one valid variant with size and selling price", variant: "destructive" });
+      return;
+    }
+
+    // For fractional products, ensure the variant name is set
+    const finalVariants = validVariants.map(variant => ({
+      ...variant,
+      name: variant.name || `Bulk ${productName}`
+    }));
 
     const productData = {
       name: productName,
       category,
       unit_type: unitType,
       fractional_allowed: fractionalAllowed,
-      variants: validVariants
+      variants: finalVariants
     };
 
     onSave(productData);
@@ -149,12 +211,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             onProductNameChange={setProductName}
             onCategoryChange={setCategory}
             onUnitTypeChange={handleUnitTypeChange}
-            onFractionalAllowedChange={setFractionalAllowed}
+            onFractionalAllowedChange={handleFractionalAllowedChange}
           />
           
           <VariantsList
             variants={variants}
             unitType={unitType}
+            fractionalAllowed={fractionalAllowed}
             onAddVariant={addVariant}
             onUpdateVariant={updateVariant}
             onRemoveVariant={removeVariant}
