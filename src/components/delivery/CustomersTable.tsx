@@ -9,30 +9,9 @@ import { Edit2, Eye, Trash2, CreditCard } from 'lucide-react';
 import { useMilkSchemes } from '@/hooks/useMilkSchemes';
 import { CustomerCreditManager } from './CustomerCreditManager';
 
-interface Customer {
-  id: string;
-  customer_code: string;
-  name: string;
-  phone_number: string;
-  address: string;
-  area: string | null;
-  daily_quantity: number;
-  delivery_time: string;
-  subscription_type: string;
-  rate_per_liter: number;
-  credit_limit: number;
-  is_active: boolean;
-  scheme_id: string | null;
-  milk_type: string;
-  created_at: string;
-  updated_at: string;
-  current_credit: number;
-  last_payment_date: string | null;
-}
-
 interface CustomersTableProps {
-  customers: Customer[];
-  onEdit: (customer: Customer) => void;
+  customers: any[];
+  onEdit: (customer: any) => void;
   onBulkDelete: (customerIds: string[]) => void;
   canEdit: boolean;
 }
@@ -44,7 +23,7 @@ export const CustomersTable: React.FC<CustomersTableProps> = ({
   canEdit
 }) => {
   const [selectedCustomers, setSelectedCustomers] = useState<string[]>([]);
-  const [selectedCreditCustomer, setSelectedCreditCustomer] = useState<Customer | null>(null);
+  const [selectedCreditCustomer, setSelectedCreditCustomer] = useState<any>(null);
   const { schemes } = useMilkSchemes();
 
   const handleSelectAll = (checked: boolean) => {
