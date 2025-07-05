@@ -6,7 +6,6 @@ import { Separator } from '@/components/ui/separator';
 import { ShoppingCart, Trash2 } from 'lucide-react';
 import { usePOSData } from '@/hooks/usePOSData';
 import { useCustomers } from '@/hooks/useCustomers';
-import { useSchemeDiscounts } from '@/hooks/useSchemeDiscounts';
 import { SaleItemsSection } from './sales/SaleItemsSection';
 import { BillSummarySection } from './sales/BillSummarySection';
 import { PaymentSection } from './sales/PaymentSection';
@@ -31,42 +30,9 @@ export const POSSales: React.FC = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const { products } = usePOSData();
   const { customers } = useCustomers();
-  const { discounts } = useSchemeDiscounts();
-
-  const selectedCustomerData = customers?.find(c => c.id === selectedCustomer);
-
-  const calculateItemDiscount = (item: SaleItem) => {
-    if (!selectedCustomerData?.scheme_id) return 0;
-    
-    // First try to find variant-specific discount
-    let productDiscount = discounts?.find(
-      (discount) => discount.scheme_id === selectedCustomerData.scheme_id && 
-                   discount.product_id === item.productId &&
-                   discount.variant_id === item.variantId &&
-                   discount.is_active
-    );
-
-    // If no variant-specific discount, try product-level discount
-    if (!productDiscount) {
-      productDiscount = discounts?.find(
-        (discount) => discount.scheme_id === selectedCustomerData.scheme_id && 
-                     discount.product_id === item.productId &&
-                     !discount.variant_id &&
-                     discount.is_active
-      );
-    }
-
-    if (productDiscount) {
-      const itemTotal = item.price * item.quantity;
-      return productDiscount.discount_type === 'percentage'
-        ? itemTotal * (productDiscount.discount_value / 100)
-        : productDiscount.discount_value * item.quantity;
-    }
-    return 0;
-  };
 
   const subTotal = saleItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  const totalDiscount = saleItems.reduce((acc, item) => acc + calculateItemDiscount(item), 0);
+  const totalDiscount = 0; // No discounts since scheme system was removed
   const grandTotal = subTotal - totalDiscount;
 
   const updateQuantity = (id: string, quantity: number) => {
