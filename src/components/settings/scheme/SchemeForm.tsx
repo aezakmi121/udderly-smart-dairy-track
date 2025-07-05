@@ -46,9 +46,6 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
   const [productDiscounts, setProductDiscounts] = useState<ProductDiscount[]>([]);
   const { products, productsLoading } = usePOSData();
 
-  console.log('SchemeForm - Products:', products);
-  console.log('SchemeForm - Loading:', productsLoading);
-
   useEffect(() => {
     if (!isOpen) {
       setProductDiscounts([]);
@@ -59,7 +56,7 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
     setProductDiscounts([...productDiscounts, {
       product_id: '',
       variant_id: '',
-      discount_type: 'percentage',
+      discount_type: 'amount',
       discount_value: 0
     }]);
   };
@@ -79,72 +76,65 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
     return product?.variants || [];
   };
 
+  const getProductName = (productId: string) => {
+    const product = products?.find(p => p.id === productId);
+    return product?.name || 'Select Product';
+  };
+
+  const getVariantName = (productId: string, variantId: string) => {
+    const product = products?.find(p => p.id === productId);
+    const variant = product?.variants?.find(v => v.id === variantId);
+    return variant ? `${variant.name} - ₹${variant.selling_price}` : 'All Variants';
+  };
+
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     onSubmit(e, productDiscounts);
   };
 
-  const getSelectedProduct = (productId: string) => {
-    const product = products?.find(p => p.id === productId);
-    console.log('Selected product for ID ', productId, ':', product);
-    return product;
-  };
+  if (productsLoading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent>
+          <div className="text-center py-4">Loading products...</div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {selectedScheme ? 'Edit Milk Scheme' : 'Add New Milk Scheme'}
+            {selectedScheme ? 'Edit Scheme' : 'Create New Scheme'}
           </DialogTitle>
           <DialogDescription>
-            Configure pricing scheme for customer milk delivery with optional product discounts.
+            Create a discount scheme by selecting products and setting discount amounts.
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleFormSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="scheme_name">Scheme Name *</Label>
-              <Input
-                id="scheme_name"
-                name="scheme_name"
-                defaultValue={selectedScheme?.scheme_name || ''}
-                required
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="discount_type">Discount Type</Label>
-              <Select name="discount_type" defaultValue={selectedScheme?.discount_type || 'amount'}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="amount">Fixed Amount (₹)</SelectItem>
-                  <SelectItem value="percentage">Percentage (%)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
           <div>
-            <Label htmlFor="discount_value">Discount Value</Label>
+            <Label htmlFor="scheme_name">Scheme Name *</Label>
             <Input
-              id="discount_value"
-              name="discount_value"
-              type="number"
-              step="0.01"
-              min="0"
-              defaultValue={selectedScheme?.discount_value || 0}
+              id="scheme_name"
+              name="scheme_name"
+              placeholder="e.g., Advance Payment Scheme"
+              defaultValue={selectedScheme?.scheme_name || ''}
+              required
             />
           </div>
 
-          {/* Product Discounts Section */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Product Discounts (Optional)</CardTitle>
+                <div>
+                  <CardTitle>Product Discounts</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Add products and set discount amounts for this scheme
+                  </p>
+                </div>
                 <Button
                   type="button"
                   variant="outline"
@@ -152,90 +142,110 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
                   onClick={addProductDiscount}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Product Discount
+                  Add Product
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              {productDiscounts.length > 0 && (
+              {productDiscounts.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No products added yet.</p>
+                  <p className="text-sm">Click "Add Product" to start adding discounts.</p>
+                </div>
+              ) : (
                 <div className="space-y-4">
                   {productDiscounts.map((discount, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end p-4 border rounded-lg">
-                      <div>
-                        <Label>Product</Label>
-                        <Select 
-                          value={discount.product_id} 
-                          onValueChange={(value) => updateProductDiscount(index, 'product_id', value)}
+                    <Card key={index} className="p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div>
+                          <Label>Product *</Label>
+                          <Select 
+                            value={discount.product_id} 
+                            onValueChange={(value) => {
+                              updateProductDiscount(index, 'product_id', value);
+                              updateProductDiscount(index, 'variant_id', ''); // Reset variant when product changes
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select product" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {products?.map((product) => (
+                                <SelectItem key={product.id} value={product.id}>
+                                  {product.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label>Variant</Label>
+                          <Select 
+                            value={discount.variant_id || 'all'} 
+                            onValueChange={(value) => updateProductDiscount(index, 'variant_id', value === 'all' ? undefined : value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select variant" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Variants</SelectItem>
+                              {getProductVariants(discount.product_id).map((variant) => (
+                                <SelectItem key={variant.id} value={variant.id}>
+                                  {variant.name} - ₹{variant.selling_price}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label>Discount</Label>
+                          <div className="flex space-x-2">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="Amount"
+                              value={discount.discount_value}
+                              onChange={(e) => updateProductDiscount(index, 'discount_value', parseFloat(e.target.value) || 0)}
+                              className="flex-grow"
+                            />
+                            <Select 
+                              value={discount.discount_type} 
+                              onValueChange={(value) => updateProductDiscount(index, 'discount_type', value)}
+                            >
+                              <SelectTrigger className="w-20">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="amount">₹</SelectItem>
+                                <SelectItem value="percentage">%</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeProductDiscount(index)}
                         >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select product" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {products?.map((product) => (
-                              <SelectItem key={product.id} value={product.id}>
-                                {product.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-
-                      <div>
-                        <Label>Variant (Optional)</Label>
-                        <Select 
-                          value={discount.variant_id || ''} 
-                          onValueChange={(value) => updateProductDiscount(index, 'variant_id', value || undefined)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select variant" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">All variants</SelectItem>
-                            {getProductVariants(discount.product_id).map((variant) => (
-                              <SelectItem key={variant.id} value={variant.id}>
-                                {variant.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label>Discount Type</Label>
-                        <Select 
-                          value={discount.discount_type} 
-                          onValueChange={(value) => updateProductDiscount(index, 'discount_type', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="percentage">Percentage (%)</SelectItem>
-                            <SelectItem value="amount">Fixed Amount (₹)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label>Discount Value</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={discount.discount_value}
-                          onChange={(e) => updateProductDiscount(index, 'discount_value', parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeProductDiscount(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                      
+                      {discount.product_id && (
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          <strong>{getProductName(discount.product_id)}</strong>
+                          {discount.variant_id ? ` - ${getVariantName(discount.product_id, discount.variant_id)}` : ' - All Variants'}
+                          <span className="ml-2">
+                            → Discount: {discount.discount_value}{discount.discount_type === 'percentage' ? '%' : '₹'}
+                          </span>
+                        </div>
+                      )}
+                    </Card>
                   ))}
                 </div>
               )}
@@ -246,7 +256,10 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              disabled={isLoading || productDiscounts.length === 0}
+            >
               {isLoading ? 'Saving...' : (selectedScheme ? 'Update Scheme' : 'Create Scheme')}
             </Button>
           </div>

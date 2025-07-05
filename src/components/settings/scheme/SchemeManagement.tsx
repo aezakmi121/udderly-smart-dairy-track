@@ -39,11 +39,11 @@ export const SchemeManagement = () => {
     
     const schemeData = {
       scheme_name: formData.get('scheme_name') as string,
-      cow_milk_rate: 60,
+      cow_milk_rate: 60, // Default values
       buffalo_milk_rate: 75,
-      discount_type: formData.get('discount_type') as 'amount' | 'percentage',
-      discount_value: parseFloat(formData.get('discount_value') as string) || 0,
-      is_active: false // Set schemes as inactive by default
+      discount_type: 'amount' as const,
+      discount_value: 0,
+      is_active: false
     };
 
     try {
@@ -53,24 +53,22 @@ export const SchemeManagement = () => {
         id: selectedScheme?.id
       });
 
-      // Save product discounts if any
-      if (productDiscounts.length > 0) {
-        const schemeId = selectedScheme?.id || result.id;
-        
-        for (const discount of productDiscounts) {
-          if (discount.product_id && discount.discount_value > 0) {
-            await discountMutation.mutateAsync({
-              discountData: {
-                scheme_id: schemeId,
-                product_id: discount.product_id,
-                variant_id: discount.variant_id || null,
-                discount_type: discount.discount_type,
-                discount_value: discount.discount_value,
-                is_active: true
-              },
-              isUpdate: false
-            });
-          }
+      const schemeId = selectedScheme?.id || result.id;
+      
+      // Save product discounts
+      for (const discount of productDiscounts) {
+        if (discount.product_id && discount.discount_value > 0) {
+          await discountMutation.mutateAsync({
+            discountData: {
+              scheme_id: schemeId,
+              product_id: discount.product_id,
+              variant_id: discount.variant_id || null,
+              discount_type: discount.discount_type,
+              discount_value: discount.discount_value,
+              is_active: true
+            },
+            isUpdate: false
+          });
         }
       }
       
@@ -120,7 +118,7 @@ export const SchemeManagement = () => {
             >
               ← Back to Schemes
             </button>
-            <h3 className="text-lg font-medium">Configure Product Discounts - {scheme.scheme_name}</h3>
+            <h3 className="text-lg font-medium">Configure Discounts - {scheme.scheme_name}</h3>
           </div>
           <SchemeProductDiscounts 
             schemeId={scheme.id} 
