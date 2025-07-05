@@ -41,7 +41,7 @@ export const CustomersManagement = () => {
   const { toast } = useToast();
 
   const calculateRate = (milkType: string, schemeId: string | null) => {
-    if (!schemeId) {
+    if (!schemeId || schemeId === 'none') {
       return milkType === 'cow' ? 60 : 75; // Default rates
     }
     
@@ -66,8 +66,9 @@ export const CustomersManagement = () => {
     const formData = new FormData(e.currentTarget);
     
     const milkType = formData.get('milk_type') as string;
-    const schemeId = formData.get('scheme_id') as string || null;
-    const calculatedRate = calculateRate(milkType, schemeId);
+    const schemeId = formData.get('scheme_id') as string;
+    const finalSchemeId = schemeId === 'none' ? null : schemeId;
+    const calculatedRate = calculateRate(milkType, finalSchemeId);
     
     const customerData = {
       customer_code: selectedCustomer?.customer_code || generateCustomerCode(),
@@ -81,7 +82,7 @@ export const CustomersManagement = () => {
       rate_per_liter: parseFloat(formData.get('rate_per_liter') as string) || calculatedRate,
       credit_limit: parseFloat(formData.get('credit_limit') as string) || 0,
       is_active: formData.get('is_active') === 'true',
-      scheme_id: schemeId,
+      scheme_id: finalSchemeId,
       milk_type: milkType
     };
 

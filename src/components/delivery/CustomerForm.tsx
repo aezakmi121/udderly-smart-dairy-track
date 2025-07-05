@@ -112,12 +112,12 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
         <div>
           <Label htmlFor="scheme_id">Pricing Scheme</Label>
-          <Select name="scheme_id" defaultValue={selectedCustomer?.scheme_id || ''}>
+          <Select name="scheme_id" defaultValue={selectedCustomer?.scheme_id || 'none'}>
             <SelectTrigger>
               <SelectValue placeholder="Select scheme" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No Scheme</SelectItem>
+              <SelectItem value="none">No Scheme</SelectItem>
               {schemes?.filter(scheme => scheme.is_active).map((scheme) => (
                 <SelectItem key={scheme.id} value={scheme.id}>
                   {scheme.scheme_name}

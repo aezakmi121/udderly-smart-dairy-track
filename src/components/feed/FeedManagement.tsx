@@ -5,6 +5,7 @@ import { FeedCategories } from './FeedCategories';
 import { FeedItems } from './FeedItems';
 import { FeedTransactions } from './FeedTransactions';
 import { FeedStock } from './FeedStock';
+import { DailyFeedManagement } from './DailyFeedManagement';
 
 export const FeedManagement = () => {
   return (
@@ -17,6 +18,7 @@ export const FeedManagement = () => {
       <Tabs defaultValue="stock" className="space-y-6">
         <TabsList>
           <TabsTrigger value="stock">Stock Overview</TabsTrigger>
+          <TabsTrigger value="daily-feed">Daily Feed</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
           <TabsTrigger value="items">Feed Items</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
@@ -24,6 +26,10 @@ export const FeedManagement = () => {
         
         <TabsContent value="stock">
           <FeedStock />
+        </TabsContent>
+        
+        <TabsContent value="daily-feed">
+          <DailyFeedManagement />
         </TabsContent>
         
         <TabsContent value="transactions">
