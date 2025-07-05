@@ -104,7 +104,7 @@ export const GroupBasedFeedManagement = () => {
       
       toast({
         title: "Group feed allocated successfully!",
-        description: `Fed ${cowCount} cows in ${group.group_name}`
+        description: `Fed ${cowCount} cows in ${group.group_name}. Feed deducted from daily management.`
       });
       
       setFeedAllocations({});
@@ -135,7 +135,8 @@ export const GroupBasedFeedManagement = () => {
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-4">
-            Allocate feed to entire cow groups based on their defined feed requirements and number of cows.
+            Allocate feed to entire cow groups based on their defined feed requirements and number of cows. 
+            Feed will be automatically deducted from your daily feed management stock.
           </p>
 
           <div className="space-y-4">
