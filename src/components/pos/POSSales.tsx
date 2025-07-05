@@ -8,7 +8,6 @@ import { usePOSData } from '@/hooks/usePOSData';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useSchemeDiscounts } from '@/hooks/useSchemeDiscounts';
 import { CategorySection } from './sales/CategorySection';
-import { ProductGrid } from './sales/ProductGrid';
 import { SaleItemsSection } from './sales/SaleItemsSection';
 import { BillSummarySection } from './sales/BillSummarySection';
 import { PaymentSection } from './sales/PaymentSection';
@@ -33,9 +32,9 @@ export const POSSales: React.FC = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const { categories, products, productsLoading } = usePOSData();
   const { customers } = useCustomers();
-	const { discounts } = useSchemeDiscounts();
+  const { discounts } = useSchemeDiscounts();
 
-  const subTotal = saleItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const subTotal = saleItems.reduce((acc, item) => acc + (item.total || (item.price * item.quantity)), 0);
 
   const totalDiscount = saleItems.reduce((acc, item) => {
     const productDiscount = discounts?.find(
@@ -43,8 +42,9 @@ export const POSSales: React.FC = () => {
     );
 
     if (productDiscount) {
+      const itemTotal = item.total || (item.price * item.quantity);
       const discountValue = productDiscount.discount_type === 'percentage'
-        ? (item.price * item.quantity) * (productDiscount.discount_value / 100)
+        ? itemTotal * (productDiscount.discount_value / 100)
         : productDiscount.discount_value;
       
       return acc + discountValue;
@@ -68,6 +68,8 @@ export const POSSales: React.FC = () => {
   };
 
   const addItemToSale = (product: any, variant: any) => {
+    console.log('Adding item to sale:', product, variant);
+    
     const existingItem = saleItems.find(item => item.productId === product.id && item.variantId === variant.id);
 
     if (existingItem) {
@@ -78,12 +80,13 @@ export const POSSales: React.FC = () => {
         productId: product.id,
         variantId: variant.id,
         name: `${product.name} - ${variant.name}`,
-        price: variant.price,
+        price: variant.selling_price,
         quantity: 1,
         unit: variant.unit,
-        total: variant.price,
+        total: variant.selling_price,
         fractionalAllowed: product.fractional_allowed
       };
+      console.log('Created new item:', newItem);
       setSaleItems([...saleItems, newItem]);
     }
   };
@@ -119,18 +122,16 @@ export const POSSales: React.FC = () => {
   }, [products]);
 
   useEffect(() => {
-    document.addEventListener('keydown', (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClearAll();
       }
-    });
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.removeEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-          onClearAll();
-        }
-      });
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -191,34 +192,36 @@ export const POSSales: React.FC = () => {
               />
             </div>
             
-            <div className="border-t p-4 space-y-4 bg-gray-50/50">
-              <BillSummarySection 
-                subtotal={subTotal}
-                totalDiscount={totalDiscount}
-                otherCharges={0}
-                grandTotal={grandTotal}
-              />
-              
-              <Separator />
-              
-              <PaymentSection 
-                paymentMode={paymentMode}
-                selectedCustomer={selectedCustomer}
-                onPaymentModeChange={setPaymentMode}
-                onCustomerSelect={setSelectedCustomer}
-                onProcessSale={processSale}
-                onClearAll={onClearAll}
-              />
-              
-              <Button 
-                onClick={processSale}
-                className="w-full" 
-                size="lg"
-                disabled={saleItems.length === 0}
-              >
-                Complete Sale - ₹{grandTotal.toFixed(2)}
-              </Button>
-            </div>
+            {saleItems.length > 0 && (
+              <div className="border-t p-4 space-y-4 bg-gray-50/50">
+                <BillSummarySection 
+                  subtotal={subTotal}
+                  totalDiscount={totalDiscount}
+                  otherCharges={0}
+                  grandTotal={grandTotal}
+                />
+                
+                <Separator />
+                
+                <PaymentSection 
+                  paymentMode={paymentMode}
+                  selectedCustomer={selectedCustomer}
+                  onPaymentModeChange={setPaymentMode}
+                  onCustomerSelect={setSelectedCustomer}
+                  onProcessSale={processSale}
+                  onClearAll={onClearAll}
+                />
+                
+                <Button 
+                  onClick={processSale}
+                  className="w-full" 
+                  size="lg"
+                  disabled={saleItems.length === 0}
+                >
+                  Complete Sale - ₹{grandTotal.toFixed(2)}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
