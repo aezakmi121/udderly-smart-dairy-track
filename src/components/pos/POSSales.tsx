@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useCreditTransactions } from '@/hooks/useCreditTransactions';
+import { useMilkSchemes } from '@/hooks/useMilkSchemes';
 import { SaleItemsSection } from './sales/SaleItemsSection';
 import { AdditionalChargesSection } from './sales/AdditionalChargesSection';
 import { BillSummarySection } from './sales/BillSummarySection';
@@ -28,6 +29,7 @@ export const POSSales = () => {
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const { toast } = useToast();
   const { addTransaction } = useCreditTransactions();
+  const { schemes } = useMilkSchemes();
 
   const subtotal = saleItems.reduce((sum, item) => sum + item.total, 0);
   const totalDiscount = discount + saleItems.reduce((sum, item) => sum + (item.discount || 0), 0);
@@ -77,12 +79,15 @@ export const POSSales = () => {
 
     try {
       if (paymentMode === 'credit' && selectedCustomer) {
+        // Generate a proper UUID for the reference_id
+        const referenceId = crypto.randomUUID();
+        
         await addTransaction.mutateAsync({
           customer_id: selectedCustomer,
           transaction_type: 'credit_sale',
           amount: grandTotal,
           description: `POS Sale - ${saleItems.length} items`,
-          reference_id: `sale_${Date.now()}`
+          reference_id: referenceId
         });
       }
 
@@ -92,9 +97,10 @@ export const POSSales = () => {
       });
       clearAll();
     } catch (error: any) {
+      console.error('Sale processing error:', error);
       toast({ 
         title: "Failed to process sale", 
-        description: error.message,
+        description: error.message || "An error occurred while processing the sale",
         variant: "destructive" 
       });
     }
