@@ -16,13 +16,11 @@ const getNotificationIcon = (type: string) => {
   switch (type) {
     case 'low_stock':
       return <Package className="h-4 w-4" />;
-    case 'ai_needed':
+    case 'pd_due':
       return <Heart className="h-4 w-4" />;
-    case 'pregnancy_check':
-      return <Calendar className="h-4 w-4" />;
     case 'vaccination_due':
       return <Syringe className="h-4 w-4" />;
-    case 'calving_due':
+    case 'delivery_due':
       return <AlertTriangle className="h-4 w-4" />;
     default:
       return <Bell className="h-4 w-4" />;
@@ -44,7 +42,7 @@ const getPriorityColor = (priority: string) => {
 
 export const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { notifications, isLoading, highPriorityCount, totalCount } = useNotifications();
+  const { notifications, isLoading, highPriorityCount, unreadCount } = useNotifications();
 
   if (isLoading) {
     return (
@@ -59,12 +57,12 @@ export const NotificationBell = () => {
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="relative">
           <Bell className="h-4 w-4" />
-          {totalCount > 0 && (
+          {unreadCount > 0 && (
             <Badge 
               variant={highPriorityCount > 0 ? "destructive" : "secondary"}
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
             >
-              {totalCount > 99 ? '99+' : totalCount}
+              {unreadCount > 99 ? '99+' : unreadCount}
             </Badge>
           )}
         </Button>
@@ -72,9 +70,9 @@ export const NotificationBell = () => {
       <PopoverContent className="w-80 p-0" align="end">
         <div className="p-4 border-b">
           <h3 className="font-semibold">Notifications</h3>
-          {totalCount > 0 && (
+          {unreadCount > 0 && (
             <p className="text-sm text-muted-foreground">
-              {totalCount} notification{totalCount === 1 ? '' : 's'}
+              {unreadCount} notification{unreadCount === 1 ? '' : 's'}
               {highPriorityCount > 0 && (
                 <span className="text-red-600 font-medium">
                   {' '}({highPriorityCount} urgent)
@@ -108,7 +106,7 @@ export const NotificationBell = () => {
                         {notification.title}
                       </p>
                       <p className="text-sm text-gray-600 mt-1">
-                        {notification.description}
+                        {notification.message}
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
                         {new Date(notification.created_at).toLocaleString()}

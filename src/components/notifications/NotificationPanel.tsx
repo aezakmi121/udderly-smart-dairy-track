@@ -10,13 +10,11 @@ const getNotificationIcon = (type: string) => {
   switch (type) {
     case 'low_stock':
       return <Package className="h-5 w-5" />;
-    case 'ai_needed':
+    case 'pd_due':
       return <Heart className="h-5 w-5" />;
-    case 'pregnancy_check':
-      return <Calendar className="h-5 w-5" />;
     case 'vaccination_due':
       return <Syringe className="h-5 w-5" />;
-    case 'calving_due':
+    case 'delivery_due':
       return <AlertTriangle className="h-5 w-5" />;
     default:
       return <Bell className="h-5 w-5" />;
@@ -102,7 +100,7 @@ export const NotificationPanel = () => {
                         {getPriorityBadge(notification.priority)}
                       </div>
                       <p className="text-sm text-red-700">
-                        {notification.description}
+                        {notification.message}
                       </p>
                       <p className="text-xs text-red-500 mt-1">
                         {new Date(notification.created_at).toLocaleString()}
@@ -151,7 +149,7 @@ export const NotificationPanel = () => {
                         "text-sm",
                         notification.priority === 'medium' ? "text-orange-700" : "text-gray-700"
                       )}>
-                        {notification.description}
+                        {notification.message}
                       </p>
                       <p className={cn(
                         "text-xs mt-1",
