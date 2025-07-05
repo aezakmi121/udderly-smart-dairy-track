@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Upload, FileSpreadsheet } from 'lucide-react';
+import { Upload, FileSpreadsheet, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCustomers } from '@/hooks/useCustomers';
 
@@ -30,6 +30,7 @@ export const CustomerBulkUpload: React.FC<CustomerBulkUploadProps> = ({
       if (fileType === 'text/csv' || fileName.endsWith('.csv') || 
           fileType.includes('spreadsheet') || fileName.endsWith('.xls') || fileName.endsWith('.xlsx')) {
         setFile(selectedFile);
+        console.log('File selected:', selectedFile.name, 'Type:', selectedFile.type);
       } else {
         toast({
           title: "Invalid file type",
@@ -38,6 +39,10 @@ export const CustomerBulkUpload: React.FC<CustomerBulkUploadProps> = ({
         });
       }
     }
+  };
+
+  const removeFile = () => {
+    setFile(null);
   };
 
   const parseCSV = (text: string): Array<{name: string, phone: string, address: string}> => {
@@ -106,7 +111,7 @@ export const CustomerBulkUpload: React.FC<CustomerBulkUploadProps> = ({
 
     try {
       const text = await file.text();
-      console.log('File content:', text);
+      console.log('File content preview:', text.substring(0, 200));
       
       const customers = parseCSV(text);
 
@@ -125,6 +130,7 @@ export const CustomerBulkUpload: React.FC<CustomerBulkUploadProps> = ({
       // Process customers one by one
       let successCount = 0;
       let errorCount = 0;
+      const errors: string[] = [];
 
       for (const customer of customers) {
         console.log('Processing customer:', customer);
@@ -155,8 +161,10 @@ export const CustomerBulkUpload: React.FC<CustomerBulkUploadProps> = ({
                   successCount++;
                   resolve(true);
                 },
-                onError: (error) => {
+                onError: (error: any) => {
                   console.error('Error adding customer:', customer.name, error);
+                  const errorMessage = error?.message || error?.details || 'Unknown error';
+                  errors.push(`${customer.name}: ${errorMessage}`);
                   errorCount++;
                   reject(error);
                 }
@@ -165,19 +173,33 @@ export const CustomerBulkUpload: React.FC<CustomerBulkUploadProps> = ({
           });
 
           // Add a small delay to avoid overwhelming the database
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 200));
 
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to process customer:', customer, error);
+          const errorMessage = error?.message || error?.details || 'Unknown error';
+          errors.push(`${customer.name}: ${errorMessage}`);
           errorCount++;
         }
       }
 
-      toast({
-        title: "Bulk upload completed",
-        description: `Successfully added ${successCount} customers. ${errorCount > 0 ? `${errorCount} failed.` : ''}`,
-        variant: successCount > 0 ? "default" : "destructive"
-      });
+      // Show detailed results
+      if (successCount > 0) {
+        toast({
+          title: "Bulk upload completed",
+          description: `Successfully added ${successCount} customers${errorCount > 0 ? `. ${errorCount} failed.` : '.'}`,
+          variant: "default"
+        });
+      }
+
+      if (errorCount > 0) {
+        console.error('Upload errors:', errors);
+        toast({
+          title: "Some uploads failed",
+          description: `${errorCount} customers failed to upload. Check console for details.`,
+          variant: "destructive"
+        });
+      }
 
       if (successCount > 0) {
         onUploadComplete();
@@ -185,11 +207,12 @@ export const CustomerBulkUpload: React.FC<CustomerBulkUploadProps> = ({
         setFile(null);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
+      const errorMessage = error?.message || 'Unknown error occurred';
       toast({
         title: "Upload failed",
-        description: "Error processing file. Please check the format and try again.",
+        description: `Error processing file: ${errorMessage}`,
         variant: "destructive"
       });
     }
@@ -221,23 +244,47 @@ export const CustomerBulkUpload: React.FC<CustomerBulkUploadProps> = ({
             <p className="mt-2 text-xs">Supports both tab-separated and comma-separated values.</p>
           </div>
 
-          <div>
-            <Label htmlFor="file-upload">Select File</Label>
-            <Input
-              id="file-upload"
-              type="file"
-              accept=".csv,.xls,.xlsx"
-              onChange={handleFileChange}
-              disabled={isProcessing}
-            />
-          </div>
-
-          {file && (
-            <div className="flex items-center gap-2 text-sm text-green-600">
-              <FileSpreadsheet className="h-4 w-4" />
-              {file.name}
+          <div className="space-y-2">
+            <Label>Select File</Label>
+            <div className="flex flex-col gap-2">
+              <input
+                type="file"
+                accept=".csv,.xls,.xlsx"
+                onChange={handleFileChange}
+                disabled={isProcessing}
+                className="hidden"
+                id="file-upload"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('file-upload')?.click()}
+                disabled={isProcessing}
+                className="w-full"
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Choose File
+              </Button>
+              
+              {file && (
+                <div className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                  <div className="flex items-center gap-2 text-sm">
+                    <FileSpreadsheet className="h-4 w-4 text-gray-500" />
+                    <span className="truncate">{file.name}</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={removeFile}
+                    disabled={isProcessing}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           <div className="flex justify-end space-x-2">
             <Button 
