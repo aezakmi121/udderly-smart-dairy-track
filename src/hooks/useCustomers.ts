@@ -28,6 +28,12 @@ export const useCustomers = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const generateCustomerCode = () => {
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `CUST${timestamp}${random}`;
+  };
+
   const { data: customers, isLoading, error } = useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
@@ -66,7 +72,7 @@ export const useCustomers = () => {
       } else {
         const { error } = await supabase
           .from('customers')
-          .insert([customerData]);
+          .insert(customerData as any);
         if (error) throw error;
       }
     },
@@ -108,7 +114,7 @@ export const useCustomers = () => {
 
   // Bulk upload customers
   const bulkUploadCustomers = useMutation({
-    mutationFn: async (customers: Partial<Customer>[]) => {
+    mutationFn: async (customers: any[]) => {
       const { error } = await supabase
         .from('customers')
         .insert(customers);
@@ -134,6 +140,7 @@ export const useCustomers = () => {
     error,
     customerMutation,
     deleteCustomer,
-    bulkUploadCustomers
+    bulkUploadCustomers,
+    generateCustomerCode
   };
 };

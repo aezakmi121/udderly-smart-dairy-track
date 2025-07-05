@@ -69,7 +69,7 @@ export const useDeliveryBoys = () => {
       } else {
         const { error } = await supabase
           .from('delivery_boys')
-          .insert([deliveryBoyData]);
+          .insert(deliveryBoyData as any);
         if (error) throw error;
       }
     },

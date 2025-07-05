@@ -36,31 +36,26 @@ export const useFeedManagement = () => {
     }
   });
 
-  // Fixed query for low stock items - use proper column comparison
+  // Simplified low stock items query without RPC
   const { data: lowStockItems, isLoading: lowStockLoading } = useQuery({
     queryKey: ['low-stock-feed-items'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .rpc('get_low_stock_items');
+        .from('feed_items')
+        .select('*')
+        .order('name');
       
       if (error) {
-        console.error('Error fetching low stock items:', error);
-        // Fallback to basic query if RPC fails
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('feed_items')
-          .select('*')
-          .order('name');
-        
-        if (fallbackError) throw fallbackError;
-        
-        // Filter in JavaScript as fallback
-        return fallbackData?.filter(item => 
-          item.current_stock !== null && 
-          item.minimum_stock_level !== null && 
-          item.current_stock <= item.minimum_stock_level
-        ) || [];
+        console.error('Error fetching feed items:', error);
+        return [];
       }
-      return data;
+      
+      // Filter for low stock items in JavaScript
+      return data?.filter(item => 
+        item.current_stock !== null && 
+        item.minimum_stock_level !== null && 
+        item.current_stock <= item.minimum_stock_level
+      ) || [];
     }
   });
 

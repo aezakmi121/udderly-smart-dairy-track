@@ -8,15 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Search, User, CreditCard } from 'lucide-react';
 import { useCustomers } from '@/hooks/useCustomers';
 
-interface Customer {
-  id: string;
-  name: string;
-  phone_number: string;
-  current_credit: number;
-  customer_code: string;
-  area: string | null;
-}
-
 interface CustomerSelectorProps {
   selectedCustomerId: string;
   onCustomerSelect: (customerId: string) => void;
@@ -38,7 +29,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
 
   const selectedCustomer = customers?.find(c => c.id === selectedCustomerId);
 
-  const handleSelectCustomer = (customer: Customer) => {
+  const handleSelectCustomer = (customer: any) => {
     onCustomerSelect(customer.id);
     setIsOpen(false);
     setSearchTerm('');
@@ -52,7 +43,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
           {selectedCustomer ? (
             <div className="flex items-center gap-2">
               <span>{selectedCustomer.name}</span>
-              {selectedCustomer.current_credit > 0 && (
+              {selectedCustomer.current_credit && selectedCustomer.current_credit > 0 && (
                 <Badge variant="destructive" className="text-xs">
                   Credit: ₹{selectedCustomer.current_credit}
                 </Badge>
@@ -94,7 +85,7 @@ export const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                       {customer.customer_code} {customer.area && `• ${customer.area}`}
                     </div>
                   </div>
-                  {customer.current_credit > 0 && (
+                  {customer.current_credit && customer.current_credit > 0 && (
                     <Badge variant="destructive" className="text-xs flex items-center gap-1">
                       <CreditCard className="h-3 w-3" />
                       ₹{customer.current_credit}
