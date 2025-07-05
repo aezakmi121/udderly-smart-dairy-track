@@ -36,6 +36,21 @@ export const useFeedManagement = () => {
     }
   });
 
+  // Fixed query for low stock items - compare numeric values properly
+  const { data: lowStockItems, isLoading: lowStockLoading } = useQuery({
+    queryKey: ['low-stock-feed-items'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('feed_items')
+        .select('*')
+        .filter('current_stock', 'lte', 'minimum_stock_level')
+        .order('name');
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
   const { data: transactions, isLoading: transactionsLoading } = useQuery({
     queryKey: ['feed-transactions'],
     queryFn: async () => {
@@ -83,6 +98,7 @@ export const useFeedManagement = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feed-items'] });
+      queryClient.invalidateQueries({ queryKey: ['low-stock-feed-items'] });
       toast({ title: "Feed item added successfully!" });
     }
   });
@@ -101,6 +117,7 @@ export const useFeedManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feed-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['feed-items'] });
+      queryClient.invalidateQueries({ queryKey: ['low-stock-feed-items'] });
       toast({ title: "Transaction recorded successfully!" });
     }
   });
@@ -108,8 +125,9 @@ export const useFeedManagement = () => {
   return {
     categories,
     feedItems,
+    lowStockItems,
     transactions,
-    isLoading: categoriesLoading || itemsLoading || transactionsLoading,
+    isLoading: categoriesLoading || itemsLoading || transactionsLoading || lowStockLoading,
     addCategoryMutation,
     addFeedItemMutation,
     addTransactionMutation

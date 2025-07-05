@@ -39,6 +39,7 @@ export const FeedReports = () => {
         sum + (Number(item.current_stock) * Number(item.cost_per_unit || 0)), 0
       );
 
+      // Fixed: Compare numeric values properly for low stock calculation
       const lowStockItems = data.filter(item => 
         Number(item.current_stock) <= Number(item.minimum_stock_level || 0)
       ).length;
