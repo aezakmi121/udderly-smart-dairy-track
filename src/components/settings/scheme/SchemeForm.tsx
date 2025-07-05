@@ -44,7 +44,7 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
   isLoading
 }) => {
   const [productDiscounts, setProductDiscounts] = useState<ProductDiscount[]>([]);
-  const { products, isLoading: productsLoading } = usePOSData();
+  const { products, productsLoading } = usePOSData();
 
   console.log('SchemeForm - Products:', products);
   console.log('SchemeForm - Loading:', productsLoading);
