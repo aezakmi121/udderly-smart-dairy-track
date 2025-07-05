@@ -1,13 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Package, Search } from 'lucide-react';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Package, Search, Check, ChevronsUpDown } from 'lucide-react';
 import { usePOSData } from '@/hooks/usePOSData';
+import { cn } from '@/lib/utils';
 
 interface ProductVariant {
   id: string;
@@ -41,148 +43,222 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   onSelectProduct
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [selectedVariantId, setSelectedVariantId] = useState('');
+  const [comboboxOpen, setComboboxOpen] = useState(false);
+  
   const { products, categories, productsLoading } = usePOSData();
 
-  // Early return with loading state
-  if (productsLoading) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
-          <div className="text-center py-4">Loading products...</div>
-        </DialogContent>
-      </Dialog>
+  // Create flattened product-variant combinations for easier searching
+  const productVariantOptions = useMemo(() => {
+    if (!products || products.length === 0) return [];
+    
+    const options: Array<{
+      id: string;
+      label: string;
+      product: Product;
+      variant: ProductVariant;
+      category: string;
+      searchText: string;
+    }> = [];
+
+    products.forEach(product => {
+      product.variants.forEach(variant => {
+        const label = `${product.name} - ${variant.name} (${variant.size} ${variant.unit}) - ₹${variant.selling_price}`;
+        const searchText = `${product.name} ${variant.name} ${product.category}`.toLowerCase();
+        
+        options.push({
+          id: `${product.id}-${variant.id}`,
+          label,
+          product,
+          variant,
+          category: product.category,
+          searchText
+        });
+      });
+    });
+
+    return options;
+  }, [products]);
+
+  // Filter options based on search term
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return productVariantOptions;
+    
+    return productVariantOptions.filter(option =>
+      option.searchText.includes(searchTerm.toLowerCase())
     );
-  }
+  }, [productVariantOptions, searchTerm]);
 
-  // Early return if no products
-  if (!products || products.length === 0) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Select Product</DialogTitle>
-          </DialogHeader>
-          <div className="text-center py-8 text-muted-foreground">
-            No products available. Please add products first.
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  // Group filtered options by category
+  const groupedOptions = useMemo(() => {
+    const groups: Record<string, typeof filteredOptions> = {};
+    
+    filteredOptions.forEach(option => {
+      if (!groups[option.category]) {
+        groups[option.category] = [];
+      }
+      groups[option.category].push(option);
+    });
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+    return groups;
+  }, [filteredOptions]);
 
-  const handleVariantSelect = (product: Product, variant: ProductVariant) => {
-    if (variant.stock_quantity <= 0) {
-      return;
-    }
+  const selectedOption = productVariantOptions.find(opt => opt.id === selectedProductId);
+
+  const handleSelect = () => {
+    if (!selectedOption) return;
+    
     try {
-      onSelectProduct(product, variant);
+      onSelectProduct(selectedOption.product, selectedOption.variant);
       onOpenChange(false);
+      setSelectedProductId('');
+      setSelectedVariantId('');
       setSearchTerm('');
-      setSelectedCategory('');
     } catch (error) {
       console.error('Error selecting product:', error);
     }
   };
 
+  const handleReset = () => {
+    setSelectedProductId('');
+    setSelectedVariantId('');
+    setSearchTerm('');
+  };
+
+  if (productsLoading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <Package className="h-8 w-8 mx-auto mb-2 animate-pulse" />
+              <p>Loading products...</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (!products || products.length === 0) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Product</DialogTitle>
+          </DialogHeader>
+          <div className="text-center py-8 text-muted-foreground">
+            <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No products available.</p>
+            <p className="text-sm">Please add products first.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Select Product</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
-          {/* Search and Filter */}
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Label>Search Products</Label>
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by product name..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-            </div>
-            <div>
-              <Label>Category</Label>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="All categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All categories</SelectItem>
-                  {categories?.map((category) => (
-                    <SelectItem key={category.id} value={category.name}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Products Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredProducts.map((product) => (
-              <div key={product.id} className="border rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Package className="h-4 w-4" />
-                  <h3 className="font-medium">{product.name}</h3>
-                  <Badge variant="secondary">{product.category}</Badge>
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">
-                    Unit Type: {product.unit_type}
-                    {product.fractional_allowed && (
-                      <Badge variant="outline" className="ml-2">Fractional</Badge>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <Label className="text-xs">Variants:</Label>
-                    {product.variants.map((variant) => (
-                      <Button
-                        key={variant.id}
-                        variant={variant.stock_quantity <= 0 ? "secondary" : "outline"}
-                        size="sm"
-                        className="w-full justify-between text-xs"
-                        onClick={() => handleVariantSelect(product, variant)}
-                        disabled={variant.stock_quantity <= 0}
-                      >
-                        <span>{variant.name} - {variant.size} {variant.unit}</span>
-                        <div className="flex items-center gap-2">
-                          <span>₹{variant.selling_price}</span>
-                          <Badge 
-                            variant={variant.stock_quantity <= 0 ? "destructive" : "default"}
-                            className="text-xs"
+          <div>
+            <Label>Search & Select Product</Label>
+            <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={comboboxOpen}
+                  className="w-full justify-between"
+                >
+                  {selectedOption ? selectedOption.label : "Select product..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0" style={{ width: 'var(--radix-popover-trigger-width)' }}>
+                <Command>
+                  <CommandInput 
+                    placeholder="Search products..." 
+                    value={searchTerm}
+                    onValueChange={setSearchTerm}
+                  />
+                  <CommandList className="max-h-64">
+                    <CommandEmpty>No products found.</CommandEmpty>
+                    {Object.entries(groupedOptions).map(([category, options]) => (
+                      <CommandGroup key={category} heading={category}>
+                        {options.map((option) => (
+                          <CommandItem
+                            key={option.id}
+                            value={option.id}
+                            onSelect={(value) => {
+                              setSelectedProductId(value === selectedProductId ? "" : value);
+                              setComboboxOpen(false);
+                            }}
+                            disabled={option.variant.stock_quantity <= 0}
                           >
-                            {variant.stock_quantity} left
-                          </Badge>
-                        </div>
-                      </Button>
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedProductId === option.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <span className={option.variant.stock_quantity <= 0 ? "line-through opacity-50" : ""}>
+                                  {option.label}
+                                </span>
+                                <Badge 
+                                  variant={option.variant.stock_quantity <= 0 ? "destructive" : "secondary"}
+                                  className="ml-2"
+                                >
+                                  {option.variant.stock_quantity} left
+                                </Badge>
+                              </div>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
                     ))}
-                  </div>
-                </div>
-              </div>
-            ))}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
-          {filteredProducts.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              No products found matching your criteria.
+          {selectedOption && (
+            <div className="p-4 border rounded-lg bg-muted/50">
+              <h4 className="font-medium mb-2">Selected Product Details</h4>
+              <div className="space-y-2 text-sm">
+                <div><strong>Product:</strong> {selectedOption.product.name}</div>
+                <div><strong>Category:</strong> {selectedOption.category}</div>
+                <div><strong>Variant:</strong> {selectedOption.variant.name}</div>
+                <div><strong>Size:</strong> {selectedOption.variant.size} {selectedOption.variant.unit}</div>
+                <div><strong>Price:</strong> ₹{selectedOption.variant.selling_price}</div>
+                <div><strong>Stock:</strong> {selectedOption.variant.stock_quantity} available</div>
+                {selectedOption.product.fractional_allowed && (
+                  <Badge variant="outline">Fractional quantities allowed</Badge>
+                )}
+              </div>
             </div>
           )}
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button type="button" variant="outline" onClick={handleReset}>
+              Clear
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleSelect} 
+              disabled={!selectedOption || selectedOption.variant.stock_quantity <= 0}
+            >
+              Add to Cart
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
