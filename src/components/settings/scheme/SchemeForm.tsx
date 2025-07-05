@@ -1,10 +1,13 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Trash2, Plus } from 'lucide-react';
+import { usePOSData } from '@/hooks/usePOSData';
 
 interface MilkScheme {
   id: string;
@@ -18,11 +21,18 @@ interface MilkScheme {
   updated_at: string;
 }
 
+interface ProductDiscount {
+  product_id: string;
+  variant_id?: string;
+  discount_type: 'percentage' | 'amount';
+  discount_value: number;
+}
+
 interface SchemeFormProps {
   isOpen: boolean;
   onClose: () => void;
   selectedScheme: MilkScheme | null;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>, productDiscounts: ProductDiscount[]) => void;
   isLoading: boolean;
 }
 
@@ -33,16 +43,47 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
   onSubmit,
   isLoading
 }) => {
+  const { products } = usePOSData();
+  const [productDiscounts, setProductDiscounts] = useState<ProductDiscount[]>([]);
+
+  const addProductDiscount = () => {
+    setProductDiscounts([...productDiscounts, {
+      product_id: '',
+      variant_id: '',
+      discount_type: 'percentage',
+      discount_value: 0
+    }]);
+  };
+
+  const removeProductDiscount = (index: number) => {
+    setProductDiscounts(productDiscounts.filter((_, i) => i !== index));
+  };
+
+  const updateProductDiscount = (index: number, field: string, value: any) => {
+    const updated = [...productDiscounts];
+    updated[index] = { ...updated[index], [field]: value };
+    setProductDiscounts(updated);
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    onSubmit(e, productDiscounts);
+    setProductDiscounts([]);
+  };
+
+  const getSelectedProduct = (productId: string) => {
+    return products?.find(p => p.id === productId);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {selectedScheme ? 'Edit Scheme' : 'Add New Scheme'}
           </DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <Label htmlFor="scheme_name">Scheme Name *</Label>
             <Input
@@ -80,7 +121,7 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="discount_type">Discount Type</Label>
+              <Label htmlFor="discount_type">Default Discount Type</Label>
               <Select name="discount_type" defaultValue={selectedScheme?.discount_type || 'amount'}>
                 <SelectTrigger>
                   <SelectValue />
@@ -92,7 +133,7 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
               </Select>
             </div>
             <div>
-              <Label htmlFor="discount_value">Discount Value</Label>
+              <Label htmlFor="discount_value">Default Discount Value</Label>
               <Input
                 id="discount_value"
                 name="discount_value"
@@ -102,6 +143,105 @@ export const SchemeForm: React.FC<SchemeFormProps> = ({
               />
             </div>
           </div>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Product Discounts</CardTitle>
+              <Button type="button" onClick={addProductDiscount} variant="outline" size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Product Discount
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {productDiscounts.map((discount, index) => (
+                <div key={index} className="grid grid-cols-5 gap-2 items-end p-3 border rounded">
+                  <div>
+                    <Label>Product</Label>
+                    <Select 
+                      value={discount.product_id}
+                      onValueChange={(value) => {
+                        updateProductDiscount(index, 'product_id', value);
+                        updateProductDiscount(index, 'variant_id', ''); // Reset variant when product changes
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select product" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products?.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Variant</Label>
+                    <Select 
+                      value={discount.variant_id || ''}
+                      onValueChange={(value) => updateProductDiscount(index, 'variant_id', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="All variants" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All Variants</SelectItem>
+                        {getSelectedProduct(discount.product_id)?.variants?.map((variant) => (
+                          <SelectItem key={variant.id} value={variant.id}>
+                            {variant.name} - ₹{variant.selling_price}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Type</Label>
+                    <Select 
+                      value={discount.discount_type}
+                      onValueChange={(value) => updateProductDiscount(index, 'discount_type', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">Percentage</SelectItem>
+                        <SelectItem value="amount">Amount</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Value</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={discount.discount_value}
+                      onChange={(e) => updateProductDiscount(index, 'discount_value', parseFloat(e.target.value) || 0)}
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => removeProductDiscount(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              
+              {productDiscounts.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No product discounts added. Click "Add Product Discount" to configure specific product discounts.
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
           <div>
             <Label htmlFor="is_active">Status</Label>

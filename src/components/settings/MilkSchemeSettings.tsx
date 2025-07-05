@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMilkSchemes } from '@/hooks/useMilkSchemes';
+import { useSchemeDiscounts } from '@/hooks/useSchemeDiscounts';
 import { SchemeProductDiscounts } from './SchemeProductDiscounts';
 import { SchemeHeader } from './scheme/SchemeHeader';
 import { SchemeForm } from './scheme/SchemeForm';
@@ -19,13 +19,21 @@ interface MilkScheme {
   updated_at: string;
 }
 
+interface ProductDiscount {
+  product_id: string;
+  variant_id?: string;
+  discount_type: 'percentage' | 'amount';
+  discount_value: number;
+}
+
 export const MilkSchemeSettings = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedScheme, setSelectedScheme] = useState<MilkScheme | null>(null);
   const [showDiscounts, setShowDiscounts] = useState<string | null>(null);
   const { schemes, isLoading, schemeMutation, deleteScheme } = useMilkSchemes();
+  const { discountMutation } = useSchemeDiscounts();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>, productDiscounts: ProductDiscount[]) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
@@ -39,11 +47,32 @@ export const MilkSchemeSettings = () => {
     };
 
     try {
-      await schemeMutation.mutateAsync({
+      const result = await schemeMutation.mutateAsync({
         schemeData,
         isUpdate: !!selectedScheme,
         id: selectedScheme?.id
       });
+
+      // Save product discounts if any are defined
+      if (productDiscounts.length > 0) {
+        const schemeId = selectedScheme?.id || result.id;
+        
+        for (const discount of productDiscounts) {
+          if (discount.product_id && discount.discount_value > 0) {
+            await discountMutation.mutateAsync({
+              discountData: {
+                scheme_id: schemeId,
+                product_id: discount.product_id,
+                variant_id: discount.variant_id || null,
+                discount_type: discount.discount_type,
+                discount_value: discount.discount_value,
+                is_active: true
+              },
+              isUpdate: false
+            });
+          }
+        }
+      }
       
       setIsDialogOpen(false);
       setSelectedScheme(null);

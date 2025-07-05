@@ -48,21 +48,28 @@ export const useMilkSchemes = () => {
       id?: string 
     }) => {
       if (isUpdate && id) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('milk_schemes')
           .update(schemeData)
-          .eq('id', id);
+          .eq('id', id)
+          .select()
+          .single();
         if (error) throw error;
+        return data;
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('milk_schemes')
-          .insert([schemeData as MilkSchemeInsert]);
+          .insert([schemeData as MilkSchemeInsert])
+          .select()
+          .single();
         if (error) throw error;
+        return data;
       }
     },
-    onSuccess: (_, { isUpdate }) => {
+    onSuccess: (data, { isUpdate }) => {
       queryClient.invalidateQueries({ queryKey: ['milk-schemes'] });
       toast({ title: `Scheme ${isUpdate ? 'updated' : 'added'} successfully!` });
+      return data; // Return the created/updated scheme
     },
     onError: (error: any, { isUpdate }) => {
       toast({ 
