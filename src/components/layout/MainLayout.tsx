@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Navigation } from './Navigation';
 import { Sidebar } from './Sidebar';
@@ -17,50 +16,44 @@ import { CustomersManagement } from '../delivery/CustomersManagement';
 import { ReportsManagement } from '../reports/ReportsManagement';
 import { SettingsManagement } from '../settings/SettingsManagement';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { CowGroupingManagement } from '@/components/grouping/CowGroupingManagement';
 
 export const MainLayout = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const { canAccess, isLoading } = useUserPermissions();
+  const { canAccess } = useUserPermissions();
 
   const renderContent = () => {
-    // Show loading state while checking permissions
-    if (isLoading) {
-      return (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-        </div>
-      );
-    }
-
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;
       case 'cows':
-        return canAccess.cows ? <CowsManagement /> : <AccessDenied />;
+        return <CowsManagement />;
       case 'calves':
-        return canAccess.calves ? <CalvesManagement /> : <AccessDenied />;
+        return <CalvesManagement />;
       case 'milk-production':
-        return canAccess.milkProduction ? <MilkProduction /> : <AccessDenied />;
+        return <MilkProduction />;
       case 'vaccination':
-        return canAccess.vaccination ? <VaccinationManagement /> : <AccessDenied />;
+        return <VaccinationManagement />;
       case 'weight-logs':
-        return canAccess.weightLogs ? <WeightLogsManagement /> : <AccessDenied />;
+        return <WeightLogsManagement />;
       case 'ai-tracking':
-        return canAccess.aiTracking ? <AITrackingManagement /> : <AccessDenied />;
+        return <AITrackingManagement />;
       case 'farmers':
-        return canAccess.farmers ? <FarmersManagement /> : <AccessDenied />;
+        return <FarmersManagement />;
       case 'milk-collection':
-        return canAccess.milkCollection ? <MilkCollectionManagement /> : <AccessDenied />;
+        return <MilkCollectionManagement />;
       case 'feed-management':
-        return canAccess.feedManagement ? <FeedManagement /> : <AccessDenied />;
+        return <FeedManagement />;
+      case 'cow-grouping':
+        return <CowGroupingManagement />;
       case 'delivery-boys':
-        return canAccess.deliveryBoys ? <DeliveryBoysManagement /> : <AccessDenied />;
+        return <DeliveryBoysManagement />;
       case 'customers':
-        return canAccess.customers ? <CustomersManagement /> : <AccessDenied />;
+        return <CustomersManagement />;
       case 'reports':
-        return canAccess.reports ? <ReportsManagement /> : <AccessDenied />;
+        return <ReportsManagement />;
       case 'settings':
-        return canAccess.settings ? <SettingsManagement /> : <AccessDenied />;
+        return <SettingsManagement />;
       default:
         return <Dashboard />;
     }

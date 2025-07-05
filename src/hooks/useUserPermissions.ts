@@ -1,90 +1,78 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/AuthProvider';
 
 export const useUserPermissions = () => {
   const { user } = useAuth();
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: userRole, isLoading } = useQuery({
-    queryKey: ['user-role', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      
-      const { data } = await (supabase as any).rpc('get_user_role', {
-        _user_id: user.id
-      });
-      
-      return data;
-    },
-    enabled: !!user?.id
-  });
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
 
-  const isAdmin = userRole === 'admin';
-  const isFarmer = userRole === 'farmer';
-  const isWorker = userRole === 'worker';
-  const isDeliveryBoy = userRole === 'delivery_boy' as any;
-  const isStoreManager = userRole === 'store_manager' as any;
+      try {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .order('assigned_at', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+        
+        setUserRole(data?.[0]?.role || 'worker');
+      } catch (error) {
+        console.error('Error fetching user role:', error);
+        setUserRole('worker'); // Default role
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserRole();
+  }, [user]);
 
   const canAccess = {
-    dashboard: true, // Everyone can access dashboard
-    cows: isAdmin || isWorker,
-    calves: isAdmin || isWorker,
-    milkProduction: isAdmin || isWorker,
-    vaccination: isAdmin || isWorker,
-    weightLogs: isAdmin || isWorker,
-    aiTracking: isAdmin || isWorker,
-    farmers: isAdmin || isWorker || isFarmer,
-    milkCollection: isAdmin || isWorker || isFarmer,
-    feedManagement: isAdmin || isWorker,
-    deliveryBoys: isAdmin || isStoreManager,
-    customers: isAdmin || isStoreManager || isDeliveryBoy,
-    reports: isAdmin || isWorker || isFarmer,
-    settings: isAdmin
-  };
-
-  const canEdit = {
-    cows: isAdmin || isWorker,
-    calves: isAdmin || isWorker,
-    milkProduction: isAdmin || isWorker,
-    vaccination: isAdmin || isWorker,
-    weightLogs: isAdmin || isWorker,
-    aiTracking: isAdmin || isWorker,
-    farmers: isAdmin || isWorker,
-    milkCollection: isAdmin || isWorker || isFarmer,
-    feedManagement: isAdmin || isWorker,
-    deliveryBoys: isAdmin || isStoreManager,
-    customers: isAdmin || isStoreManager,
-    reports: isAdmin,
-    settings: isAdmin
+    dashboard: true,
+    cows: userRole === 'admin' || userRole === 'worker',
+    calves: userRole === 'admin' || userRole === 'worker',
+    milkProduction: userRole === 'admin' || userRole === 'worker',
+    vaccination: userRole === 'admin' || userRole === 'worker',
+    weightLogs: userRole === 'admin' || userRole === 'worker',
+    aiTracking: userRole === 'admin' || userRole === 'worker',
+    farmers: userRole === 'admin' || userRole === 'worker' || userRole === 'farmer',
+    milkCollection: userRole === 'admin' || userRole === 'worker' || userRole === 'farmer',
+    feedManagement: userRole === 'admin' || userRole === 'worker',
+    cowGrouping: userRole === 'admin' || userRole === 'worker',
+    deliveryBoys: userRole === 'admin' || userRole === 'store_manager',
+    customers: userRole === 'admin' || userRole === 'store_manager',
+    reports: userRole === 'admin' || userRole === 'store_manager' || userRole === 'worker',
+    settings: userRole === 'admin'
   };
 
   const canDelete = {
-    cows: isAdmin,
-    calves: isAdmin,
-    milkProduction: isAdmin,
-    vaccination: isAdmin,
-    weightLogs: isAdmin,
-    aiTracking: isAdmin,
-    farmers: isAdmin,
-    milkCollection: isAdmin,
-    feedManagement: isAdmin,
-    deliveryBoys: isAdmin,
-    customers: isAdmin,
-    reports: isAdmin,
-    settings: isAdmin
+    cows: userRole === 'admin',
+    calves: userRole === 'admin',
+    milkProduction: userRole === 'admin' || userRole === 'worker',
+    vaccination: userRole === 'admin',
+    weightLogs: userRole === 'admin',
+    aiTracking: userRole === 'admin',
+    farmers: userRole === 'admin',
+    milkCollection: userRole === 'admin',
+    feedManagement: userRole === 'admin',
+    cowGrouping: userRole === 'admin',
+    deliveryBoys: userRole === 'admin',
+    customers: userRole === 'admin'
   };
 
   return {
     userRole,
     canAccess,
-    canEdit,
     canDelete,
-    isLoading,
-    isAdmin,
-    isFarmer,
-    isWorker,
-    isDeliveryBoy,
-    isStoreManager
+    isLoading
   };
 };

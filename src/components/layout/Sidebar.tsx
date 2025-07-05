@@ -15,7 +15,8 @@ import {
   BarChart3, 
   Settings,
   Truck,
-  UserCheck
+  UserCheck,
+  Group
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -32,6 +33,7 @@ interface SidebarProps {
     farmers: boolean;
     milkCollection: boolean;
     feedManagement: boolean;
+    cowGrouping: boolean;
     deliveryBoys: boolean;
     customers: boolean;
     reports: boolean;
@@ -51,6 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, canAcc
     { id: 'farmers', label: 'Farmers', icon: Users, show: canAccess.farmers },
     { id: 'milk-collection', label: 'Milk Collection', icon: Droplets, show: canAccess.milkCollection },
     { id: 'feed-management', label: 'Feed Management', icon: Wheat, show: canAccess.feedManagement },
+    { id: 'cow-grouping', label: 'Cow Grouping', icon: Group, show: canAccess.cowGrouping },
     { id: 'delivery-boys', label: 'Delivery Boys', icon: Truck, show: canAccess.deliveryBoys },
     { id: 'customers', label: 'Customers', icon: UserCheck, show: canAccess.customers },
     { id: 'reports', label: 'Reports', icon: BarChart3, show: canAccess.reports },

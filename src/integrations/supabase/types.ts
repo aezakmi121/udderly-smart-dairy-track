@@ -157,6 +157,93 @@ export type Database = {
           },
         ]
       }
+      cow_group_assignments: {
+        Row: {
+          assigned_by_user_id: string | null
+          assigned_date: string | null
+          cow_id: string | null
+          created_at: string | null
+          group_id: string | null
+          id: string
+          is_active: boolean | null
+        }
+        Insert: {
+          assigned_by_user_id?: string | null
+          assigned_date?: string | null
+          cow_id?: string | null
+          created_at?: string | null
+          group_id?: string | null
+          id?: string
+          is_active?: boolean | null
+        }
+        Update: {
+          assigned_by_user_id?: string | null
+          assigned_date?: string | null
+          cow_id?: string | null
+          created_at?: string | null
+          group_id?: string | null
+          id?: string
+          is_active?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cow_group_assignments_cow_id_fkey"
+            columns: ["cow_id"]
+            isOneToOne: false
+            referencedRelation: "cows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cow_group_assignments_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "cow_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cow_groups: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          feed_requirements: Json | null
+          group_name: string
+          id: string
+          is_active: boolean | null
+          max_days_in_milk: number | null
+          max_yield: number | null
+          min_days_in_milk: number | null
+          min_yield: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          feed_requirements?: Json | null
+          group_name: string
+          id?: string
+          is_active?: boolean | null
+          max_days_in_milk?: number | null
+          max_yield?: number | null
+          min_days_in_milk?: number | null
+          min_yield?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          feed_requirements?: Json | null
+          group_name?: string
+          id?: string
+          is_active?: boolean | null
+          max_days_in_milk?: number | null
+          max_yield?: number | null
+          min_days_in_milk?: number | null
+          min_yield?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       cows: {
         Row: {
           breed: string | null
@@ -531,6 +618,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      grouping_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          setting_name: string
+          setting_value: Json
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          setting_name: string
+          setting_value: Json
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          setting_name?: string
+          setting_value?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       milk_collections: {
         Row: {
