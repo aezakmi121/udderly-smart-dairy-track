@@ -2,15 +2,11 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useSchemeDiscounts } from '@/hooks/useSchemeDiscounts';
 import { usePOSData } from '@/hooks/usePOSData';
+import { DiscountForm } from './discount/DiscountForm';
+import { DiscountTable } from './discount/DiscountTable';
 
 interface SchemeProductDiscountsProps {
   schemeId: string;
@@ -58,9 +54,7 @@ export const SchemeProductDiscounts: React.FC<SchemeProductDiscountsProps> = ({
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this discount?')) {
-      deleteDiscount.mutate(id);
-    }
+    deleteDiscount.mutate(id);
   };
 
   const getProductName = (productId: string) => {
@@ -77,142 +71,30 @@ export const SchemeProductDiscounts: React.FC<SchemeProductDiscountsProps> = ({
             <p className="text-sm text-muted-foreground">Configure discounts for specific products</p>
           </div>
           
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => openDialog()}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Product Discount
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>
-                  {selectedDiscount ? 'Edit Product Discount' : 'Add Product Discount'}
-                </DialogTitle>
-              </DialogHeader>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="product_id">Product *</Label>
-                  <Select name="product_id" defaultValue={selectedDiscount?.product_id || ''} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a product" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products?.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="discount_type">Discount Type</Label>
-                    <Select name="discount_type" defaultValue={selectedDiscount?.discount_type || 'percentage'}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="percentage">Percentage (%)</SelectItem>
-                        <SelectItem value="amount">Amount (₹)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="discount_value">Discount Value *</Label>
-                    <Input
-                      id="discount_value"
-                      name="discount_value"
-                      type="number"
-                      step="0.01"
-                      defaultValue={selectedDiscount?.discount_value || 0}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="is_active">Status</Label>
-                  <Select name="is_active" defaultValue={selectedDiscount?.is_active?.toString() || 'true'}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="true">Active</SelectItem>
-                      <SelectItem value="false">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={discountMutation.isPending}>
-                    {discountMutation.isPending ? 'Saving...' : (selectedDiscount ? 'Update' : 'Add')}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => openDialog()}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Product Discount
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="text-center py-4">Loading discounts...</div>
-        ) : schemeDiscounts.length === 0 ? (
-          <div className="text-center py-4">No product discounts configured.</div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>Discount Type</TableHead>
-                <TableHead>Discount Value</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {schemeDiscounts.map((discount) => (
-                <TableRow key={discount.id}>
-                  <TableCell className="font-medium">{getProductName(discount.product_id)}</TableCell>
-                  <TableCell className="capitalize">{discount.discount_type}</TableCell>
-                  <TableCell>
-                    {discount.discount_value}{discount.discount_type === 'percentage' ? '%' : '₹'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={discount.is_active ? 'default' : 'secondary'}>
-                      {discount.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openDialog(discount)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(discount.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        <DiscountTable
+          discounts={schemeDiscounts}
+          isLoading={isLoading}
+          onEdit={openDialog}
+          onDelete={handleDelete}
+          getProductName={getProductName}
+        />
       </CardContent>
+
+      <DiscountForm
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        selectedDiscount={selectedDiscount}
+        products={products}
+        onSubmit={handleSubmit}
+        isLoading={discountMutation.isPending}
+      />
     </Card>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useCreditTransactions } from '@/hooks/useCreditTransactions';
@@ -150,7 +149,6 @@ export const POSSales = () => {
 
     try {
       if (paymentMode === 'credit' && selectedCustomer) {
-        // Generate a proper UUID for the reference_id
         const referenceId = crypto.randomUUID();
         
         await addTransaction.mutateAsync({
