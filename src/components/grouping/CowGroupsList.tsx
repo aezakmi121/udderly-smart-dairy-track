@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react';
 import { useCowGrouping } from '@/hooks/useCowGrouping';
 import { CreateGroupDialog } from './CreateGroupDialog';
 import { GroupCard } from './groups/GroupCard';
+import { CowGroup } from './types';
 
 export const CowGroupsList = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -32,7 +33,7 @@ export const CowGroupsList = () => {
         {cowGroups?.map((group) => (
           <GroupCard
             key={group.id}
-            group={group}
+            group={group as CowGroup}
             assignmentCount={getGroupAssignmentCount(group.id)}
           />
         ))}
