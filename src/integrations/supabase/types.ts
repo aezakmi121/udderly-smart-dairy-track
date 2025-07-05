@@ -304,6 +304,51 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_allocations: {
+        Row: {
+          allocated_by: string | null
+          allocated_date: string | null
+          created_at: string | null
+          customer_id: string | null
+          delivery_boy_id: string | null
+          id: string
+          is_active: boolean | null
+        }
+        Insert: {
+          allocated_by?: string | null
+          allocated_date?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          delivery_boy_id?: string | null
+          id?: string
+          is_active?: boolean | null
+        }
+        Update: {
+          allocated_by?: string | null
+          allocated_date?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          delivery_boy_id?: string | null
+          id?: string
+          is_active?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_allocations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_allocations_delivery_boy_id_fkey"
+            columns: ["delivery_boy_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_boys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_credit_transactions: {
         Row: {
           amount: number
@@ -401,6 +446,69 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      daily_deliveries: {
+        Row: {
+          actual_quantity: number | null
+          created_at: string | null
+          customer_id: string | null
+          delivered_at: string | null
+          delivery_boy_id: string | null
+          delivery_date: string | null
+          id: string
+          notes: string | null
+          rate_per_liter: number
+          scheduled_quantity: number
+          status: string | null
+          total_amount: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          actual_quantity?: number | null
+          created_at?: string | null
+          customer_id?: string | null
+          delivered_at?: string | null
+          delivery_boy_id?: string | null
+          delivery_date?: string | null
+          id?: string
+          notes?: string | null
+          rate_per_liter: number
+          scheduled_quantity?: number
+          status?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          actual_quantity?: number | null
+          created_at?: string | null
+          customer_id?: string | null
+          delivered_at?: string | null
+          delivery_boy_id?: string | null
+          delivery_date?: string | null
+          id?: string
+          notes?: string | null
+          rate_per_liter?: number
+          scheduled_quantity?: number
+          status?: string | null
+          total_amount?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_deliveries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_deliveries_delivery_boy_id_fkey"
+            columns: ["delivery_boy_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_boys"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       delivery_boys: {
         Row: {
@@ -1106,6 +1214,10 @@ export type Database = {
     Functions: {
       calculate_days_in_milk: {
         Args: { cow_id: string }
+        Returns: number
+      }
+      create_daily_deliveries_for_date: {
+        Args: { target_date?: string }
         Returns: number
       }
       get_user_role: {

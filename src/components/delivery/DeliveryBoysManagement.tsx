@@ -3,11 +3,14 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Truck, Plus } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Truck, Plus, Users } from 'lucide-react';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useDeliveryBoys } from '@/hooks/useDeliveryBoys';
 import { DeliveryBoyForm } from './DeliveryBoyForm';
 import { DeliveryBoysTable } from './DeliveryBoysTable';
+import { CustomerAllocation } from './CustomerAllocation';
+import { DeliveryBoyDashboard } from './DeliveryBoyDashboard';
 
 interface DeliveryBoy {
   id: string;
@@ -64,12 +67,19 @@ export const DeliveryBoysManagement = () => {
     setSelectedDeliveryBoy(null);
   };
 
+  // Check if user is a delivery boy
+  const isDeliveryBoy = canEdit.deliveryBoys === false; // Assuming delivery boys can't edit delivery boys
+
+  if (isDeliveryBoy) {
+    return <DeliveryBoyDashboard />;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Truck className="h-6 w-6" />
-          <h2 className="text-2xl font-bold">Delivery Boys Management</h2>
+          <h2 className="text-2xl font-bold">Delivery Management</h2>
         </div>
         {canEdit.deliveryBoys && (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -97,24 +107,43 @@ export const DeliveryBoysManagement = () => {
         )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Delivery Boys List</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-4">Loading delivery boys...</div>
-          ) : deliveryBoys?.length === 0 ? (
-            <div className="text-center py-4">No delivery boys found.</div>
-          ) : (
-            <DeliveryBoysTable
-              deliveryBoys={deliveryBoys || []}
-              onEdit={openDialog}
-              canEdit={canEdit.deliveryBoys}
-            />
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="allocation" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="allocation" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Customer Allocation
+          </TabsTrigger>
+          <TabsTrigger value="delivery-boys" className="flex items-center gap-2">
+            <Truck className="h-4 w-4" />
+            Delivery Boys
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="allocation">
+          <CustomerAllocation />
+        </TabsContent>
+        
+        <TabsContent value="delivery-boys">
+          <Card>
+            <CardHeader>
+              <CardTitle>Delivery Boys List</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="text-center py-4">Loading delivery boys...</div>
+              ) : deliveryBoys?.length === 0 ? (
+                <div className="text-center py-4">No delivery boys found.</div>
+              ) : (
+                <DeliveryBoysTable
+                  deliveryBoys={deliveryBoys || []}
+                  onEdit={openDialog}
+                  canEdit={canEdit.deliveryBoys}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
