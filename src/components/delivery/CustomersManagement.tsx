@@ -13,10 +13,38 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Users, Plus, Edit2, Eye } from 'lucide-react';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
-import { Tables, TablesInsert } from '@/integrations/supabase/types';
 
-type Customer = Tables<'customers'>;
-type CustomerInsert = TablesInsert<'customers'>;
+// Local type definitions since customers table is not in the generated types
+interface Customer {
+  id: string;
+  customer_code: string;
+  name: string;
+  phone_number: string;
+  address: string;
+  area: string | null;
+  daily_quantity: number;
+  delivery_time: string;
+  subscription_type: string;
+  rate_per_liter: number;
+  credit_limit: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CustomerInsert {
+  customer_code: string;
+  name: string;
+  phone_number: string;
+  address: string;
+  area?: string | null;
+  daily_quantity?: number;
+  delivery_time?: string;
+  subscription_type?: string;
+  rate_per_liter: number;
+  credit_limit?: number;
+  is_active?: boolean;
+}
 
 export const CustomersManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -34,7 +62,7 @@ export const CustomersManagement = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+      return data as Customer[];
     }
   });
 
@@ -318,4 +346,3 @@ export const CustomersManagement = () => {
     </div>
   );
 };
-
