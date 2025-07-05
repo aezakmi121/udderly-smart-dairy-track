@@ -5,17 +5,17 @@ import { CategoryTable } from './CategoryTable';
 import { useFeedManagement } from '@/hooks/useFeedManagement';
 
 export const FeedCategories = () => {
-  const { categories, isLoading, addCategoryMutation } = useFeedManagement();
+  const { categories, isLoading, createCategoryMutation } = useFeedManagement();
 
   const handleAddCategory = (data: any) => {
-    addCategoryMutation.mutate(data);
+    createCategoryMutation.mutate(data);
   };
 
   return (
     <div className="space-y-6">
       <CategoryForm 
         onSubmit={handleAddCategory} 
-        isLoading={addCategoryMutation.isPending}
+        isLoading={createCategoryMutation.isPending}
       />
       
       <div className="bg-white rounded-lg shadow">

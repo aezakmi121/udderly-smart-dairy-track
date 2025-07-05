@@ -15,7 +15,7 @@ export const DailyFeedManagement = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFeedItem, setSelectedFeedItem] = useState('');
   const [dailyQuantity, setDailyQuantity] = useState('');
-  const { feedItems, isLoading, addTransactionMutation } = useFeedManagement();
+  const { feedItems, isLoading, createTransactionMutation } = useFeedManagement();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,7 +52,7 @@ export const DailyFeedManagement = () => {
     }
 
     try {
-      await addTransactionMutation.mutateAsync({
+      await createTransactionMutation.mutateAsync({
         feed_item_id: selectedFeedItem,
         transaction_type: 'outgoing',
         quantity: quantity,
@@ -134,8 +134,8 @@ export const DailyFeedManagement = () => {
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={addTransactionMutation.isPending}>
-                    {addTransactionMutation.isPending ? 'Allocating...' : 'Allocate Feed'}
+                  <Button type="submit" disabled={createTransactionMutation.isPending}>
+                    {createTransactionMutation.isPending ? 'Allocating...' : 'Allocate Feed'}
                   </Button>
                 </div>
               </form>

@@ -5,17 +5,17 @@ import { FeedItemTable } from './FeedItemTable';
 import { useFeedManagement } from '@/hooks/useFeedManagement';
 
 export const FeedItems = () => {
-  const { feedItems, isLoading, addFeedItemMutation } = useFeedManagement();
+  const { feedItems, isLoading, createFeedItemMutation } = useFeedManagement();
 
   const handleAddFeedItem = (data: any) => {
-    addFeedItemMutation.mutate(data);
+    createFeedItemMutation.mutate(data);
   };
 
   return (
     <div className="space-y-6">
       <FeedItemForm 
         onSubmit={handleAddFeedItem} 
-        isLoading={addFeedItemMutation.isPending}
+        isLoading={createFeedItemMutation.isPending}
       />
       
       <div className="bg-white rounded-lg shadow">

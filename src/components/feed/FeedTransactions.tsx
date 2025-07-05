@@ -5,17 +5,17 @@ import { TransactionTable } from './TransactionTable';
 import { useFeedManagement } from '@/hooks/useFeedManagement';
 
 export const FeedTransactions = () => {
-  const { transactions, isLoading, addTransactionMutation } = useFeedManagement();
+  const { transactions, isLoading, createTransactionMutation } = useFeedManagement();
 
   const handleAddTransaction = (data: any) => {
-    addTransactionMutation.mutate(data);
+    createTransactionMutation.mutate(data);
   };
 
   return (
     <div className="space-y-6">
       <TransactionForm 
         onSubmit={handleAddTransaction} 
-        isLoading={addTransactionMutation.isPending}
+        isLoading={createTransactionMutation.isPending}
       />
       
       <div className="bg-white rounded-lg shadow">

@@ -15,7 +15,7 @@ export const GroupBasedFeedManagement = () => {
   const [selectedGroup, setSelectedGroup] = useState('');
   const [feedAllocations, setFeedAllocations] = useState<{[key: string]: string}>({});
   const { cowGroups, groupAssignments, isLoading: groupsLoading } = useCowGrouping();
-  const { feedItems, addTransactionMutation } = useFeedManagement();
+  const { feedItems, createTransactionMutation } = useFeedManagement();
   const { toast } = useToast();
 
   const getGroupCowCount = (groupId: string) => {
@@ -99,7 +99,7 @@ export const GroupBasedFeedManagement = () => {
     // Execute all transactions
     try {
       for (const transaction of transactions) {
-        await addTransactionMutation.mutateAsync(transaction);
+        await createTransactionMutation.mutateAsync(transaction);
       }
       
       toast({
@@ -211,10 +211,10 @@ export const GroupBasedFeedManagement = () => {
 
                     <Button 
                       onClick={allocateGroupFeed}
-                      disabled={!selectedGroup || cowCount === 0 || addTransactionMutation.isPending}
+                      disabled={!selectedGroup || cowCount === 0 || createTransactionMutation.isPending}
                       className="w-full"
                     >
-                      {addTransactionMutation.isPending 
+                      {createTransactionMutation.isPending 
                         ? 'Allocating Feed...' 
                         : `Allocate Feed to ${cowCount} Cows`
                       }
