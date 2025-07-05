@@ -54,12 +54,12 @@ export const GroupBasedFeedManagement = () => {
       return;
     }
 
-    const feedRequirements = group.feed_requirements as any;
+    const feedRequirements = group.feed_requirements as Record<string, number>;
     const transactions = [];
 
     // Create transactions for each feed type
     for (const [feedType, perCowAmount] of Object.entries(feedRequirements)) {
-      const totalAmount = (perCowAmount as number) * cowCount;
+      const totalAmount = perCowAmount * cowCount;
       const customAmount = feedAllocations[feedType];
       const finalAmount = customAmount ? parseFloat(customAmount) : totalAmount;
 
@@ -178,8 +178,8 @@ export const GroupBasedFeedManagement = () => {
 
                     {selectedGroupData.feed_requirements && (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {Object.entries(selectedGroupData.feed_requirements as any).map(([feedType, perCowAmount]) => {
-                          const totalAmount = (perCowAmount as number) * cowCount;
+                        {Object.entries(selectedGroupData.feed_requirements as Record<string, number>).map(([feedType, perCowAmount]) => {
+                          const totalAmount = perCowAmount * cowCount;
                           const feedItem = feedItems?.find(item => 
                             item.name.toLowerCase().includes(feedType.toLowerCase())
                           );
@@ -247,7 +247,7 @@ export const GroupBasedFeedManagement = () => {
                   <div className="space-y-2">
                     <h4 className="font-medium text-sm">Daily Feed per Cow</h4>
                     <div className="grid grid-cols-2 gap-1 text-sm text-muted-foreground">
-                      {Object.entries(group.feed_requirements as any).map(([feed, amount]) => (
+                      {Object.entries(group.feed_requirements as Record<string, number>).map(([feed, amount]) => (
                         <div key={feed} className="flex justify-between">
                           <span className="capitalize">{feed}:</span>
                           <span>{amount}kg</span>

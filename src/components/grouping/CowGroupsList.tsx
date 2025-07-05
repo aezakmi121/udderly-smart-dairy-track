@@ -79,7 +79,7 @@ export const CowGroupsList = () => {
                   <div>
                     <h4 className="font-medium text-sm">Daily Feed Requirements</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                      {Object.entries(group.feed_requirements as any).map(([feed, amount]) => (
+                      {Object.entries(group.feed_requirements as Record<string, number>).map(([feed, amount]) => (
                         <div key={feed} className="flex justify-between">
                           <span className="capitalize">{feed}:</span>
                           <span>{amount}kg</span>

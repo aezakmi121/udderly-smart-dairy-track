@@ -1,3 +1,5 @@
+
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -69,10 +71,26 @@ export const useUserPermissions = () => {
     customers: userRole === 'admin'
   };
 
+  const canEdit = {
+    cows: userRole === 'admin' || userRole === 'worker',
+    calves: userRole === 'admin' || userRole === 'worker',
+    milkProduction: userRole === 'admin' || userRole === 'worker',
+    vaccination: userRole === 'admin' || userRole === 'worker',
+    weightLogs: userRole === 'admin' || userRole === 'worker',
+    aiTracking: userRole === 'admin' || userRole === 'worker',
+    farmers: userRole === 'admin' || userRole === 'worker',
+    milkCollection: userRole === 'admin' || userRole === 'worker',
+    feedManagement: userRole === 'admin' || userRole === 'worker',
+    cowGrouping: userRole === 'admin' || userRole === 'worker',
+    deliveryBoys: userRole === 'admin' || userRole === 'store_manager',
+    customers: userRole === 'admin' || userRole === 'store_manager'
+  };
+
   return {
     userRole,
     canAccess,
     canDelete,
+    canEdit,
     isLoading
   };
 };
