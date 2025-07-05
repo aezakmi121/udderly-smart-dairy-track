@@ -47,17 +47,6 @@ export const MilkSchemeSettings = () => {
       
       setIsDialogOpen(false);
       setSelectedScheme(null);
-      
-      // If it's a new scheme, automatically show product discounts
-      if (!selectedScheme) {
-        // Get the newly created scheme (it will be at the top since sorted by created_at desc)
-        setTimeout(() => {
-          const newScheme = schemes?.[0];
-          if (newScheme) {
-            setShowDiscounts(newScheme.id);
-          }
-        }, 500);
-      }
     } catch (error) {
       console.error('Error saving scheme:', error);
     }

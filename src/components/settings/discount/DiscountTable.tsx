@@ -8,6 +8,7 @@ import { Edit, Trash2 } from 'lucide-react';
 interface Discount {
   id: string;
   product_id: string;
+  variant_id?: string;
   discount_type: string;
   discount_value: number;
   is_active: boolean;
@@ -18,7 +19,7 @@ interface DiscountTableProps {
   isLoading: boolean;
   onEdit: (discount: Discount) => void;
   onDelete: (id: string) => void;
-  getProductName: (productId: string) => string;
+  getProductName: (productId: string, variantId?: string) => string;
 }
 
 export const DiscountTable: React.FC<DiscountTableProps> = ({
@@ -46,7 +47,7 @@ export const DiscountTable: React.FC<DiscountTableProps> = ({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Product</TableHead>
+          <TableHead>Product/Variant</TableHead>
           <TableHead>Discount Type</TableHead>
           <TableHead>Discount Value</TableHead>
           <TableHead>Status</TableHead>
@@ -56,7 +57,12 @@ export const DiscountTable: React.FC<DiscountTableProps> = ({
       <TableBody>
         {discounts.map((discount) => (
           <TableRow key={discount.id}>
-            <TableCell className="font-medium">{getProductName(discount.product_id)}</TableCell>
+            <TableCell className="font-medium">
+              {getProductName(discount.product_id, discount.variant_id)}
+              {!discount.variant_id && (
+                <span className="text-xs text-muted-foreground block">All variants</span>
+              )}
+            </TableCell>
             <TableCell className="capitalize">{discount.discount_type}</TableCell>
             <TableCell>
               {discount.discount_value}{discount.discount_type === 'percentage' ? '%' : '₹'}

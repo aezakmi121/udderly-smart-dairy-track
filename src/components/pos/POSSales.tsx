@@ -38,17 +38,29 @@ export const POSSales: React.FC = () => {
   const calculateItemDiscount = (item: SaleItem) => {
     if (!selectedCustomerData?.scheme_id) return 0;
     
-    const productDiscount = discounts?.find(
+    // First try to find variant-specific discount
+    let productDiscount = discounts?.find(
       (discount) => discount.scheme_id === selectedCustomerData.scheme_id && 
                    discount.product_id === item.productId &&
+                   discount.variant_id === item.variantId &&
                    discount.is_active
     );
+
+    // If no variant-specific discount, try product-level discount
+    if (!productDiscount) {
+      productDiscount = discounts?.find(
+        (discount) => discount.scheme_id === selectedCustomerData.scheme_id && 
+                     discount.product_id === item.productId &&
+                     !discount.variant_id &&
+                     discount.is_active
+      );
+    }
 
     if (productDiscount) {
       const itemTotal = item.price * item.quantity;
       return productDiscount.discount_type === 'percentage'
         ? itemTotal * (productDiscount.discount_value / 100)
-        : productDiscount.discount_value;
+        : productDiscount.discount_value * item.quantity;
     }
     return 0;
   };

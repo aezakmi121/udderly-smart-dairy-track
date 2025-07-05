@@ -1,14 +1,23 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
+interface ProductVariant {
+  id: string;
+  name: string;
+  size: number;
+  unit: string;
+  selling_price: number;
+}
+
 interface Product {
   id: string;
   name: string;
+  variants?: ProductVariant[];
 }
 
 interface DiscountFormProps {
@@ -28,6 +37,10 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
   onSubmit,
   isLoading
 }) => {
+  const [selectedProductId, setSelectedProductId] = useState(selectedDiscount?.product_id || '');
+  
+  const selectedProduct = products?.find(p => p.id === selectedProductId);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
@@ -40,7 +53,12 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <Label htmlFor="product_id">Product *</Label>
-            <Select name="product_id" defaultValue={selectedDiscount?.product_id || ''} required>
+            <Select 
+              name="product_id" 
+              value={selectedProductId}
+              onValueChange={setSelectedProductId}
+              required
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select a product" />
               </SelectTrigger>
@@ -53,6 +71,25 @@ export const DiscountForm: React.FC<DiscountFormProps> = ({
               </SelectContent>
             </Select>
           </div>
+
+          {selectedProduct?.variants && selectedProduct.variants.length > 0 && (
+            <div>
+              <Label htmlFor="variant_id">Variant (Optional)</Label>
+              <Select name="variant_id" defaultValue={selectedDiscount?.variant_id || ''}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Apply to all variants or select specific" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Variants</SelectItem>
+                  {selectedProduct.variants.map((variant) => (
+                    <SelectItem key={variant.id} value={variant.id}>
+                      {variant.name} - ₹{variant.selling_price}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>

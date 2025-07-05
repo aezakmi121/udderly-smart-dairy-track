@@ -31,20 +31,23 @@ export const SchemeProductDiscounts: React.FC<SchemeProductDiscountsProps> = ({
     const discountData = {
       scheme_id: schemeId,
       product_id: formData.get('product_id') as string,
+      variant_id: formData.get('variant_id') as string || null,
       discount_type: formData.get('discount_type') as 'percentage' | 'amount',
       discount_value: parseFloat(formData.get('discount_value') as string) || 0,
       is_active: formData.get('is_active') === 'true'
     };
 
-    discountMutation.mutate({
-      discountData,
-      isUpdate: !!selectedDiscount,
-      id: selectedDiscount?.id
-    });
-
-    if (!discountMutation.isPending) {
+    try {
+      await discountMutation.mutateAsync({
+        discountData,
+        isUpdate: !!selectedDiscount,
+        id: selectedDiscount?.id
+      });
+      
       setIsDialogOpen(false);
       setSelectedDiscount(null);
+    } catch (error) {
+      console.error('Error saving discount:', error);
     }
   };
 
@@ -57,9 +60,16 @@ export const SchemeProductDiscounts: React.FC<SchemeProductDiscountsProps> = ({
     deleteDiscount.mutate(id);
   };
 
-  const getProductName = (productId: string) => {
+  const getProductName = (productId: string, variantId?: string) => {
     const product = products?.find(p => p.id === productId);
-    return product?.name || 'Unknown Product';
+    if (!product) return 'Unknown Product';
+    
+    if (variantId) {
+      const variant = product.variants?.find(v => v.id === variantId);
+      return variant ? `${product.name} - ${variant.name}` : product.name;
+    }
+    
+    return product.name;
   };
 
   return (
@@ -68,7 +78,7 @@ export const SchemeProductDiscounts: React.FC<SchemeProductDiscountsProps> = ({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Product Discounts - {schemeName}</CardTitle>
-            <p className="text-sm text-muted-foreground">Configure discounts for specific products</p>
+            <p className="text-sm text-muted-foreground">Configure discounts for specific products and variants</p>
           </div>
           
           <Button onClick={() => openDialog()}>

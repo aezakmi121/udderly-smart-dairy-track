@@ -7,6 +7,7 @@ interface SchemeProductDiscount {
   id: string;
   scheme_id: string;
   product_id: string;
+  variant_id?: string;
   discount_type: 'percentage' | 'amount';
   discount_value: number;
   is_active: boolean;
@@ -17,6 +18,7 @@ interface SchemeProductDiscount {
 interface SchemeProductDiscountInsert {
   scheme_id: string;
   product_id: string;
+  variant_id?: string;
   discount_type: 'percentage' | 'amount';
   discount_value: number;
   is_active?: boolean;
@@ -92,11 +94,12 @@ export const useSchemeDiscounts = () => {
     }
   });
 
-  const getDiscountForProduct = (schemeId: string, productId: string) => {
+  const getDiscountForProduct = (schemeId: string, productId: string, variantId?: string) => {
     return discounts?.find(d => 
       d.scheme_id === schemeId && 
       d.product_id === productId && 
-      d.is_active
+      d.is_active &&
+      (variantId ? d.variant_id === variantId : !d.variant_id)
     );
   };
 
