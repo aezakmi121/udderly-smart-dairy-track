@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Navigation } from './Navigation';
-import { Sidebar } from './Sidebar';
+import Sidebar from './Sidebar';
 import { Dashboard } from '../dashboard/Dashboard';
 import { CowsManagement } from '../cows/CowsManagement';
 import { CalvesManagement } from '../calves/CalvesManagement';
@@ -17,6 +18,7 @@ import { ReportsManagement } from '../reports/ReportsManagement';
 import { SettingsManagement } from '../settings/SettingsManagement';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { CowGroupingManagement } from '@/components/grouping/CowGroupingManagement';
+import { POSManagement } from '@/components/pos/POSManagement';
 
 export const MainLayout = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -50,6 +52,8 @@ export const MainLayout = () => {
         return <DeliveryBoysManagement />;
       case 'customers':
         return <CustomersManagement />;
+      case 'pos':
+        return <POSManagement />;
       case 'reports':
         return <ReportsManagement />;
       case 'settings':
