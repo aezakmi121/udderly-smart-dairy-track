@@ -4,25 +4,17 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider, useAuth } from "./components/auth/AuthProvider";
-import { AuthForm } from "./components/auth/AuthForm";
-import { MainLayout } from "./components/layout/MainLayout";
+import { AuthProvider } from "@/components/auth/AuthProvider";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { Navbar } from "@/components/Navbar";
+import Index from "./pages/Index";
+import Cows from "./pages/Cows";
+import MilkProduction from "./pages/MilkProduction";
+import Analytics from "./pages/Analytics";
+import Farmers from "./pages/Farmers";
+import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
-
-const AppContent = () => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-500"></div>
-      </div>
-    );
-  }
-
-  return user ? <MainLayout /> : <AuthForm />;
-};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -32,7 +24,26 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="*" element={<AppContent />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <div className="min-h-screen bg-gray-50">
+                    <Navbar />
+                    <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/cows" element={<Cows />} />
+                        <Route path="/milk-production" element={<MilkProduction />} />
+                        <Route path="/analytics" element={<Analytics />} />
+                        <Route path="/farmers" element={<Farmers />} />
+                      </Routes>
+                    </main>
+                  </div>
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
