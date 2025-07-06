@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Cow, Milk, Users, TrendingUp, Calendar, AlertTriangle } from 'lucide-react';
+import { Beef, Milk, Users, TrendingUp, Calendar, AlertTriangle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -73,7 +73,7 @@ const Index = () => {
       const { count } = await supabase
         .from('ai_records')
         .select('*', { count: 'exact', head: true })
-        .eq('ai_status', 'scheduled');
+        .eq('ai_status', 'pending');
       return count || 0;
     }
   });
@@ -92,7 +92,7 @@ const Index = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Active Cows</CardTitle>
-            <Cow className="h-4 w-4 text-muted-foreground" />
+            <Beef className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{cowsCount}</div>
@@ -159,8 +159,8 @@ const Index = () => {
               {upcomingAI > 0 && (
                 <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                   <div>
-                    <p className="font-medium">Scheduled AI Services</p>
-                    <p className="text-sm text-muted-foreground">{upcomingAI} cows scheduled</p>
+                    <p className="font-medium">Pending AI Services</p>
+                    <p className="text-sm text-muted-foreground">{upcomingAI} cows pending</p>
                   </div>
                   <Calendar className="h-4 w-4 text-blue-600" />
                 </div>

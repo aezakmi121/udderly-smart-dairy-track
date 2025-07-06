@@ -8,7 +8,7 @@ import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 export const MilkCollectionManagement = () => {
   const { collections, isLoading, addCollectionMutation, deleteCollectionMutation } = useMilkCollection();
-  const { canAccess, canDelete } = useUserPermissions();
+  const { canEdit, isAdmin } = useUserPermissions();
 
   const handleAddCollection = (data: any) => {
     addCollectionMutation.mutate(data);
@@ -18,7 +18,7 @@ export const MilkCollectionManagement = () => {
     deleteCollectionMutation.mutate(id);
   };
 
-  if (!canAccess.milkCollection) {
+  if (!canEdit.milkProduction) {
     return (
       <div className="space-y-6">
         <div className="text-center py-8">
@@ -51,7 +51,7 @@ export const MilkCollectionManagement = () => {
           <MilkCollectionTable 
             collections={collections || []} 
             isLoading={isLoading}
-            canDelete={canDelete.milkCollection}
+            canDelete={isAdmin}
             onDelete={handleDeleteCollection}
           />
         </div>

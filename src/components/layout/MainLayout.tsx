@@ -1,61 +1,56 @@
 
-import React, { useState } from 'react';
+import React from 'react';
+import { Sidebar } from './Sidebar';
 import { Navigation } from './Navigation';
-import Sidebar from './Sidebar';
-import { Dashboard } from '../dashboard/Dashboard';
-import { CowsManagement } from '../cows/CowsManagement';
-import { CalvesManagement } from '../calves/CalvesManagement';
-import { MilkProduction } from '../milk/MilkProduction';
-import { VaccinationManagement } from '../vaccination/VaccinationManagement';
-import { WeightLogsManagement } from '../weight/WeightLogsManagement';
-import { AITrackingManagement } from '../ai-tracking/AITrackingManagement';
-import { FarmersManagement } from '../farmers/FarmersManagement';
-import { MilkCollectionManagement } from '../milk-collection/MilkCollectionManagement';
-import { FeedManagement } from '../feed/FeedManagement';
-import { DeliveryBoysManagement } from '../delivery/DeliveryBoysManagement';
-import { CustomersManagement } from '../delivery/CustomersManagement';
-import { ReportsManagement } from '../reports/ReportsManagement';
-import { SettingsManagement } from '../settings/SettingsManagement';
-import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { Outlet } from 'react-router-dom';
+import { CowsManagement } from '@/components/cows/CowsManagement';
+import { CalvesManagement } from '@/components/calves/CalvesManagement';
+import { MilkProduction } from '@/components/milk/MilkProduction';
+import { MilkCollectionManagement } from '@/components/milk-collection/MilkCollectionManagement';
+import { VaccinationManagement } from '@/components/vaccination/VaccinationManagement';
+import { FarmersManagement } from '@/components/farmers/FarmersManagement';
+import { AITrackingManagement  } from '@/components/ai-tracking/AITrackingManagement';
+import { WeightLogsManagement } from '@/components/weight/WeightLogsManagement';
+import { FeedManagement } from '@/components/feed/FeedManagement';
 import { CowGroupingManagement } from '@/components/grouping/CowGroupingManagement';
-import { POSManagement } from '@/components/pos/POSManagement';
+import { ReportsManagement } from '@/components/reports/ReportsManagement';
+import { SettingsManagement } from '@/components/settings/SettingsManagement';
+import { Dashboard } from '@/components/dashboard/Dashboard';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 
-export const MainLayout = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const { canAccess } = useUserPermissions();
+interface MainLayoutProps {
+  currentView: string;
+}
+
+export const MainLayout = ({ currentView }: MainLayoutProps) => {
+  const { canEdit } = useUserPermissions();
 
   const renderContent = () => {
-    switch (activeTab) {
+    switch (currentView) {
       case 'dashboard':
         return <Dashboard />;
       case 'cows':
-        return <CowsManagement />;
+        return canEdit.cows ? <CowsManagement /> : <div>Access Denied</div>;
       case 'calves':
         return <CalvesManagement />;
       case 'milk-production':
-        return <MilkProduction />;
-      case 'vaccination':
-        return <VaccinationManagement />;
-      case 'weight-logs':
-        return <WeightLogsManagement />;
-      case 'ai-tracking':
-        return <AITrackingManagement />;
-      case 'farmers':
-        return <FarmersManagement />;
+        return canEdit.milkProduction ? <MilkProduction /> : <div>Access Denied</div>;
       case 'milk-collection':
-        return <MilkCollectionManagement />;
-      case 'feed-management':
-        return <FeedManagement />;
-      case 'cow-grouping':
-        return <CowGroupingManagement />;
-      case 'delivery-boys':
-        return <DeliveryBoysManagement />;
-      case 'customers':
-        return <CustomersManagement />;
-      case 'pos':
-        return <POSManagement />;
+        return canEdit.milkProduction ? <MilkCollectionManagement /> : <div>Access Denied</div>;
+      case 'vaccination':
+        return canEdit.cows ? <VaccinationManagement /> : <div>Access Denied</div>;
+      case 'farmers':
+        return canEdit.farmers ? <FarmersManagement /> : <div>Access Denied</div>;
+      case 'ai-tracking':
+        return canEdit.cows ? <AITrackingManagement /> : <div>Access Denied</div>;
+      case 'weight':
+        return canEdit.cows ? <WeightLogsManagement /> : <div>Access Denied</div>;
+      case 'feed':
+        return canEdit.cows ? <FeedManagement /> : <div>Access Denied</div>;
+      case 'grouping':
+        return canEdit.cows ? <CowGroupingManagement /> : <div>Access Denied</div>;
       case 'reports':
-        return <ReportsManagement />;
+        return canEdit.analytics ? <ReportsManagement /> : <div>Access Denied</div>;
       case 'settings':
         return <SettingsManagement />;
       default:
@@ -64,30 +59,14 @@ export const MainLayout = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col">
-      <Navigation />
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-64 bg-white shadow-sm border-r overflow-y-auto">
-          <Sidebar 
-            activeTab={activeTab} 
-            onTabChange={setActiveTab}
-            canAccess={canAccess}
-          />
-        </div>
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
+    <div className="flex h-screen bg-gray-100">
+      <Sidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Navigation />
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
           {renderContent()}
         </main>
       </div>
     </div>
   );
 };
-
-const AccessDenied = () => (
-  <div className="flex flex-col items-center justify-center h-64 space-y-4">
-    <div className="text-6xl">🔒</div>
-    <h2 className="text-2xl font-bold text-gray-600">Access Restricted</h2>
-    <p className="text-gray-500 text-center max-w-md">
-      You don't have permission to access this section. Please contact your administrator if you need access.
-    </p>
-  </div>
-);

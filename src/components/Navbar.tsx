@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Cow, BarChart3, Home, Milk, Users, LogOut } from 'lucide-react';
+import { Beef, BarChart3, Home, Milk, Users, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -24,7 +24,7 @@ export const Navbar = () => {
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: Home },
-    { name: 'Cows', path: '/cows', icon: Cow },
+    { name: 'Cows', path: '/cows', icon: Beef },
     { name: 'Milk Production', path: '/milk-production', icon: Milk },
     { name: 'Farmers', path: '/farmers', icon: Users },
     { name: 'Analytics', path: '/analytics', icon: BarChart3 },
@@ -36,7 +36,7 @@ export const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
             <Link to="/" className="flex items-center space-x-2">
-              <Cow className="h-8 w-8 text-green-600" />
+              <Beef className="h-8 w-8 text-green-600" />
               <span className="text-xl font-bold text-gray-800">Dairy Management</span>
             </Link>
             

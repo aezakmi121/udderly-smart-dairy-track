@@ -8,20 +8,20 @@ import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
 
 export const Dashboard = () => {
-  const { canAccess } = useUserPermissions();
+  const { canEdit } = useUserPermissions();
 
   // Query for dashboard stats
   const { data: stats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const results = await Promise.allSettled([
-        canAccess.cows ? supabase.from('cows').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
-        canAccess.calves ? supabase.from('calves').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
-        canAccess.milkProduction ? supabase
+        canEdit.cows ? supabase.from('cows').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
+        supabase.from('calves').select('*', { count: 'exact' }),
+        canEdit.milkProduction ? supabase
           .from('milk_production')
           .select('quantity')
           .gte('production_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]) : Promise.resolve({ data: [] }),
-        canAccess.farmers ? supabase.from('farmers').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
+        canEdit.farmers ? supabase.from('farmers').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
       ]);
 
       return {
@@ -41,28 +41,28 @@ export const Dashboard = () => {
       value: stats?.totalCows || 0,
       icon: Beef,
       color: 'text-blue-600',
-      show: canAccess.cows
+      show: canEdit.cows
     },
     {
       title: 'Total Calves',
       value: stats?.totalCalves || 0,
       icon: Baby,
       color: 'text-pink-600',
-      show: canAccess.calves
+      show: true
     },
     {
       title: 'Monthly Milk (L)',
       value: stats?.monthlyMilk?.toFixed(1) || '0',
       icon: Milk,
       color: 'text-green-600',
-      show: canAccess.milkProduction
+      show: canEdit.milkProduction
     },
     {
       title: 'Total Farmers',
       value: stats?.totalFarmers || 0,
       icon: Users,
       color: 'text-purple-600',
-      show: canAccess.farmers
+      show: canEdit.farmers
     },
   ].filter(card => card.show);
 
