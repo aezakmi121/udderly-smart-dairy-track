@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import { Navigation } from './Navigation';
 import { Outlet } from 'react-router-dom';
@@ -19,14 +19,33 @@ import { Dashboard } from '@/components/dashboard/Dashboard';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 interface MainLayoutProps {
-  currentView: string;
+  currentView?: string;
 }
 
 export const MainLayout = ({ currentView }: MainLayoutProps) => {
   const { canEdit } = useUserPermissions();
+  const [activeTab, setActiveTab] = useState(currentView || 'dashboard');
+
+  const canAccess = {
+    dashboard: true,
+    cows: canEdit.cows,
+    calves: true,
+    milkProduction: canEdit.milkProduction,
+    vaccination: canEdit.cows,
+    weightLogs: canEdit.cows,
+    aiTracking: canEdit.cows,
+    farmers: canEdit.farmers,
+    milkCollection: canEdit.milkProduction,
+    feedManagement: canEdit.cows,
+    cowGrouping: canEdit.cows,
+    deliveryBoys: false,
+    customers: false,
+    reports: canEdit.analytics,
+    settings: true,
+  };
 
   const renderContent = () => {
-    switch (currentView) {
+    switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;
       case 'cows':
@@ -43,11 +62,11 @@ export const MainLayout = ({ currentView }: MainLayoutProps) => {
         return canEdit.farmers ? <FarmersManagement /> : <div>Access Denied</div>;
       case 'ai-tracking':
         return canEdit.cows ? <AITrackingManagement /> : <div>Access Denied</div>;
-      case 'weight':
+      case 'weight-logs':
         return canEdit.cows ? <WeightLogsManagement /> : <div>Access Denied</div>;
-      case 'feed':
+      case 'feed-management':
         return canEdit.cows ? <FeedManagement /> : <div>Access Denied</div>;
-      case 'grouping':
+      case 'cow-grouping':
         return canEdit.cows ? <CowGroupingManagement /> : <div>Access Denied</div>;
       case 'reports':
         return canEdit.analytics ? <ReportsManagement /> : <div>Access Denied</div>;
@@ -60,7 +79,11 @@ export const MainLayout = ({ currentView }: MainLayoutProps) => {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <Sidebar />
+      <Sidebar 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        canAccess={canAccess} 
+      />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navigation />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
