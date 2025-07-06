@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Sidebar } from './Sidebar';
+import Sidebar from './Sidebar';
 import { Navigation } from './Navigation';
 import { Outlet } from 'react-router-dom';
 import { CowsManagement } from '@/components/cows/CowsManagement';
