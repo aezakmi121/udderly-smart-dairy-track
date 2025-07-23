@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react';
 import { useCalves } from '@/hooks/useCalves';
 import { CalfForm } from './CalfForm';
 import { CalvesTable } from './CalvesTable';
+import { CalfDetailsModal } from './CalfDetailsModal';
 
 interface Calf {
   id: string;
@@ -24,6 +25,8 @@ interface Calf {
 export const CalvesManagement = () => {
   const [selectedCalf, setSelectedCalf] = useState<Calf | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [selectedCalfForDetails, setSelectedCalfForDetails] = useState<Calf | null>(null);
   
   const {
     calves,
@@ -46,6 +49,11 @@ export const CalvesManagement = () => {
   const handleEdit = (calf: any) => {
     setSelectedCalf(calf);
     setIsDialogOpen(true);
+  };
+
+  const handleView = (calf: any) => {
+    setSelectedCalfForDetails(calf);
+    setDetailsDialogOpen(true);
   };
 
   const handleDelete = (id: string) => {
@@ -109,10 +117,17 @@ export const CalvesManagement = () => {
           <CalvesTable
             calves={calves || []}
             onEdit={handleEdit}
+            onView={handleView}
             onDelete={handleDelete}
           />
         </CardContent>
       </Card>
+
+      <CalfDetailsModal
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+        calf={selectedCalfForDetails}
+      />
     </div>
   );
 };

@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Image, Trash2 } from 'lucide-react';
+import { Edit, Image, Trash2, Eye } from 'lucide-react';
 
 interface Calf {
   id: string;
@@ -21,12 +21,14 @@ interface Calf {
 interface CalvesTableProps {
   calves: any[];
   onEdit: (calf: any) => void;
+  onView: (calf: any) => void;
   onDelete: (id: string) => void;
 }
 
 export const CalvesTable: React.FC<CalvesTableProps> = ({
   calves,
   onEdit,
+  onView,
   onDelete
 }) => {
   const getStatusColor = (status: string) => {
@@ -99,7 +101,16 @@ export const CalvesTable: React.FC<CalvesTableProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => onView(calf)}
+                    title="View Details"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => onEdit(calf)}
+                    title="Edit"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -111,6 +122,7 @@ export const CalvesTable: React.FC<CalvesTableProps> = ({
                         onDelete(calf.id);
                       }
                     }}
+                    title="Delete"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

@@ -1,14 +1,57 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { AITrackingFormModal } from './AITrackingFormModal';
 import { AITrackingTable } from './AITrackingTable';
+import { AITrackingFilters } from './AITrackingFilters';
 import { useAITracking } from '@/hooks/useAITracking';
 
 export const AITrackingManagement = () => {
   const [showModal, setShowModal] = useState(false);
+  const [filters, setFilters] = useState({
+    startDate: '',
+    endDate: '',
+    cowId: '',
+    status: '',
+    pdStatus: ''
+  });
+  
   const { aiRecords, isLoading, addAIRecordMutation, updateAIRecordMutation } = useAITracking();
+
+  const filteredRecords = useMemo(() => {
+    if (!aiRecords) return [];
+    
+    return aiRecords.filter(record => {
+      // Date range filter
+      if (filters.startDate && record.ai_date < filters.startDate) return false;
+      if (filters.endDate && record.ai_date > filters.endDate) return false;
+      
+      // Cow filter
+      if (filters.cowId && record.cow_id !== filters.cowId) return false;
+      
+      // AI Status filter
+      if (filters.status && record.ai_status !== filters.status) return false;
+      
+      // PD Status filter
+      if (filters.pdStatus) {
+        if (filters.pdStatus === 'pending' && record.pd_done) return false;
+        if (filters.pdStatus !== 'pending' && record.pd_result !== filters.pdStatus) return false;
+      }
+      
+      return true;
+    });
+  }, [aiRecords, filters]);
+
+  const resetFilters = () => {
+    setFilters({
+      startDate: '',
+      endDate: '',
+      cowId: '',
+      status: '',
+      pdStatus: ''
+    });
+  };
 
   const handleAddRecord = (data: any) => {
     addAIRecordMutation.mutate(data);
@@ -31,6 +74,12 @@ export const AITrackingManagement = () => {
         </Button>
       </div>
 
+      <AITrackingFilters
+        filters={filters}
+        onFiltersChange={setFilters}
+        onReset={resetFilters}
+      />
+
       <AITrackingFormModal
         open={showModal}
         onOpenChange={setShowModal}
@@ -44,7 +93,7 @@ export const AITrackingManagement = () => {
         </div>
         <div className="p-6">
           <AITrackingTable 
-            aiRecords={aiRecords || []} 
+            aiRecords={filteredRecords} 
             isLoading={isLoading}
             onUpdateRecord={handleUpdateRecord}
           />

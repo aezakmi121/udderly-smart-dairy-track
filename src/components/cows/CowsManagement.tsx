@@ -11,10 +11,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Image, Trash2, Baby } from 'lucide-react';
+import { Plus, Edit, Image, Trash2, Baby, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCalves } from '@/hooks/useCalves';
 import { CalfDetailsDialog } from './CalfDetailsDialog';
+import { CowDetailsModal } from './CowDetailsModal';
 
 interface Cow {
   id: string;
@@ -36,6 +37,8 @@ export const CowsManagement = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [calfDialogOpen, setCalfDialogOpen] = useState(false);
   const [selectedCowForCalves, setSelectedCowForCalves] = useState<Cow | null>(null);
+  const [cowDetailsOpen, setCowDetailsOpen] = useState(false);
+  const [selectedCowForDetails, setSelectedCowForDetails] = useState<Cow | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { calves } = useCalves();
@@ -394,9 +397,21 @@ export const CowsManagement = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => {
+                            setSelectedCowForDetails(cow);
+                            setCowDetailsOpen(true);
+                          }}
+                          title="View Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
                             setSelectedCow(cow);
                             setIsDialogOpen(true);
                           }}
+                          title="Edit"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -408,6 +423,7 @@ export const CowsManagement = () => {
                               deleteCowMutation.mutate(cow.id);
                             }
                           }}
+                          title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -426,6 +442,12 @@ export const CowsManagement = () => {
         isOpen={calfDialogOpen}
         onClose={() => setCalfDialogOpen(false)}
         cowNumber={selectedCowForCalves?.cow_number || ''}
+      />
+
+      <CowDetailsModal
+        open={cowDetailsOpen}
+        onOpenChange={setCowDetailsOpen}
+        cow={selectedCowForDetails}
       />
     </div>
   );
