@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Baby, Heart } from 'lucide-react';
+import { Baby, Heart } from 'lucide-react'; // Fixed icon imports
 
 interface DeliveryWithCalfModalProps {
   open: boolean;
