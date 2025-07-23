@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Navbar } from "@/components/Navbar";
 import Index from "./pages/Index";
 import Cows from "./pages/Cows";
+import Calves from "./pages/Calves";
 import MilkProduction from "./pages/MilkProduction";
 import Analytics from "./pages/Analytics";
 import Farmers from "./pages/Farmers";
@@ -35,6 +36,7 @@ const App = () => (
                       <Routes>
                         <Route path="/" element={<Index />} />
                         <Route path="/cows" element={<Cows />} />
+                        <Route path="/calves" element={<Calves />} />
                         <Route path="/milk-production" element={<MilkProduction />} />
                         <Route path="/analytics" element={<Analytics />} />
                         <Route path="/farmers" element={<Farmers />} />

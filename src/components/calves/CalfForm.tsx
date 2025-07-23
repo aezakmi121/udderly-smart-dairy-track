@@ -14,6 +14,7 @@ interface Calf {
   calf_number?: string;
   gender: 'male' | 'female';
   date_of_birth: string;
+  date_of_conception?: string;
   mother_cow_id?: string;
   breed?: string;
   birth_weight?: number;
@@ -75,6 +76,7 @@ export const CalfForm: React.FC<CalfFormProps> = ({
       calf_number: formData.get('calf_number') as string,
       gender: formData.get('gender') as 'male' | 'female',
       date_of_birth: formData.get('date_of_birth') as string,
+      date_of_conception: formData.get('date_of_conception') as string || null,
       mother_cow_id: formData.get('mother_cow_id') as string === 'none' ? null : formData.get('mother_cow_id') as string,
       breed: formData.get('breed') as string,
       birth_weight: parseFloat(formData.get('birth_weight') as string) || null,
@@ -125,21 +127,31 @@ export const CalfForm: React.FC<CalfFormProps> = ({
         </div>
         
         <div>
-          <Label htmlFor="mother_cow_id">Mother Cow</Label>
-          <Select name="mother_cow_id" defaultValue={selectedCalf?.mother_cow_id || 'none'}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select mother cow" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No mother selected</SelectItem>
-              {cows?.map((cow) => (
-                <SelectItem key={cow.id} value={cow.id}>
-                  {cow.cow_number}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="date_of_conception">Date of Conception</Label>
+          <Input
+            id="date_of_conception"
+            name="date_of_conception"
+            type="date"
+            defaultValue={selectedCalf?.date_of_conception || ''}
+          />
         </div>
+      </div>
+
+      <div>
+        <Label htmlFor="mother_cow_id">Mother Cow</Label>
+        <Select name="mother_cow_id" defaultValue={selectedCalf?.mother_cow_id || 'none'}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select mother cow" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No mother selected</SelectItem>
+            {cows?.map((cow) => (
+              <SelectItem key={cow.id} value={cow.id}>
+                {cow.cow_number}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

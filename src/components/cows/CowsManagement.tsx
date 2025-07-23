@@ -11,8 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Image, Trash2 } from 'lucide-react';
+import { Plus, Edit, Image, Trash2, Baby } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useCalves } from '@/hooks/useCalves';
+import { CalfDetailsDialog } from './CalfDetailsDialog';
 
 interface Cow {
   id: string;
@@ -32,8 +34,11 @@ export const CowsManagement = () => {
   const [selectedCow, setSelectedCow] = useState<Cow | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [calfDialogOpen, setCalfDialogOpen] = useState(false);
+  const [selectedCowForCalves, setSelectedCowForCalves] = useState<Cow | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { calves } = useCalves();
 
   const { data: cows, isLoading } = useQuery({
     queryKey: ['cows'],
@@ -335,6 +340,7 @@ export const CowsManagement = () => {
                   <TableHead>Age</TableHead>
                   <TableHead>Current Yield</TableHead>
                   <TableHead>Lifetime Yield</TableHead>
+                  <TableHead>Calves</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -370,6 +376,19 @@ export const CowsManagement = () => {
                     <TableCell>{cow.current_month_yield?.toFixed(1) || '0.0'} L</TableCell>
                     <TableCell>{cow.lifetime_yield?.toFixed(1) || '0.0'} L</TableCell>
                     <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedCowForCalves(cow);
+                          setCalfDialogOpen(true);
+                        }}
+                      >
+                        <Baby className="h-4 w-4 mr-1" />
+                        {calves?.filter(calf => calf.mother_cow_id === cow.id).length || 0}
+                      </Button>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex space-x-2">
                         <Button
                           variant="outline"
@@ -401,6 +420,13 @@ export const CowsManagement = () => {
           </div>
         </CardContent>
       </Card>
+
+      <CalfDetailsDialog
+        calves={calves?.filter(calf => calf.mother_cow_id === selectedCowForCalves?.id) || []}
+        isOpen={calfDialogOpen}
+        onClose={() => setCalfDialogOpen(false)}
+        cowNumber={selectedCowForCalves?.cow_number || ''}
+      />
     </div>
   );
 };

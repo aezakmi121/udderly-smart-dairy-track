@@ -1,11 +1,12 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Beef, BarChart3, Home, Milk, Users, LogOut } from 'lucide-react';
+import { Beef, BarChart3, Home, Milk, Users, LogOut, Baby } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export const Navbar = () => {
   const location = useLocation();
@@ -25,6 +26,7 @@ export const Navbar = () => {
   const navItems = [
     { name: 'Dashboard', path: '/', icon: Home },
     { name: 'Cows', path: '/cows', icon: Beef },
+    { name: 'Calves', path: '/calves', icon: Baby },
     { name: 'Milk Production', path: '/milk-production', icon: Milk },
     { name: 'Farmers', path: '/farmers', icon: Users },
     { name: 'Analytics', path: '/analytics', icon: BarChart3 },
@@ -63,15 +65,18 @@ export const Navbar = () => {
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSignOut}
-            className="flex items-center space-x-2"
-          >
-            <LogOut className="h-4 w-4" />
-            <span>Sign Out</span>
-          </Button>
+          <div className="flex items-center space-x-4">
+            <NotificationBell />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSignOut}
+              className="flex items-center space-x-2"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign Out</span>
+            </Button>
+          </div>
         </div>
       </div>
     </nav>
