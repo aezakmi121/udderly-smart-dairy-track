@@ -121,12 +121,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, canAccess, is
       show: canAccess.customers
     },
     { 
-      id: 'pos',
-      name: 'POS System', 
-      icon: ShoppingCart,
-      show: true
-    },
-    { 
       id: 'reports',
       name: 'Reports', 
       icon: BarChart3,

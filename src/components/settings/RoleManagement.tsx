@@ -10,14 +10,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus } from 'lucide-react';
 
-type UserRole = 'admin' | 'farmer' | 'worker' | 'delivery_boy' | 'store_manager';
+type UserRole = 'admin' | 'farmer' | 'worker';
 
 const roleLabels = {
   admin: 'Admin',
   farmer: 'Collection Centre',
-  worker: 'Farm Worker',
-  delivery_boy: 'Delivery Boy',
-  store_manager: 'Store Manager'
+  worker: 'Farm Worker'
 };
 
 export const RoleManagement = () => {
