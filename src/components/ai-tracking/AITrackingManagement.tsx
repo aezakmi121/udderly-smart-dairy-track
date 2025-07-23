@@ -12,9 +12,9 @@ export const AITrackingManagement = () => {
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
-    cowId: '',
-    status: '',
-    pdStatus: ''
+    cowId: 'all',
+    status: 'all',
+    pdStatus: 'all'
   });
   
   const { aiRecords, isLoading, addAIRecordMutation, updateAIRecordMutation } = useAITracking();
@@ -28,13 +28,13 @@ export const AITrackingManagement = () => {
       if (filters.endDate && record.ai_date > filters.endDate) return false;
       
       // Cow filter
-      if (filters.cowId && record.cow_id !== filters.cowId) return false;
+      if (filters.cowId && filters.cowId !== 'all' && record.cow_id !== filters.cowId) return false;
       
       // AI Status filter
-      if (filters.status && record.ai_status !== filters.status) return false;
+      if (filters.status && filters.status !== 'all' && record.ai_status !== filters.status) return false;
       
       // PD Status filter
-      if (filters.pdStatus) {
+      if (filters.pdStatus && filters.pdStatus !== 'all') {
         if (filters.pdStatus === 'pending' && record.pd_done) return false;
         if (filters.pdStatus !== 'pending' && record.pd_result !== filters.pdStatus) return false;
       }
@@ -47,9 +47,9 @@ export const AITrackingManagement = () => {
     setFilters({
       startDate: '',
       endDate: '',
-      cowId: '',
-      status: '',
-      pdStatus: ''
+      cowId: 'all',
+      status: 'all',
+      pdStatus: 'all'
     });
   };
 

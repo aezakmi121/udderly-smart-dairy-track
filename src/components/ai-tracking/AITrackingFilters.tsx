@@ -79,7 +79,7 @@ export const AITrackingFilters: React.FC<AITrackingFiltersProps> = ({
                 <SelectValue placeholder="Select cow" />
               </SelectTrigger>
               <SelectContent className="bg-white z-50 max-h-60 overflow-y-auto">
-                <SelectItem value="">All Cows</SelectItem>
+                <SelectItem value="all">All Cows</SelectItem>
                 {cows?.map((cow) => (
                   <SelectItem key={cow.id} value={cow.id}>
                     {cow.cow_number}
@@ -96,7 +96,7 @@ export const AITrackingFilters: React.FC<AITrackingFiltersProps> = ({
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent className="bg-white z-50">
-                <SelectItem value="">All Status</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="done">Done</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
@@ -111,7 +111,7 @@ export const AITrackingFilters: React.FC<AITrackingFiltersProps> = ({
                 <SelectValue placeholder="Select PD status" />
               </SelectTrigger>
               <SelectContent className="bg-white z-50">
-                <SelectItem value="">All PD Status</SelectItem>
+                <SelectItem value="all">All PD Status</SelectItem>
                 <SelectItem value="positive">Positive</SelectItem>
                 <SelectItem value="negative">Negative</SelectItem>
                 <SelectItem value="inconclusive">Inconclusive</SelectItem>
