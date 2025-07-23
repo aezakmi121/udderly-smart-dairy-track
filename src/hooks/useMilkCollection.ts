@@ -21,9 +21,10 @@ export const useMilkCollection = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: collections, isLoading } = useQuery({
+  const { data: collections, isLoading, error } = useQuery({
     queryKey: ['milk-collections'],
     queryFn: async () => {
+      console.log('Fetching milk collections...');
       const { data, error } = await supabase
         .from('milk_collections')
         .select(`
@@ -32,7 +33,11 @@ export const useMilkCollection = () => {
         `)
         .order('collection_date', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching milk collections:', error);
+        throw error;
+      }
+      console.log('Milk collections fetched:', data);
       return data;
     }
   });
@@ -62,9 +67,18 @@ export const useMilkCollection = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Milk collection added successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['milk-collections'] });
       toast({ title: "Milk collection recorded successfully!" });
+    },
+    onError: (error) => {
+      console.error('Error adding milk collection:', error);
+      toast({ 
+        title: "Failed to record milk collection", 
+        description: error.message,
+        variant: "destructive" 
+      });
     }
   });
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { WeightLogForm } from './WeightLogForm';
 import { Plus } from 'lucide-react';
@@ -22,6 +22,7 @@ export const WeightLogModal: React.FC<WeightLogModalProps> = ({
   const setOpen = externalOnOpenChange || setInternalOpen;
 
   const handleSubmit = (data: any) => {
+    console.log('Submitting weight log:', data);
     onSubmit(data);
     // Don't close modal here - let the mutation success handler close it
   };
@@ -37,6 +38,9 @@ export const WeightLogModal: React.FC<WeightLogModalProps> = ({
       <DialogContent className="max-w-2xl bg-white">
         <DialogHeader>
           <DialogTitle>Add Weight Log</DialogTitle>
+          <DialogDescription>
+            Record weight measurements for cattle health monitoring
+          </DialogDescription>
         </DialogHeader>
         <WeightLogForm onSubmit={handleSubmit} isLoading={isLoading} />
       </DialogContent>

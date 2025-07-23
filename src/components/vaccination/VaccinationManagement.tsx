@@ -8,12 +8,16 @@ export const VaccinationManagement = () => {
   const { records, isLoading, addRecordMutation } = useVaccination();
   const [modalOpen, setModalOpen] = React.useState(false);
 
+  // Close modal when mutation succeeds
+  React.useEffect(() => {
+    if (addRecordMutation.isSuccess && !addRecordMutation.isPending) {
+      setModalOpen(false);
+    }
+  }, [addRecordMutation.isSuccess, addRecordMutation.isPending]);
+
   const handleAddRecord = (data: any) => {
-    addRecordMutation.mutate(data, {
-      onSuccess: () => {
-        setModalOpen(false);
-      }
-    });
+    console.log('VaccinationManagement - submitting:', data);
+    addRecordMutation.mutate(data);
   };
 
   return (

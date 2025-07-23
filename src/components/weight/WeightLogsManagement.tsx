@@ -8,12 +8,16 @@ export const WeightLogsManagement = () => {
   const { weightLogs, isLoading, addWeightLogMutation } = useWeightLogs();
   const [modalOpen, setModalOpen] = React.useState(false);
 
+  // Close modal when mutation succeeds
+  React.useEffect(() => {
+    if (addWeightLogMutation.isSuccess && !addWeightLogMutation.isPending) {
+      setModalOpen(false);
+    }
+  }, [addWeightLogMutation.isSuccess, addWeightLogMutation.isPending]);
+
   const handleAddLog = (data: any) => {
-    addWeightLogMutation.mutate(data, {
-      onSuccess: () => {
-        setModalOpen(false);
-      }
-    });
+    console.log('WeightLogsManagement - submitting:', data);
+    addWeightLogMutation.mutate(data);
   };
 
   return (

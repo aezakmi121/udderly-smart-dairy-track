@@ -40,9 +40,10 @@ export const useVaccination = () => {
     }
   });
 
-  const { data: records, isLoading } = useQuery({
+  const { data: records, isLoading, error } = useQuery({
     queryKey: ['vaccination-records'],
     queryFn: async () => {
+      console.log('Fetching vaccination records...');
       const { data, error } = await supabase
         .from('vaccination_records')
         .select(`
@@ -52,7 +53,11 @@ export const useVaccination = () => {
         `)
         .order('vaccination_date', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching vaccination records:', error);
+        throw error;
+      }
+      console.log('Vaccination records fetched:', data);
       return data;
     }
   });
@@ -68,9 +73,18 @@ export const useVaccination = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Vaccination record added successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['vaccination-records'] });
       toast({ title: "Vaccination record added successfully!" });
+    },
+    onError: (error) => {
+      console.error('Error adding vaccination record:', error);
+      toast({ 
+        title: "Failed to add vaccination record", 
+        description: error.message,
+        variant: "destructive" 
+      });
     }
   });
 

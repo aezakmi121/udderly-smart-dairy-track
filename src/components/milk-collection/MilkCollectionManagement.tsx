@@ -11,12 +11,16 @@ export const MilkCollectionManagement = () => {
   const { canEdit, isAdmin } = useUserPermissions();
   const [modalOpen, setModalOpen] = React.useState(false);
 
+  // Close modal when mutation succeeds
+  React.useEffect(() => {
+    if (addCollectionMutation.isSuccess && !addCollectionMutation.isPending) {
+      setModalOpen(false);
+    }
+  }, [addCollectionMutation.isSuccess, addCollectionMutation.isPending]);
+
   const handleAddCollection = (data: any) => {
-    addCollectionMutation.mutate(data, {
-      onSuccess: () => {
-        setModalOpen(false);
-      }
-    });
+    console.log('MilkCollectionManagement - submitting:', data);
+    addCollectionMutation.mutate(data);
   };
 
   const handleDeleteCollection = (id: string) => {

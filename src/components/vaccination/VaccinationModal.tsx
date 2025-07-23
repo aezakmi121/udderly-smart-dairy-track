@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { VaccinationForm } from './VaccinationForm';
 import { Plus } from 'lucide-react';
@@ -22,6 +22,7 @@ export const VaccinationModal: React.FC<VaccinationModalProps> = ({
   const setOpen = externalOnOpenChange || setInternalOpen;
 
   const handleSubmit = (data: any) => {
+    console.log('Submitting vaccination record:', data);
     onSubmit(data);
     // Don't close modal here - let the mutation success handler close it
   };
@@ -37,6 +38,9 @@ export const VaccinationModal: React.FC<VaccinationModalProps> = ({
       <DialogContent className="max-w-2xl bg-white">
         <DialogHeader>
           <DialogTitle>Add Vaccination Record</DialogTitle>
+          <DialogDescription>
+            Record vaccination details for cattle health tracking
+          </DialogDescription>
         </DialogHeader>
         <VaccinationForm onSubmit={handleSubmit} isLoading={isLoading} />
       </DialogContent>
