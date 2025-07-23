@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
-import { Navigation } from './Navigation';
+import { TopBar } from './TopBar';
 import { Outlet } from 'react-router-dom';
 import { CowsManagement } from '@/components/cows/CowsManagement';
 import { CalvesManagement } from '@/components/calves/CalvesManagement';
@@ -25,6 +25,7 @@ interface MainLayoutProps {
 export const MainLayout = ({ currentView }: MainLayoutProps) => {
   const { canEdit } = useUserPermissions();
   const [activeTab, setActiveTab] = useState(currentView || 'dashboard');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const canAccess = {
     dashboard: true,
@@ -82,10 +83,11 @@ export const MainLayout = ({ currentView }: MainLayoutProps) => {
       <Sidebar 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
-        canAccess={canAccess} 
+        canAccess={canAccess}
+        isCollapsed={sidebarCollapsed}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Navigation />
+        <TopBar onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
           {renderContent()}
         </main>

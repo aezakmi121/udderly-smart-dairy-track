@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { 
@@ -38,9 +37,10 @@ interface SidebarProps {
     reports: boolean;
     settings: boolean;
   };
+  isCollapsed: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, canAccess }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, canAccess, isCollapsed }) => {
   const menuItems = [
     { 
       id: 'dashboard',
@@ -143,26 +143,32 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, canAccess }) 
   const visibleMenuItems = menuItems.filter(item => item.show);
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 px-3 py-4 overflow-y-auto">
-      <div className="space-y-1">
-        {visibleMenuItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.id}
-              onClick={() => onTabChange(item.id)}
-              className={cn(
-                'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors w-full text-left',
-                activeTab === item.id
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-100'
-              )}
-            >
-              <Icon className="mr-3 h-5 w-5" />
-              {item.name}
-            </button>
-          );
-        })}
+    <div className={cn(
+      "bg-white border-r border-gray-200 transition-all duration-300 ease-in-out",
+      isCollapsed ? "w-16" : "w-64"
+    )}>
+      <div className="px-3 py-4 overflow-y-auto h-full">
+        <div className="space-y-1">
+          {visibleMenuItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => onTabChange(item.id)}
+                className={cn(
+                  'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors w-full text-left group',
+                  activeTab === item.id
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100'
+                )}
+                title={isCollapsed ? item.name : ''}
+              >
+                <Icon className={cn("h-5 w-5", isCollapsed ? "" : "mr-3")} />
+                {!isCollapsed && <span>{item.name}</span>}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
