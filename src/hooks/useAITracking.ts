@@ -31,7 +31,7 @@ export const useAITracking = () => {
         .from('ai_records')
         .select(`
           *,
-          cows!cow_id (cow_number)
+          cows!ai_records_cow_id_fkey (cow_number)
         `)
         .order('ai_date', { ascending: false });
       
