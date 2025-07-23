@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { VaccinationForm } from './VaccinationForm';
+import { VaccinationModal } from './VaccinationModal';
 import { VaccinationTable } from './VaccinationTable';
 import { useVaccination } from '@/hooks/useVaccination';
 
@@ -13,15 +13,16 @@ export const VaccinationManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Vaccination Management</h1>
-        <p className="text-muted-foreground">Manage vaccination schedules and records for your cattle.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Vaccination Management</h1>
+          <p className="text-muted-foreground">Manage vaccination schedules and records for your cattle.</p>
+        </div>
+        <VaccinationModal 
+          onSubmit={handleAddRecord} 
+          isLoading={addRecordMutation.isPending}
+        />
       </div>
-
-      <VaccinationForm 
-        onSubmit={handleAddRecord} 
-        isLoading={addRecordMutation.isPending}
-      />
 
       <div className="bg-white rounded-lg shadow">
         <div className="p-6 border-b">

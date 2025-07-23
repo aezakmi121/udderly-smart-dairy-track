@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { WeightLogForm } from './WeightLogForm';
+import { WeightLogModal } from './WeightLogModal';
 import { WeightLogTable } from './WeightLogTable';
 import { useWeightLogs } from '@/hooks/useWeightLogs';
 
@@ -13,15 +13,16 @@ export const WeightLogsManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Weight Logs</h1>
-        <p className="text-muted-foreground">Track cattle weight measurements and monitor growth.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Weight Logs</h1>
+          <p className="text-muted-foreground">Track cattle weight measurements and monitor growth.</p>
+        </div>
+        <WeightLogModal 
+          onSubmit={handleAddLog} 
+          isLoading={addWeightLogMutation.isPending}
+        />
       </div>
-
-      <WeightLogForm 
-        onSubmit={handleAddLog} 
-        isLoading={addWeightLogMutation.isPending}
-      />
 
       <div className="bg-white rounded-lg shadow">
         <div className="p-6 border-b">

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { MilkCollectionForm } from './MilkCollectionForm';
+import { MilkCollectionModal } from './MilkCollectionModal';
 import { MilkCollectionTable } from './MilkCollectionTable';
 import { TodaysCollectionSummary } from './TodaysCollectionSummary';
 import { useMilkCollection } from '@/hooks/useMilkCollection';
@@ -31,15 +31,16 @@ export const MilkCollectionManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Milk Collection</h1>
-        <p className="text-muted-foreground">Record and manage milk collections from farmers.</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Milk Collection</h1>
+          <p className="text-muted-foreground">Record and manage milk collections from farmers.</p>
+        </div>
+        <MilkCollectionModal 
+          onSubmit={handleAddCollection} 
+          isLoading={addCollectionMutation.isPending}
+        />
       </div>
-
-      <MilkCollectionForm 
-        onSubmit={handleAddCollection} 
-        isLoading={addCollectionMutation.isPending}
-      />
 
       <TodaysCollectionSummary collections={collections || []} isLoading={isLoading} />
 
