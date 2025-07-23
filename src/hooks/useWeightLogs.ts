@@ -25,7 +25,7 @@ export const useWeightLogs = () => {
         .from('weight_logs')
         .select(`
           *,
-          cows!cow_id (cow_number)
+          cows!weight_logs_cow_id_fkey (cow_number)
         `)
         .order('log_date', { ascending: false });
       

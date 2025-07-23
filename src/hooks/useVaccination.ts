@@ -48,8 +48,8 @@ export const useVaccination = () => {
         .from('vaccination_records')
         .select(`
           *,
-          cows!cow_id (cow_number),
-          vaccination_schedules!vaccination_schedule_id (vaccine_name)
+          cows!vaccination_records_cow_id_fkey (cow_number),
+          vaccination_schedules!vaccination_records_vaccination_schedule_id_fkey (vaccine_name)
         `)
         .order('vaccination_date', { ascending: false });
       

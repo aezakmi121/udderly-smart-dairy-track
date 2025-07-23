@@ -29,7 +29,7 @@ export const useMilkCollection = () => {
         .from('milk_collections')
         .select(`
           *,
-          farmers!farmer_id (name, farmer_code)
+          farmers!milk_collections_farmer_id_fkey (name, farmer_code)
         `)
         .order('collection_date', { ascending: false });
       
