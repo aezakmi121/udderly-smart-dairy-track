@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -6,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Calendar, Edit, Baby } from 'lucide-react';
+import { Calendar, Edit, Baby, Heart } from 'lucide-react';
+import { DeliveryWithCalfModal } from './DeliveryWithCalfModal';
+import { useCalves } from '@/hooks/useCalves';
 import { format } from 'date-fns';
 
 interface AITrackingTableProps {
@@ -22,9 +23,13 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
 }) => {
   const [pdDialog, setPdDialog] = useState<string | null>(null);
   const [deliveryDialog, setDeliveryDialog] = useState<string | null>(null);
+  const [deliveryWithCalfDialog, setDeliveryWithCalfDialog] = useState<string | null>(null);
   const [pdResult, setPdResult] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
   const [calfGender, setCalfGender] = useState('');
+  
+  const { createCalfFromDelivery } = useCalves();
+
   if (isLoading) {
     return <div className="text-center py-4">Loading AI records...</div>;
   }
@@ -62,6 +67,11 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
     setDeliveryDialog(null);
     setDeliveryDate('');
     setCalfGender('');
+  };
+
+  const handleDeliveryWithCalf = (data: any) => {
+    createCalfFromDelivery.mutate(data);
+    setDeliveryWithCalfDialog(null);
   };
 
   const isDeliveryDue = (expectedDate: string | null) => {
@@ -177,44 +187,56 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                   )}
                   
                   {record.pd_result === 'positive' && !record.actual_delivery_date && (
-                    <Dialog open={deliveryDialog === record.id} onOpenChange={(open) => setDeliveryDialog(open ? record.id : null)}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="flex items-center gap-1">
-                          <Baby className="h-3 w-3" />
-                          Record Delivery
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="bg-white">
-                        <DialogHeader>
-                          <DialogTitle>Record Delivery</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="text-sm font-medium">Delivery Date</label>
-                            <Input
-                              type="date"
-                              value={deliveryDate}
-                              onChange={(e) => setDeliveryDate(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium">Calf Gender</label>
-                            <Select value={calfGender} onValueChange={setCalfGender}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select gender" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-white z-50">
-                                <SelectItem value="male">Male</SelectItem>
-                                <SelectItem value="female">Female</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <Button onClick={() => handleDeliveryUpdate(record.id)} disabled={!deliveryDate || !calfGender}>
-                            Record Delivery
+                    <>
+                      <Dialog open={deliveryDialog === record.id} onOpenChange={(open) => setDeliveryDialog(open ? record.id : null)}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="flex items-center gap-1">
+                            <Baby className="h-3 w-3" />
+                            Quick Delivery
                           </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                        </DialogTrigger>
+                        <DialogContent className="bg-white">
+                          <DialogHeader>
+                            <DialogTitle>Quick Delivery Record</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div>
+                              <label className="text-sm font-medium">Delivery Date</label>
+                              <Input
+                                type="date"
+                                value={deliveryDate}
+                                onChange={(e) => setDeliveryDate(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-sm font-medium">Calf Gender</label>
+                              <Select value={calfGender} onValueChange={setCalfGender}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select gender" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white z-50">
+                                  <SelectItem value="male">Male</SelectItem>
+                                  <SelectItem value="female">Female</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button onClick={() => handleDeliveryUpdate(record.id)} disabled={!deliveryDate || !calfGender}>
+                              Record Delivery Only
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                      
+                      <Button 
+                        size="sm" 
+                        className="flex items-center gap-1"
+                        onClick={() => setDeliveryWithCalfDialog(record.id)}
+                      >
+                        <Baby className="h-3 w-3" />
+                        <Heart className="h-3 w-3" />
+                        Delivery + Calf
+                      </Button>
+                    </>
                   )}
 
                   {record.pd_done && !record.actual_delivery_date && (
@@ -260,6 +282,15 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
           ))}
         </TableBody>
       </Table>
+      
+      {/* Delivery with Calf Modal */}
+      <DeliveryWithCalfModal
+        open={deliveryWithCalfDialog !== null}
+        onOpenChange={(open) => setDeliveryWithCalfDialog(open ? deliveryWithCalfDialog : null)}
+        onSubmit={handleDeliveryWithCalf}
+        isLoading={createCalfFromDelivery.isPending}
+        record={aiRecords.find(r => r.id === deliveryWithCalfDialog)}
+      />
     </>
   );
 };

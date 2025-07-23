@@ -88,11 +88,60 @@ export const useCalves = () => {
     }
   });
 
+  const createCalfFromDelivery = useMutation({
+    mutationFn: async (data: {
+      aiRecordId: string;
+      deliveryDate: string;
+      calfGender: 'male' | 'female';
+      motherCowId: string;
+      birthWeight?: number;
+      calfNumber?: string;
+      notes?: string;
+    }) => {
+      // First update the AI record
+      const { error: aiError } = await supabase
+        .from('ai_records')
+        .update({
+          actual_delivery_date: data.deliveryDate,
+          calf_gender: data.calfGender,
+          is_successful: true
+        })
+        .eq('id', data.aiRecordId);
+
+      if (aiError) throw aiError;
+
+      // Then create the calf record
+      const { data: calfData, error: calfError } = await supabase
+        .from('calves')
+        .insert({
+          calf_number: data.calfNumber,
+          gender: data.calfGender,
+          date_of_birth: data.deliveryDate,
+          mother_cow_id: data.motherCowId,
+          birth_weight: data.birthWeight,
+          status: 'alive',
+          notes: data.notes
+        })
+        .select()
+        .single();
+
+      if (calfError) throw calfError;
+
+      return { aiRecord: data.aiRecordId, calf: calfData };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calves'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-records'] });
+      toast({ title: "Delivery recorded and calf created successfully!" });
+    }
+  });
+
   return {
     calves,
     isLoading,
     addCalfMutation,
     updateCalfMutation,
-    deleteCalfMutation
+    deleteCalfMutation,
+    createCalfFromDelivery
   };
 };
