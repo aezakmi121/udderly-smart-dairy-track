@@ -5,11 +5,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { MilkRateSettings } from './MilkRateSettings';
 import { AccessControlSettings } from './AccessControlSettings';
+import { UserRoleManagement } from './UserRoleManagement';
 
 export const SettingsManagement = () => {
   const [openSections, setOpenSections] = useState({
     milkRates: false,
     accessControl: false,
+    userRoles: false,
   });
 
   const toggleSection = (section: keyof typeof openSections) => {
@@ -68,6 +70,29 @@ export const SettingsManagement = () => {
             <CollapsibleContent>
               <CardContent>
                 <AccessControlSettings />
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
+        {/* User Role Management */}
+        <Collapsible open={openSections.userRoles} onOpenChange={() => toggleSection('userRoles')}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">User Role Management</CardTitle>
+                  {openSections.userRoles ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <UserRoleManagement />
               </CardContent>
             </CollapsibleContent>
           </Card>
