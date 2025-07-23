@@ -40,6 +40,49 @@ export const useAITracking = () => {
     }
   });
 
+  const getNextServiceNumber = async (cowId: string) => {
+    const { data, error } = await supabase
+      .from('ai_records')
+      .select('service_number, actual_delivery_date')
+      .eq('cow_id', cowId)
+      .order('ai_date', { ascending: false });
+    
+    if (error) throw error;
+    
+    // If no records exist, start with service number 1
+    if (!data || data.length === 0) {
+      return 1;
+    }
+    
+    // Find the most recent successful delivery
+    const lastDelivery = data.find(record => record.actual_delivery_date);
+    
+    if (lastDelivery) {
+      // If there was a delivery, get records after that delivery date
+      const { data: recordsAfterDelivery, error: deliveryError } = await supabase
+        .from('ai_records')
+        .select('service_number')
+        .eq('cow_id', cowId)
+        .gt('ai_date', lastDelivery.actual_delivery_date)
+        .order('service_number', { ascending: false })
+        .limit(1);
+      
+      if (deliveryError) throw deliveryError;
+      
+      // If no records after delivery, start fresh with 1
+      if (!recordsAfterDelivery || recordsAfterDelivery.length === 0) {
+        return 1;
+      }
+      
+      // Otherwise increment from the highest service number after delivery
+      return recordsAfterDelivery[0].service_number + 1;
+    }
+    
+    // No delivery found, increment from the highest service number
+    const maxServiceNumber = Math.max(...data.map(record => record.service_number));
+    return maxServiceNumber + 1;
+  };
+
   const addAIRecordMutation = useMutation({
     mutationFn: async (newRecord: Omit<AIRecord, 'id'>) => {
       // Calculate expected delivery date (285 days after AI date)
@@ -87,6 +130,7 @@ export const useAITracking = () => {
     aiRecords,
     isLoading,
     addAIRecordMutation,
-    updateAIRecordMutation
+    updateAIRecordMutation,
+    getNextServiceNumber
   };
 };

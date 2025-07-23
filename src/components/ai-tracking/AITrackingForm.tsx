@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCows } from '@/hooks/useCows';
+import { useAITracking } from '@/hooks/useAITracking';
 
 interface AITrackingFormProps {
   onSubmit: (data: any) => void;
@@ -15,7 +16,7 @@ interface AITrackingFormProps {
 }
 
 export const AITrackingForm: React.FC<AITrackingFormProps> = ({ onSubmit, isLoading }) => {
-  const { register, handleSubmit, setValue, reset } = useForm({
+  const { register, handleSubmit, setValue, reset, watch } = useForm({
     defaultValues: {
       cow_id: '',
       service_number: 1,
@@ -28,6 +29,16 @@ export const AITrackingForm: React.FC<AITrackingFormProps> = ({ onSubmit, isLoad
   });
 
   const { cows } = useCows();
+  const { getNextServiceNumber } = useAITracking();
+  const selectedCowId = watch('cow_id');
+
+  useEffect(() => {
+    if (selectedCowId) {
+      getNextServiceNumber(selectedCowId).then(nextServiceNumber => {
+        setValue('service_number', nextServiceNumber);
+      });
+    }
+  }, [selectedCowId, getNextServiceNumber, setValue]);
 
   const handleFormSubmit = (data: any) => {
     onSubmit({
@@ -69,10 +80,12 @@ export const AITrackingForm: React.FC<AITrackingFormProps> = ({ onSubmit, isLoad
           </div>
 
           <div>
-            <Label htmlFor="service_number">Service Number</Label>
+            <Label htmlFor="service_number">Service Number (Auto)</Label>
             <Input
               type="number"
               min="1"
+              readOnly
+              className="bg-muted"
               {...register('service_number', { required: true })}
             />
           </div>
