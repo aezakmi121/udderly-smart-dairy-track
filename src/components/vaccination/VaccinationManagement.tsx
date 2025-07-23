@@ -6,9 +6,14 @@ import { useVaccination } from '@/hooks/useVaccination';
 
 export const VaccinationManagement = () => {
   const { records, isLoading, addRecordMutation } = useVaccination();
+  const [modalOpen, setModalOpen] = React.useState(false);
 
   const handleAddRecord = (data: any) => {
-    addRecordMutation.mutate(data);
+    addRecordMutation.mutate(data, {
+      onSuccess: () => {
+        setModalOpen(false);
+      }
+    });
   };
 
   return (
@@ -21,6 +26,8 @@ export const VaccinationManagement = () => {
         <VaccinationModal 
           onSubmit={handleAddRecord} 
           isLoading={addRecordMutation.isPending}
+          open={modalOpen}
+          onOpenChange={setModalOpen}
         />
       </div>
 

@@ -9,9 +9,14 @@ import { useUserPermissions } from '@/hooks/useUserPermissions';
 export const MilkCollectionManagement = () => {
   const { collections, isLoading, addCollectionMutation, deleteCollectionMutation } = useMilkCollection();
   const { canEdit, isAdmin } = useUserPermissions();
+  const [modalOpen, setModalOpen] = React.useState(false);
 
   const handleAddCollection = (data: any) => {
-    addCollectionMutation.mutate(data);
+    addCollectionMutation.mutate(data, {
+      onSuccess: () => {
+        setModalOpen(false);
+      }
+    });
   };
 
   const handleDeleteCollection = (id: string) => {
@@ -39,6 +44,8 @@ export const MilkCollectionManagement = () => {
         <MilkCollectionModal 
           onSubmit={handleAddCollection} 
           isLoading={addCollectionMutation.isPending}
+          open={modalOpen}
+          onOpenChange={setModalOpen}
         />
       </div>
 

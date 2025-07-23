@@ -6,9 +6,14 @@ import { useWeightLogs } from '@/hooks/useWeightLogs';
 
 export const WeightLogsManagement = () => {
   const { weightLogs, isLoading, addWeightLogMutation } = useWeightLogs();
+  const [modalOpen, setModalOpen] = React.useState(false);
 
   const handleAddLog = (data: any) => {
-    addWeightLogMutation.mutate(data);
+    addWeightLogMutation.mutate(data, {
+      onSuccess: () => {
+        setModalOpen(false);
+      }
+    });
   };
 
   return (
@@ -21,6 +26,8 @@ export const WeightLogsManagement = () => {
         <WeightLogModal 
           onSubmit={handleAddLog} 
           isLoading={addWeightLogMutation.isPending}
+          open={modalOpen}
+          onOpenChange={setModalOpen}
         />
       </div>
 

@@ -119,6 +119,33 @@ export const FarmersManagement = () => {
       is_active: formData.get('is_active') === 'on'
     };
 
+    // Validate phone number
+    if (!/^\d{10}$/.test(farmerData.phone_number)) {
+      toast({ 
+        title: "Invalid phone number", 
+        description: "Phone number must be exactly 10 digits",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Check for duplicates
+    const isDuplicate = farmers?.some(farmer => 
+      farmer.id !== selectedFarmer?.id && (
+        farmer.farmer_code === farmerData.farmer_code || 
+        farmer.phone_number === farmerData.phone_number
+      )
+    );
+
+    if (isDuplicate) {
+      toast({ 
+        title: "Duplicate farmer", 
+        description: "Farmer with this code or phone number already exists",
+        variant: "destructive" 
+      });
+      return;
+    }
+
     if (selectedFarmer) {
       updateFarmerMutation.mutate({ id: selectedFarmer.id, ...farmerData });
     } else {
@@ -180,16 +207,20 @@ export const FarmersManagement = () => {
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="phone_number">Phone Number *</Label>
-                <Input
-                  id="phone_number"
-                  name="phone_number"
-                  type="tel"
-                  defaultValue={selectedFarmer?.phone_number || ''}
-                  required
-                />
-              </div>
+                <div>
+                  <Label htmlFor="phone_number">Phone Number *</Label>
+                  <Input
+                    id="phone_number"
+                    name="phone_number"
+                    type="tel"
+                    pattern="\d{10}"
+                    maxLength={10}
+                    placeholder="10-digit phone number"
+                    defaultValue={selectedFarmer?.phone_number || ''}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Must be exactly 10 digits</p>
+                </div>
 
               <div>
                 <Label htmlFor="address">Address</Label>

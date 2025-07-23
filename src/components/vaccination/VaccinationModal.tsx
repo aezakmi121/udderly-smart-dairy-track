@@ -7,17 +7,23 @@ import { Plus } from 'lucide-react';
 interface VaccinationModalProps {
   onSubmit: (data: any) => void;
   isLoading: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export const VaccinationModal: React.FC<VaccinationModalProps> = ({
   onSubmit,
-  isLoading
+  isLoading,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange
 }) => {
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOnOpenChange || setInternalOpen;
 
   const handleSubmit = (data: any) => {
     onSubmit(data);
-    setOpen(false);
+    // Don't close modal here - let the mutation success handler close it
   };
 
   return (
