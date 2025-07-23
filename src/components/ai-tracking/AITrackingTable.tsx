@@ -141,7 +141,7 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                 )}
               </TableCell>
               <TableCell>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-2">
                   {!record.pd_done && isPDDue(record.ai_date) && (
                     <Dialog open={pdDialog === record.id} onOpenChange={(open) => setPdDialog(open ? record.id : null)}>
                       <DialogTrigger asChild>
@@ -150,7 +150,7 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                           PD Update
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="bg-white">
                         <DialogHeader>
                           <DialogTitle>Update Pregnancy Detection</DialogTitle>
                         </DialogHeader>
@@ -161,7 +161,7 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                               <SelectTrigger>
                                 <SelectValue placeholder="Select result" />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="bg-white z-50">
                                 <SelectItem value="positive">Positive</SelectItem>
                                 <SelectItem value="negative">Negative</SelectItem>
                                 <SelectItem value="inconclusive">Inconclusive</SelectItem>
@@ -184,7 +184,7 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                           Record Delivery
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="bg-white">
                         <DialogHeader>
                           <DialogTitle>Record Delivery</DialogTitle>
                         </DialogHeader>
@@ -203,7 +203,7 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                               <SelectTrigger>
                                 <SelectValue placeholder="Select gender" />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="bg-white z-50">
                                 <SelectItem value="male">Male</SelectItem>
                                 <SelectItem value="female">Female</SelectItem>
                               </SelectContent>
@@ -215,6 +215,44 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                         </div>
                       </DialogContent>
                     </Dialog>
+                  )}
+
+                  {record.pd_done && !record.actual_delivery_date && (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="flex items-center gap-1"
+                      onClick={() => {
+                        setDeliveryDialog(record.id);
+                        setDeliveryDate('');
+                        setCalfGender('');
+                      }}
+                    >
+                      <Edit className="h-3 w-3" />
+                      Edit Status
+                    </Button>
+                  )}
+
+                  {record.actual_delivery_date && (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="flex items-center gap-1"
+                      onClick={() => {
+                        setDeliveryDialog(record.id);
+                        setDeliveryDate(record.actual_delivery_date || '');
+                        setCalfGender(record.calf_gender || '');
+                      }}
+                    >
+                      <Edit className="h-3 w-3" />
+                      Edit Delivery
+                    </Button>
+                  )}
+
+                  {!record.pd_done && !isPDDue(record.ai_date) && (
+                    <span className="text-sm text-muted-foreground px-2 py-1">
+                      PD not due yet
+                    </span>
                   )}
                 </div>
               </TableCell>
