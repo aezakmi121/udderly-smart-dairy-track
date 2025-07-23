@@ -26,6 +26,22 @@ export const MainLayout = ({ currentView }: MainLayoutProps) => {
   const { canEdit } = useUserPermissions();
   const [activeTab, setActiveTab] = useState(currentView || 'dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setSidebarCollapsed(true);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Check initial size
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const canAccess = {
     dashboard: true,
@@ -78,17 +94,35 @@ export const MainLayout = ({ currentView }: MainLayoutProps) => {
     }
   };
 
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (isMobile) {
+      setSidebarCollapsed(true);
+    }
+  };
+
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab} 
-        canAccess={canAccess}
-        isCollapsed={sidebarCollapsed}
-      />
-      <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex h-screen bg-gray-100 relative">
+      {/* Mobile overlay */}
+      {isMobile && !sidebarCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setSidebarCollapsed(true)}
+        />
+      )}
+      
+      <div className={`${isMobile ? 'fixed inset-y-0 left-0 z-50' : ''} ${sidebarCollapsed && isMobile ? '-translate-x-full' : ''} transition-transform duration-300 ease-in-out`}>
+        <Sidebar 
+          activeTab={activeTab} 
+          onTabChange={handleTabChange} 
+          canAccess={canAccess}
+          isCollapsed={sidebarCollapsed && !isMobile}
+        />
+      </div>
+      
+      <div className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'w-full' : ''}`}>
         <TopBar onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 md:p-6">
           {renderContent()}
         </main>
       </div>
