@@ -32,7 +32,7 @@ export const VaccinationModal: React.FC<VaccinationModalProps> = ({
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
-          Add Vaccination Record
+          Add Record
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl bg-white">

@@ -86,9 +86,9 @@ export const DailyFeedManagement = () => {
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="whitespace-nowrap">
                 <Plus className="h-4 w-4 mr-2" />
-                Allocate Daily Feed
+                <span className="hidden sm:inline">Allocate </span>Feed
               </Button>
             </DialogTrigger>
             <DialogContent>

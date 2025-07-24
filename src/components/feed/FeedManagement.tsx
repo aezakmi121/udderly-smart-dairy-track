@@ -16,13 +16,15 @@ export const FeedManagement = () => {
       </div>
 
       <Tabs defaultValue="stock" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="stock">Stock Overview</TabsTrigger>
-          <TabsTrigger value="daily-feed">Daily Feed</TabsTrigger>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="items">Feed Items</TabsTrigger>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList className="flex w-max min-w-full">
+            <TabsTrigger value="stock">Stock Overview</TabsTrigger>
+            <TabsTrigger value="daily-feed">Daily Feed</TabsTrigger>
+            <TabsTrigger value="transactions">Transactions</TabsTrigger>
+            <TabsTrigger value="items">Feed Items</TabsTrigger>
+            <TabsTrigger value="categories">Categories</TabsTrigger>
+          </TabsList>
+        </div>
         
         <TabsContent value="stock">
           <FeedStock />

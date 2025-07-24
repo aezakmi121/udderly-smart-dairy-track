@@ -66,29 +66,29 @@ export const MilkProduction = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col space-y-4 sm:flex-row sm:justify-between sm:items-start sm:space-y-0">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Milk Production</h2>
           <p className="text-muted-foreground">Track daily milk production records</p>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <div>
+          
+          <div className="mt-4">
             <Label htmlFor="date-filter">Select Date</Label>
             <Input
               id="date-filter"
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-40"
+              className="w-full sm:w-40"
             />
           </div>
-          
+        </div>
+        
+        <div className="flex-shrink-0">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button 
                 onClick={() => setSelectedRecord(null)}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Record

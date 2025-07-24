@@ -224,7 +224,7 @@ export const UserRoleManagement = () => {
           ) : (
             <div className="space-y-4">
               {users.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div key={user.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg gap-4">
                   <div className="flex-1">
                     <h4 className="font-medium">{user.full_name}</h4>
                     <p className="text-sm text-muted-foreground">{user.email}</p>
@@ -240,7 +240,7 @@ export const UserRoleManagement = () => {
                     </div>
                   </div>
                   
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-shrink-0">
                     <Select
                       value={user.roles[0] || 'worker'}
                       onValueChange={(newRole) => 

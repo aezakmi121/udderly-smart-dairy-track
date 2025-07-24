@@ -16,13 +16,15 @@ export const CowGroupingManagement = () => {
       </div>
 
       <Tabs defaultValue="groups" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="groups">Groups</TabsTrigger>
-          <TabsTrigger value="assignments">Assignments</TabsTrigger>
-          <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
-          <TabsTrigger value="group-feeding">Group Feeding</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList className="flex w-max min-w-full">
+            <TabsTrigger value="groups">Groups</TabsTrigger>
+            <TabsTrigger value="assignments">Assignments</TabsTrigger>
+            <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+            <TabsTrigger value="group-feeding">Group Feeding</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+        </div>
         
         <TabsContent value="groups">
           <CowGroupsList />
