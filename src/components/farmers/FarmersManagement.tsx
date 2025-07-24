@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Edit, Trash2, Phone, MapPin } from 'lucide-react';
+import { Plus, Edit, Trash2, Phone, MapPin, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { BulkFarmerUpload } from './BulkFarmerUpload';
 
 interface Farmer {
   id: string;
@@ -26,6 +27,7 @@ interface Farmer {
 export const FarmersManagement = () => {
   const [selectedFarmer, setSelectedFarmer] = useState<Farmer | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -159,22 +161,31 @@ export const FarmersManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Farmers Management</h2>
           <p className="text-muted-foreground">Manage milk suppliers and their information</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              onClick={() => setSelectedFarmer(null)}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Farmer
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => setBulkUploadOpen(true)}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Bulk Upload
+          </Button>
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                onClick={() => setSelectedFarmer(null)}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Farmer
+              </Button>
+            </DialogTrigger>
           
           <DialogContent className="max-w-lg">
             <DialogHeader>
@@ -252,7 +263,13 @@ export const FarmersManagement = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      <BulkFarmerUpload 
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+      />
 
       <Card>
         <CardHeader>
