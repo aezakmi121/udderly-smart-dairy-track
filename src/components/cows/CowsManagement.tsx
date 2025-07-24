@@ -28,6 +28,7 @@ interface Cow {
   estimated_milk_capacity?: number;
   current_month_yield?: number;
   lifetime_yield?: number;
+  last_calving_date?: string;
   notes?: string;
 }
 
@@ -341,6 +342,7 @@ export const CowsManagement = () => {
                   <TableHead>Breed</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Age</TableHead>
+                  <TableHead>Days in Milk</TableHead>
                   <TableHead>Current Yield</TableHead>
                   <TableHead>Lifetime Yield</TableHead>
                   <TableHead>Calves</TableHead>
@@ -374,6 +376,12 @@ export const CowsManagement = () => {
                       {cow.date_of_birth 
                         ? `${Math.floor((new Date().getTime() - new Date(cow.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365))} years`
                         : 'Unknown'
+                      }
+                    </TableCell>
+                    <TableCell>
+                      {cow.last_calving_date 
+                        ? `${Math.floor((new Date().getTime() - new Date(cow.last_calving_date).getTime()) / (1000 * 60 * 60 * 24))} days`
+                        : 'N/A'
                       }
                     </TableCell>
                     <TableCell>{cow.current_month_yield?.toFixed(1) || '0.0'} L</TableCell>

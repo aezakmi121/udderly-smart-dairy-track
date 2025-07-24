@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Image, Trash2, Eye } from 'lucide-react';
+import { Edit, Image, Trash2, Eye, ArrowRight } from 'lucide-react';
 
 interface Calf {
   id: string;
@@ -55,6 +55,17 @@ export const CalvesTable: React.FC<CalvesTableProps> = ({
     }
   };
 
+  // Check if calf is eligible for promotion (female, alive, over 15 months old)
+  const isEligibleForPromotion = (calf: any) => {
+    if (!calf || calf.gender !== 'female' || calf.status !== 'alive') return false;
+    
+    const birthDate = new Date(calf.date_of_birth);
+    const today = new Date();
+    const ageInMonths = (today.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+    
+    return ageInMonths >= 15; // 15 months minimum for breeding age
+  };
+
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -86,7 +97,17 @@ export const CalvesTable: React.FC<CalvesTableProps> = ({
                   </div>
                 )}
               </TableCell>
-              <TableCell className="font-medium">{calf.calf_number || 'N/A'}</TableCell>
+              <TableCell className="font-medium">
+                <div className="flex items-center gap-2">
+                  {calf.calf_number || 'N/A'}
+                  {isEligibleForPromotion(calf) && (
+                    <Badge variant="secondary" className="text-xs">
+                      <ArrowRight className="h-3 w-3 mr-1" />
+                      Ready for promotion
+                    </Badge>
+                  )}
+                </div>
+              </TableCell>
               <TableCell className="capitalize">{calf.gender}</TableCell>
               <TableCell>{calculateAge(calf.date_of_birth)}</TableCell>
               <TableCell>{calf.cows?.cow_number || 'Unknown'}</TableCell>

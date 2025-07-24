@@ -2,10 +2,12 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Baby, Calendar, Scale, Heart } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { Baby, Calendar, Scale, Heart, ArrowRight } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
 interface CalfDetailsModalProps {
@@ -19,6 +21,58 @@ export const CalfDetailsModal: React.FC<CalfDetailsModalProps> = ({
   onOpenChange,
   calf
 }) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Promote calf to cow mutation
+  const promoteToCowMutation = useMutation({
+    mutationFn: async (calfData: any) => {
+      // Create a new cow record
+      const cowData = {
+        cow_number: calfData.calf_number || `COW-${Date.now()}`,
+        breed: calfData.breed || 'Unknown',
+        date_of_birth: calfData.date_of_birth,
+        date_of_arrival: calfData.date_of_birth,
+        status: 'active' as const,
+        image_url: calfData.image_url,
+        notes: calfData.notes ? `Promoted from calf. Original notes: ${calfData.notes}` : 'Promoted from calf'
+      };
+
+      const { data: newCow, error: cowError } = await supabase
+        .from('cows')
+        .insert(cowData)
+        .select()
+        .single();
+
+      if (cowError) throw cowError;
+
+      // Update calf status to indicate it's been promoted
+      const { error: calfError } = await supabase
+        .from('calves')
+        .update({ status: 'sold' as const, notes: `${calfData.notes || ''}\nPromoted to cow on ${format(new Date(), 'MMM dd, yyyy')}` })
+        .eq('id', calfData.id);
+
+      if (calfError) throw calfError;
+
+      return newCow;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cows'] });
+      queryClient.invalidateQueries({ queryKey: ['calves'] });
+      toast({ 
+        title: "Calf promoted successfully!", 
+        description: "The calf has been promoted to a cow and moved to the cows section." 
+      });
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to promote calf", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
   // Fetch mother cow details
   const { data: motherCow } = useQuery({
     queryKey: ['mother-cow', calf?.mother_cow_id],
@@ -115,13 +169,43 @@ export const CalfDetailsModal: React.FC<CalfDetailsModalProps> = ({
     return null;
   };
 
+  // Check if calf is eligible for promotion (female, alive, over 15 months old)
+  const isEligibleForPromotion = () => {
+    if (!calf || calf.gender !== 'female' || calf.status !== 'alive') return false;
+    
+    const birthDate = new Date(calf.date_of_birth);
+    const today = new Date();
+    const ageInMonths = (today.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+    
+    return ageInMonths >= 15; // 15 months minimum for breeding age
+  };
+
+  const handlePromoteToCow = () => {
+    if (confirm('Are you sure you want to promote this calf to a cow? This action cannot be undone.')) {
+      promoteToCowMutation.mutate(calf);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Baby className="h-5 w-5" />
-            Calf Details - {calf.calf_number || 'Unnamed'}
+          <DialogTitle className="flex items-center gap-2 justify-between">
+            <div className="flex items-center gap-2">
+              <Baby className="h-5 w-5" />
+              Calf Details - {calf.calf_number || 'Unnamed'}
+            </div>
+            {isEligibleForPromotion() && (
+              <Button
+                onClick={handlePromoteToCow}
+                disabled={promoteToCowMutation.isPending}
+                className="bg-green-600 hover:bg-green-700"
+                size="sm"
+              >
+                <ArrowRight className="h-4 w-4 mr-2" />
+                {promoteToCowMutation.isPending ? 'Promoting...' : 'Promote to Cow'}
+              </Button>
+            )}
           </DialogTitle>
         </DialogHeader>
 

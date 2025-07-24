@@ -330,6 +330,12 @@ export const CowDetailsModal: React.FC<CowDetailsModalProps> = ({
                           {format(new Date(cow.last_calving_date), 'MMM dd, yyyy')}
                         </div>
                       </div>
+                      <div>
+                        <span className="font-medium text-sm">Days in Milk:</span>
+                        <div className="text-sm mt-1 font-semibold text-blue-600">
+                          {Math.floor((new Date().getTime() - new Date(cow.last_calving_date).getTime()) / (1000 * 60 * 60 * 24))} days
+                        </div>
+                      </div>
                     </>
                   )}
                 </div>
