@@ -74,7 +74,7 @@ export const AccessControlSettings = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Admin Users</CardTitle>
@@ -170,7 +170,7 @@ export const AccessControlSettings = () => {
                     <TableCell className="font-medium">{user.full_name}</TableCell>
                     <TableCell>{user.phone_number || 'N/A'}</TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1 max-w-xs">
                         {user.roles.length > 0 ? (
                           user.roles.map((role: string) => (
                             <Badge key={role} variant={getRoleBadgeVariant(role)}>
@@ -207,7 +207,7 @@ export const AccessControlSettings = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="p-4 border rounded-lg">
                 <h4 className="font-semibold text-red-600 mb-2">Admin</h4>
                 <ul className="text-sm space-y-1">
@@ -238,10 +238,12 @@ export const AccessControlSettings = () => {
                   <li>• Weight logs</li>
                   <li>• AI tracking</li>
                   <li>• Feed management</li>
+                  <li>• Cow grouping</li>
+                  <li>• Analytics access</li>
                 </ul>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="p-4 border rounded-lg">
                 <h4 className="font-semibold text-purple-600 mb-2">Collection Centre</h4>
                 <ul className="text-sm space-y-1">
