@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Baby, Calendar, Scale, Stethoscope, TrendingUp, Eye } from 'lucide-react';
+import { Baby, Calendar, Scale, Stethoscope, TrendingUp, Eye, ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CalfDetailsDialog } from './CalfDetailsDialog';
@@ -38,6 +38,40 @@ export const CowDetailsModal: React.FC<CowDetailsModalProps> = ({
       return data;
     },
     enabled: !!cow?.id
+  });
+
+  // Fetch original mother cow details if this cow was promoted from a calf
+  const { data: originalMother } = useQuery({
+    queryKey: ['original-mother', cow?.original_mother_cow_id],
+    queryFn: async () => {
+      if (!cow?.original_mother_cow_id) return null;
+      const { data, error } = await supabase
+        .from('cows')
+        .select('cow_number, breed')
+        .eq('id', cow.original_mother_cow_id)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+    enabled: !!cow?.original_mother_cow_id
+  });
+
+  // Fetch original calf details if this cow was promoted
+  const { data: originalCalf } = useQuery({
+    queryKey: ['original-calf', cow?.promoted_from_calf_id],
+    queryFn: async () => {
+      if (!cow?.promoted_from_calf_id) return null;
+      const { data, error } = await supabase
+        .from('calves')
+        .select('calf_number, date_of_birth')
+        .eq('id', cow.promoted_from_calf_id)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+    enabled: !!cow?.promoted_from_calf_id
   });
 
   // Fetch last weight log
@@ -194,6 +228,15 @@ export const CowDetailsModal: React.FC<CowDetailsModalProps> = ({
                   
                   <span className="font-medium">Date of Arrival:</span>
                   <span>{format(new Date(cow.date_of_arrival), 'MMM dd, yyyy')}</span>
+                  
+                  {cow.is_promoted_calf && (
+                    <>
+                      <span className="font-medium">Origin:</span>
+                      <Badge variant="secondary" className="text-xs">
+                        Promoted from Calf
+                      </Badge>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -351,6 +394,58 @@ export const CowDetailsModal: React.FC<CowDetailsModalProps> = ({
                 )}
               </CardContent>
             </Card>
+
+            {/* Lineage Information - Show if cow was promoted from calf */}
+            {cow.is_promoted_calf && (
+              <Card className="md:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <ArrowRight className="h-4 w-4" />
+                    Lineage Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium">Original Calf Number:</span>
+                        <div className="text-blue-700 font-semibold">
+                          {originalCalf?.calf_number || 'Unknown'}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium">Date Promoted:</span>
+                        <div className="text-blue-700">
+                          {originalCalf?.date_of_birth ? 'From birth records' : 'Unknown'}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium">Original Mother:</span>
+                        <div className="text-green-700 font-semibold">
+                          {originalMother?.cow_number || 'Unknown'}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <span className="font-medium">Maternal Breed:</span>
+                        <div className="text-green-700">
+                          {originalMother?.breed || 'Unknown'}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-3 pt-3 border-t border-blue-200">
+                      <span className="text-xs text-blue-600">
+                        This cow was successfully promoted from our calf breeding program, 
+                        maintaining full lineage tracking for breeding decisions.
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </DialogContent>
       </Dialog>

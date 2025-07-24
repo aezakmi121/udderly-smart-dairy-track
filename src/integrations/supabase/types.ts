@@ -260,11 +260,14 @@ export type Database = {
           estimated_milk_capacity: number | null
           id: string
           image_url: string | null
+          is_promoted_calf: boolean | null
           lactation_number: number | null
           last_calving_date: string | null
           lifetime_yield: number | null
           notes: string | null
+          original_mother_cow_id: string | null
           peak_yield: number | null
+          promoted_from_calf_id: string | null
           purchase_price: number | null
           status: Database["public"]["Enums"]["cow_status"] | null
           updated_at: string | null
@@ -279,11 +282,14 @@ export type Database = {
           estimated_milk_capacity?: number | null
           id?: string
           image_url?: string | null
+          is_promoted_calf?: boolean | null
           lactation_number?: number | null
           last_calving_date?: string | null
           lifetime_yield?: number | null
           notes?: string | null
+          original_mother_cow_id?: string | null
           peak_yield?: number | null
+          promoted_from_calf_id?: string | null
           purchase_price?: number | null
           status?: Database["public"]["Enums"]["cow_status"] | null
           updated_at?: string | null
@@ -298,16 +304,34 @@ export type Database = {
           estimated_milk_capacity?: number | null
           id?: string
           image_url?: string | null
+          is_promoted_calf?: boolean | null
           lactation_number?: number | null
           last_calving_date?: string | null
           lifetime_yield?: number | null
           notes?: string | null
+          original_mother_cow_id?: string | null
           peak_yield?: number | null
+          promoted_from_calf_id?: string | null
           purchase_price?: number | null
           status?: Database["public"]["Enums"]["cow_status"] | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cows_original_mother_cow_id_fkey"
+            columns: ["original_mother_cow_id"]
+            isOneToOne: false
+            referencedRelation: "cows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cows_promoted_from_calf_id_fkey"
+            columns: ["promoted_from_calf_id"]
+            isOneToOne: false
+            referencedRelation: "calves"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       farmers: {
         Row: {

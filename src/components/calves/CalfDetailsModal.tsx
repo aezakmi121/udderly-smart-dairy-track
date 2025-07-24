@@ -27,7 +27,7 @@ export const CalfDetailsModal: React.FC<CalfDetailsModalProps> = ({
   // Promote calf to cow mutation
   const promoteToCowMutation = useMutation({
     mutationFn: async (calfData: any) => {
-      // Create a new cow record
+      // Create a new cow record with calf history tracking
       const cowData = {
         cow_number: calfData.calf_number || `COW-${Date.now()}`,
         breed: calfData.breed || 'Unknown',
@@ -35,6 +35,9 @@ export const CalfDetailsModal: React.FC<CalfDetailsModalProps> = ({
         date_of_arrival: calfData.date_of_birth,
         status: 'active' as const,
         image_url: calfData.image_url,
+        promoted_from_calf_id: calfData.id,
+        original_mother_cow_id: calfData.mother_cow_id,
+        is_promoted_calf: true,
         notes: calfData.notes ? `Promoted from calf. Original notes: ${calfData.notes}` : 'Promoted from calf'
       };
 

@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Image, Trash2, Baby, Eye } from 'lucide-react';
+import { Plus, Edit, Image, Trash2, Baby, Eye, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCalves } from '@/hooks/useCalves';
 import { CalfDetailsDialog } from './CalfDetailsDialog';
@@ -29,6 +29,9 @@ interface Cow {
   current_month_yield?: number;
   lifetime_yield?: number;
   last_calving_date?: string;
+  promoted_from_calf_id?: string;
+  original_mother_cow_id?: string;
+  is_promoted_calf?: boolean;
   notes?: string;
 }
 
@@ -365,7 +368,17 @@ export const CowsManagement = () => {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="font-medium">{cow.cow_number}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        {cow.cow_number}
+                        {cow.is_promoted_calf && (
+                          <Badge variant="outline" className="text-xs">
+                            <ArrowRight className="h-3 w-3 mr-1" />
+                            Promoted
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{cow.breed || 'N/A'}</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(cow.status || 'active')}>
