@@ -87,7 +87,6 @@ export const BulkFarmerUpload: React.FC<BulkFarmerUploadProps> = ({
       // Validation
       if (!farmer_code) errors.push('Farmer code is required');
       if (!name) errors.push('Name is required');
-      if (!phone_number) errors.push('Phone number is required');
       else if (!/^\d{10}$/.test(phone_number)) errors.push('Phone number must be exactly 10 digits');
       
       results.push({
@@ -201,7 +200,7 @@ export const BulkFarmerUpload: React.FC<BulkFarmerUploadProps> = ({
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• First row should be headers: farmer_code,name,phone_number</li>
                 <li>• Farmer code should be unique (e.g., F001, F002)</li>
-                <li>• Phone number must be exactly 10 digits</li>
+                <li>• Phone number is optional, but must be exactly 10 digits if provided</li>
                 <li>• No empty required fields</li>
               </ul>
             </div>
