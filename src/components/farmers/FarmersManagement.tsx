@@ -122,14 +122,18 @@ export const FarmersManagement = () => {
     };
 
     // Validate phone number
-    if (!/^\d{10}$/.test(farmerData.phone_number)) {
-      toast({ 
-        title: "Invalid phone number", 
-        description: "Phone number must be exactly 10 digits",
-        variant: "destructive" 
-      });
-      return;
-    }
+    if (
+  farmerData.phone_number &&
+  !/^\d{10}$/.test(farmerData.phone_number)
+) {
+  toast({ 
+    title: "Invalid phone number", 
+    description: "Phone number must be exactly 10 digits if provided",
+    variant: "destructive" 
+  });
+  return;
+}
+
 
     // Check for duplicates
     const isDuplicate = farmers?.some(farmer => 
