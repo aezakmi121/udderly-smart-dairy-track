@@ -228,7 +228,7 @@ export const FarmersManagement = () => {
                     maxLength={10}
                     placeholder="10-digit phone number"
                     defaultValue={selectedFarmer?.phone_number || ''}
-                    required
+                    
                   />
                   <p className="text-xs text-muted-foreground mt-1">Must be exactly 10 digits</p>
                 </div>
