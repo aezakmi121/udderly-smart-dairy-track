@@ -436,7 +436,7 @@ export const CowsManagement = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Cow Inventory</CardTitle>
+          <CardTitle>Cow Details</CardTitle>
           <CardDescription>
             {filteredAndSortedCows.length} of {cows?.length || 0} cows shown
           </CardDescription>
