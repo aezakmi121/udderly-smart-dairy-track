@@ -221,7 +221,7 @@ export const CalvesManagement = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Calves Inventory</CardTitle>
+          <CardTitle>Calves Details</CardTitle>
           <CardDescription>
             {filteredAndSortedCalves.length} of {calves?.length || 0} calves shown
           </CardDescription>
