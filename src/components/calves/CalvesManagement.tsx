@@ -99,6 +99,17 @@ export const CalvesManagement = () => {
       }
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
+        // Special handling for calf_number which might be numeric
+        if (sortBy === 'calf_number') {
+          const numA = parseFloat(aValue);
+          const numB = parseFloat(bValue);
+          
+          // If both can be parsed as numbers, sort numerically
+          if (!isNaN(numA) && !isNaN(numB)) {
+            return sortOrder === 'asc' ? numA - numB : numB - numA;
+          }
+        }
+        
         return sortOrder === 'asc' 
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);

@@ -142,18 +142,42 @@ export const useCowGrouping = () => {
   // Update grouping settings mutation
   const updateSettingMutation = useMutation({
     mutationFn: async ({ settingName, settingValue }: { settingName: string; settingValue: any }) => {
-      const { data, error } = await supabase
+      // First check if setting exists
+      const { data: existingSetting } = await supabase
         .from('grouping_settings')
-        .upsert({
-          setting_name: settingName,
-          setting_value: settingValue,
-          updated_at: new Date().toISOString()
-        })
-        .select()
+        .select('id')
+        .eq('setting_name', settingName)
         .single();
-      
-      if (error) throw error;
-      return data;
+
+      if (existingSetting) {
+        // Update existing setting
+        const { data, error } = await supabase
+          .from('grouping_settings')
+          .update({
+            setting_value: settingValue,
+            updated_at: new Date().toISOString()
+          })
+          .eq('setting_name', settingName)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        return data;
+      } else {
+        // Insert new setting
+        const { data, error } = await supabase
+          .from('grouping_settings')
+          .insert({
+            setting_name: settingName,
+            setting_value: settingValue,
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        return data;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grouping-settings'] });

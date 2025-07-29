@@ -89,6 +89,17 @@ export const MilkProduction = () => {
       }
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
+        // Special handling for cow_number which might be numeric
+        if (sortBy === 'cow_number') {
+          const numA = parseFloat(aValue);
+          const numB = parseFloat(bValue);
+          
+          // If both can be parsed as numbers, sort numerically
+          if (!isNaN(numA) && !isNaN(numB)) {
+            return sortOrder === 'asc' ? numA - numB : numB - numA;
+          }
+        }
+        
         return sortOrder === 'asc' 
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
