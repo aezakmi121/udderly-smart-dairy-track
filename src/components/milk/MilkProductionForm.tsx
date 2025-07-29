@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,15 +34,16 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
   isLoading
 }) => {
   const { cows } = useCows();
+  const [selectedSession, setSelectedSession] = useState(selectedRecord?.session || 'morning');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
     const recordData = {
-      cow_id: formData.get('cow_id') as string === 'bulk' ? null : formData.get('cow_id') as string,
+      cow_id: formData.get('cow_id') as string,
       production_date: formData.get('production_date') as string,
-      session: formData.get('session') as 'morning' | 'evening',
+      session: selectedSession,
       quantity: parseFloat(formData.get('quantity') as string),
       fat_percentage: parseFloat(formData.get('fat_percentage') as string) || null,
       snf_percentage: parseFloat(formData.get('snf_percentage') as string) || null,
@@ -55,13 +56,12 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="cow_id">Cow</Label>
-        <Select name="cow_id" defaultValue={selectedRecord?.cow_id || 'bulk'}>
+        <Label htmlFor="cow_id">Cow *</Label>
+        <Select name="cow_id" defaultValue={selectedRecord?.cow_id} required>
           <SelectTrigger>
             <SelectValue placeholder="Select cow" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="bulk">All cows (bulk entry)</SelectItem>
             {cows?.map((cow) => (
               <SelectItem key={cow.id} value={cow.id}>
                 {cow.cow_number}
@@ -85,15 +85,24 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
         
         <div>
           <Label htmlFor="session">Session *</Label>
-          <Select name="session" defaultValue={selectedRecord?.session || 'morning'} required>
-            <SelectTrigger>
-              <SelectValue placeholder="Select session" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="morning">Morning</SelectItem>
-              <SelectItem value="evening">Evening</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={selectedSession === 'morning' ? 'default' : 'outline'}
+              onClick={() => setSelectedSession('morning')}
+              className="flex-1"
+            >
+              Morning
+            </Button>
+            <Button
+              type="button"
+              variant={selectedSession === 'evening' ? 'default' : 'outline'}
+              onClick={() => setSelectedSession('evening')}
+              className="flex-1"
+            >
+              Evening
+            </Button>
+          </div>
         </div>
       </div>
 

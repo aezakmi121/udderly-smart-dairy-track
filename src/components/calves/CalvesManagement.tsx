@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -8,6 +8,7 @@ import { useCalves } from '@/hooks/useCalves';
 import { CalfForm } from './CalfForm';
 import { CalvesTable } from './CalvesTable';
 import { CalfDetailsModal } from './CalfDetailsModal';
+import { CalfFilters } from './CalfFilters';
 
 interface Calf {
   id: string;
@@ -28,6 +29,14 @@ export const CalvesManagement = () => {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedCalfForDetails, setSelectedCalfForDetails] = useState<Calf | null>(null);
   
+  // Filter and sort states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [genderFilter, setGenderFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [breedFilter, setBreedFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('calf_number');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  
   const {
     calves,
     isLoading,
@@ -35,6 +44,82 @@ export const CalvesManagement = () => {
     updateCalfMutation,
     deleteCalfMutation
   } = useCalves();
+
+  // Get unique breeds for filter
+  const uniqueBreeds = useMemo(() => {
+    if (!calves) return [];
+    const breeds = new Set(calves.map(calf => calf.breed).filter(Boolean));
+    return Array.from(breeds).sort();
+  }, [calves]);
+
+  // Filter and sort calves
+  const filteredAndSortedCalves = useMemo(() => {
+    if (!calves) return [];
+    
+    let filtered = calves.filter(calf => {
+      const matchesSearch = calf.calf_number?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+      const matchesGender = genderFilter === 'all' || calf.gender === genderFilter;
+      const matchesStatus = statusFilter === 'all' || calf.status === statusFilter;
+      const matchesBreed = breedFilter === 'all' || calf.breed === breedFilter;
+      
+      return matchesSearch && matchesGender && matchesStatus && matchesBreed;
+    });
+
+    // Sort the filtered results
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'calf_number':
+          aValue = a.calf_number || '';
+          bValue = b.calf_number || '';
+          break;
+        case 'date_of_birth':
+          aValue = a.date_of_birth || '';
+          bValue = b.date_of_birth || '';
+          break;
+        case 'gender':
+          aValue = a.gender || '';
+          bValue = b.gender || '';
+          break;
+        case 'breed':
+          aValue = a.breed || '';
+          bValue = b.breed || '';
+          break;
+        case 'status':
+          aValue = a.status || '';
+          bValue = b.status || '';
+          break;
+        case 'birth_weight':
+          aValue = Number(a.birth_weight) || 0;
+          bValue = Number(b.birth_weight) || 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortOrder === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      } else {
+        return sortOrder === 'asc' 
+          ? (aValue as number) - (bValue as number)
+          : (bValue as number) - (aValue as number);
+      }
+    });
+
+    return filtered;
+  }, [calves, searchTerm, genderFilter, statusFilter, breedFilter, sortBy, sortOrder]);
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setGenderFilter('all');
+    setStatusFilter('all');
+    setBreedFilter('all');
+    setSortBy('calf_number');
+    setSortOrder('asc');
+  };
 
   const handleSubmit = (calfData: any) => {
     if (selectedCalf) {
@@ -106,16 +191,33 @@ export const CalvesManagement = () => {
         </Dialog>
       </div>
 
+      <CalfFilters
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        genderFilter={genderFilter}
+        setGenderFilter={setGenderFilter}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        breedFilter={breedFilter}
+        setBreedFilter={setBreedFilter}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        sortOrder={sortOrder}
+        setSortOrder={setSortOrder}
+        onClearFilters={handleClearFilters}
+        breeds={uniqueBreeds}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>Calves Inventory</CardTitle>
           <CardDescription>
-            {calves?.length || 0} calves registered in the system
+            {filteredAndSortedCalves.length} of {calves?.length || 0} calves shown
           </CardDescription>
         </CardHeader>
         <CardContent>
           <CalvesTable
-            calves={calves || []}
+            calves={filteredAndSortedCalves || []}
             onEdit={handleEdit}
             onView={handleView}
             onDelete={handleDelete}

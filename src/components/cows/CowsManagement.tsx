@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCalves } from '@/hooks/useCalves';
 import { CalfDetailsDialog } from './CalfDetailsDialog';
 import { CowDetailsModal } from './CowDetailsModal';
+import { CowFilters } from './CowFilters';
 
 interface Cow {
   id: string;
@@ -43,6 +44,14 @@ export const CowsManagement = () => {
   const [selectedCowForCalves, setSelectedCowForCalves] = useState<Cow | null>(null);
   const [cowDetailsOpen, setCowDetailsOpen] = useState(false);
   const [selectedCowForDetails, setSelectedCowForDetails] = useState<Cow | null>(null);
+  
+  // Filter and sort states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [breedFilter, setBreedFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('cow_number');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { calves } = useCalves();
@@ -59,6 +68,77 @@ export const CowsManagement = () => {
       return data as Cow[];
     }
   });
+
+  // Get unique breeds for filter
+  const uniqueBreeds = useMemo(() => {
+    if (!cows) return [];
+    const breeds = new Set(cows.map(cow => cow.breed).filter(Boolean));
+    return Array.from(breeds).sort();
+  }, [cows]);
+
+  // Filter and sort cows
+  const filteredAndSortedCows = useMemo(() => {
+    if (!cows) return [];
+    
+    let filtered = cows.filter(cow => {
+      const matchesSearch = cow.cow_number?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+      const matchesStatus = statusFilter === 'all' || cow.status === statusFilter;
+      const matchesBreed = breedFilter === 'all' || cow.breed === breedFilter;
+      
+      return matchesSearch && matchesStatus && matchesBreed;
+    });
+
+    // Sort the filtered results
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'cow_number':
+          aValue = a.cow_number || '';
+          bValue = b.cow_number || '';
+          break;
+        case 'breed':
+          aValue = a.breed || '';
+          bValue = b.breed || '';
+          break;
+        case 'status':
+          aValue = a.status || '';
+          bValue = b.status || '';
+          break;
+        case 'date_of_arrival':
+          aValue = a.date_of_arrival || '';
+          bValue = b.date_of_arrival || '';
+          break;
+        case 'lifetime_yield':
+          aValue = Number(a.lifetime_yield) || 0;
+          bValue = Number(b.lifetime_yield) || 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortOrder === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      } else {
+        return sortOrder === 'asc' 
+          ? (aValue as number) - (bValue as number)
+          : (bValue as number) - (aValue as number);
+      }
+    });
+
+    return filtered;
+  }, [cows, searchTerm, statusFilter, breedFilter, sortBy, sortOrder]);
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setBreedFilter('all');
+    setSortBy('cow_number');
+    setSortOrder('asc');
+  };
+
 
   const addCowMutation = useMutation({
     mutationFn: async (newCow: Omit<Cow, 'id'>) => {
@@ -328,11 +408,26 @@ export const CowsManagement = () => {
         </Dialog>
       </div>
 
+      <CowFilters
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        breedFilter={breedFilter}
+        setBreedFilter={setBreedFilter}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        sortOrder={sortOrder}
+        setSortOrder={setSortOrder}
+        onClearFilters={handleClearFilters}
+        breeds={uniqueBreeds}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>Cow Inventory</CardTitle>
           <CardDescription>
-            {cows?.length || 0} cows registered in the system
+            {filteredAndSortedCows.length} of {cows?.length || 0} cows shown
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -353,7 +448,7 @@ export const CowsManagement = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cows?.map((cow) => (
+                {filteredAndSortedCows?.map((cow) => (
                   <TableRow key={cow.id}>
                     <TableCell>
                       {cow.image_url ? (

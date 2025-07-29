@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { useMilkProduction } from '@/hooks/useMilkProduction';
 import { MilkProductionForm } from './MilkProductionForm';
 import { MilkStatsCards } from './MilkStatsCards';
 import { MilkProductionTable } from './MilkProductionTable';
+import { MilkProductionFilters } from './MilkProductionFilters';
 
 interface MilkProduction {
   id: string;
@@ -26,6 +27,12 @@ export const MilkProduction = () => {
   const [selectedRecord, setSelectedRecord] = useState<MilkProduction | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  // Filter and sort states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sessionFilter, setSessionFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('cow_number');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const {
     milkRecords,
@@ -35,6 +42,72 @@ export const MilkProduction = () => {
     updateRecordMutation,
     deleteRecordMutation
   } = useMilkProduction(selectedDate);
+
+  // Filter and sort milk records
+  const filteredAndSortedRecords = useMemo(() => {
+    if (!milkRecords) return [];
+    
+    let filtered = milkRecords.filter(record => {
+      const cowNumber = record.cows?.cow_number || '';
+      const matchesSearch = cowNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSession = sessionFilter === 'all' || record.session === sessionFilter;
+      
+      return matchesSearch && matchesSession;
+    });
+
+    // Sort the filtered results
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'cow_number':
+          aValue = a.cows?.cow_number || '';
+          bValue = b.cows?.cow_number || '';
+          break;
+        case 'session':
+          aValue = a.session || '';
+          bValue = b.session || '';
+          break;
+        case 'quantity':
+          aValue = Number(a.quantity) || 0;
+          bValue = Number(b.quantity) || 0;
+          break;
+        case 'fat_percentage':
+          aValue = Number(a.fat_percentage) || 0;
+          bValue = Number(b.fat_percentage) || 0;
+          break;
+        case 'snf_percentage':
+          aValue = Number(a.snf_percentage) || 0;
+          bValue = Number(b.snf_percentage) || 0;
+          break;
+        case 'created_at':
+          aValue = a.created_at || '';
+          bValue = b.created_at || '';
+          break;
+        default:
+          return 0;
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortOrder === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      } else {
+        return sortOrder === 'asc' 
+          ? (aValue as number) - (bValue as number)
+          : (bValue as number) - (aValue as number);
+      }
+    });
+
+    return filtered;
+  }, [milkRecords, searchTerm, sessionFilter, sortBy, sortOrder]);
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setSessionFilter('all');
+    setSortBy('cow_number');
+    setSortOrder('asc');
+  };
 
   const handleSubmit = (recordData: any) => {
     if (selectedRecord) {
@@ -116,16 +189,28 @@ export const MilkProduction = () => {
 
       <MilkStatsCards dailyStats={dailyStats} />
 
+      <MilkProductionFilters
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        sessionFilter={sessionFilter}
+        setSessionFilter={setSessionFilter}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        sortOrder={sortOrder}
+        setSortOrder={setSortOrder}
+        onClearFilters={handleClearFilters}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>Production Records for {selectedDate}</CardTitle>
           <CardDescription>
-            {milkRecords?.length || 0} records found
+            {filteredAndSortedRecords.length} of {milkRecords?.length || 0} records shown
           </CardDescription>
         </CardHeader>
         <CardContent>
           <MilkProductionTable
-            milkRecords={milkRecords || []}
+            milkRecords={filteredAndSortedRecords || []}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
