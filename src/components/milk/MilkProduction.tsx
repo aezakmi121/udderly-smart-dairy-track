@@ -10,7 +10,7 @@ import { useMilkProduction } from '@/hooks/useMilkProduction';
 import { MilkProductionForm } from './MilkProductionForm';
 import { MilkStatsCards } from './MilkStatsCards';
 import { MilkProductionTable } from './MilkProductionTable';
-import { MilkProductionFilters } from './MilkProductionFilters';
+import { MilkProductionFiltersModal } from './MilkProductionFiltersModal';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 interface MilkProduction {
@@ -34,6 +34,7 @@ export const MilkProduction = () => {
   const [sessionFilter, setSessionFilter] = useState('all');
   const [sortBy, setSortBy] = useState('cow_number');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
 
   const {
     milkRecords,
@@ -170,7 +171,21 @@ export const MilkProduction = () => {
           </div>
         </div>
         
-        <div className="flex-shrink-0">
+        <div className="flex gap-2">
+          <MilkProductionFiltersModal
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            sessionFilter={sessionFilter}
+            setSessionFilter={setSessionFilter}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            sortOrder={sortOrder}
+            setSortOrder={setSortOrder}
+            onClearFilters={handleClearFilters}
+            open={filterModalOpen}
+            onOpenChange={setFilterModalOpen}
+          />
+          
           {canEdit.milkProduction && (
             <MilkProductionModal
               selectedRecord={selectedRecord}
@@ -187,17 +202,6 @@ export const MilkProduction = () => {
 
       <MilkStatsCards dailyStats={dailyStats} />
 
-      <MilkProductionFilters
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        sessionFilter={sessionFilter}
-        setSessionFilter={setSessionFilter}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        sortOrder={sortOrder}
-        setSortOrder={setSortOrder}
-        onClearFilters={handleClearFilters}
-      />
 
       <Card>
         <CardHeader>

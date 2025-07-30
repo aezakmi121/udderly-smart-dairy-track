@@ -8,7 +8,7 @@ import { useCalves } from '@/hooks/useCalves';
 import { CalfForm } from './CalfForm';
 import { CalvesTable } from './CalvesTable';
 import { CalfDetailsModal } from './CalfDetailsModal';
-import { CalfFilters } from './CalfFilters';
+import { CalfFiltersModal } from './CalfFiltersModal';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 interface Calf {
@@ -37,6 +37,7 @@ export const CalvesManagement = () => {
   const [breedFilter, setBreedFilter] = useState('all');
   const [sortBy, setSortBy] = useState('calf_number');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   
   const {
     calves,
@@ -176,35 +177,40 @@ export const CalvesManagement = () => {
           <p className="text-muted-foreground">Track and manage your calves</p>
         </div>
         
-        {canEdit.calves && (
-          <CalfModal
-            selectedCalf={selectedCalf}
-            onSubmit={handleSubmit}
-            isLoading={addCalfMutation.isPending || updateCalfMutation.isPending}
-            open={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
-            setSelectedCalf={setSelectedCalf}
-            onCancel={handleCancel}
+        <div className="flex gap-2">
+          <CalfFiltersModal
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            genderFilter={genderFilter}
+            setGenderFilter={setGenderFilter}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            breedFilter={breedFilter}
+            setBreedFilter={setBreedFilter}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            sortOrder={sortOrder}
+            setSortOrder={setSortOrder}
+            onClearFilters={handleClearFilters}
+            breeds={uniqueBreeds}
+            open={filterModalOpen}
+            onOpenChange={setFilterModalOpen}
           />
-        )}
+          
+          {canEdit.calves && (
+            <CalfModal
+              selectedCalf={selectedCalf}
+              onSubmit={handleSubmit}
+              isLoading={addCalfMutation.isPending || updateCalfMutation.isPending}
+              open={isDialogOpen}
+              onOpenChange={setIsDialogOpen}
+              setSelectedCalf={setSelectedCalf}
+              onCancel={handleCancel}
+            />
+          )}
+        </div>
       </div>
 
-      <CalfFilters
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        genderFilter={genderFilter}
-        setGenderFilter={setGenderFilter}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        breedFilter={breedFilter}
-        setBreedFilter={setBreedFilter}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        sortOrder={sortOrder}
-        setSortOrder={setSortOrder}
-        onClearFilters={handleClearFilters}
-        breeds={uniqueBreeds}
-      />
 
       <Card>
         <CardHeader>

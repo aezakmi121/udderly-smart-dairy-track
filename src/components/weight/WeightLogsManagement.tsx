@@ -3,11 +3,21 @@ import React from 'react';
 import { WeightLogModal } from './WeightLogModal';
 import { WeightLogTable } from './WeightLogTable';
 import { useWeightLogs } from '@/hooks/useWeightLogs';
+import { WeightLogFiltersModal } from './WeightLogFiltersModal';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 export const WeightLogsManagement = () => {
   const { weightLogs, isLoading, addWeightLogMutation } = useWeightLogs();
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [filterModalOpen, setFilterModalOpen] = React.useState(false);
+  
+  // Filter and sort states
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [dateRange, setDateRange] = React.useState<{ from?: Date; to?: Date }>({});
+  const [weightRange, setWeightRange] = React.useState({ min: '', max: '' });
+  const [sortBy, setSortBy] = React.useState('log_date');
+  const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('desc');
+  
   const { canEdit } = useUserPermissions();
 
   // Close modal when mutation succeeds
@@ -16,6 +26,14 @@ export const WeightLogsManagement = () => {
       setModalOpen(false);
     }
   }, [addWeightLogMutation.isSuccess, addWeightLogMutation.isPending]);
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setDateRange({});
+    setWeightRange({ min: '', max: '' });
+    setSortBy('log_date');
+    setSortOrder('desc');
+  };
 
   const handleAddLog = (data: any) => {
     console.log('WeightLogsManagement - submitting:', data);
@@ -29,14 +47,32 @@ export const WeightLogsManagement = () => {
           <h1 className="text-3xl font-bold tracking-tight">Weight Logs</h1>
           <p className="text-muted-foreground">Track cattle weight measurements and monitor growth.</p>
         </div>
-        {canEdit.weightLogs && (
-          <WeightLogModal 
-            onSubmit={handleAddLog} 
-            isLoading={addWeightLogMutation.isPending}
-            open={modalOpen}
-            onOpenChange={setModalOpen}
+        <div className="flex gap-2">
+          <WeightLogFiltersModal
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+            weightRange={weightRange}
+            setWeightRange={setWeightRange}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            sortOrder={sortOrder}
+            setSortOrder={setSortOrder}
+            onClearFilters={handleClearFilters}
+            open={filterModalOpen}
+            onOpenChange={setFilterModalOpen}
           />
-        )}
+          
+          {canEdit.weightLogs && (
+            <WeightLogModal 
+              onSubmit={handleAddLog} 
+              isLoading={addWeightLogMutation.isPending}
+              open={modalOpen}
+              onOpenChange={setModalOpen}
+            />
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow">

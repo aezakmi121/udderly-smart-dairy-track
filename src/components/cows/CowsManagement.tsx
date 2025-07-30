@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCalves } from '@/hooks/useCalves';
 import { CalfDetailsDialog } from './CalfDetailsDialog';
 import { CowDetailsModal } from './CowDetailsModal';
-import { CowFilters } from './CowFilters';
+import { CowFiltersModal } from './CowFiltersModal';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 interface Cow {
@@ -52,6 +52,7 @@ export const CowsManagement = () => {
   const [breedFilter, setBreedFilter] = useState('all');
   const [sortBy, setSortBy] = useState('cow_number');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -281,34 +282,39 @@ export const CowsManagement = () => {
           <p className="text-muted-foreground">Manage your dairy cows and their information</p>
         </div>
         
-        {canEdit.cows && (
-          <CowModal
-            selectedCow={selectedCow}
-            onSubmit={handleSubmit}
-            isLoading={addCowMutation.isPending || updateCowMutation.isPending}
-            open={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
-            isUploading={isUploading}
-            handleImageUpload={handleImageUpload}
-            setSelectedCow={setSelectedCow}
+        <div className="flex gap-2">
+          <CowFiltersModal
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            breedFilter={breedFilter}
+            setBreedFilter={setBreedFilter}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            sortOrder={sortOrder}
+            setSortOrder={setSortOrder}
+            onClearFilters={handleClearFilters}
+            breeds={uniqueBreeds}
+            open={filterModalOpen}
+            onOpenChange={setFilterModalOpen}
           />
-        )}
+          
+          {canEdit.cows && (
+            <CowModal
+              selectedCow={selectedCow}
+              onSubmit={handleSubmit}
+              isLoading={addCowMutation.isPending || updateCowMutation.isPending}
+              open={isDialogOpen}
+              onOpenChange={setIsDialogOpen}
+              isUploading={isUploading}
+              handleImageUpload={handleImageUpload}
+              setSelectedCow={setSelectedCow}
+            />
+          )}
+        </div>
       </div>
 
-      <CowFilters
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        breedFilter={breedFilter}
-        setBreedFilter={setBreedFilter}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        sortOrder={sortOrder}
-        setSortOrder={setSortOrder}
-        onClearFilters={handleClearFilters}
-        breeds={uniqueBreeds}
-      />
 
       <Card>
         <CardHeader>
