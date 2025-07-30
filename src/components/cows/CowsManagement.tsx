@@ -59,7 +59,7 @@ export const CowsManagement = () => {
   const { canEdit } = useUserPermissions();
 
   const { data: cows, isLoading } = useQuery({
-    queryKey: ['cows'],
+    queryKey: ['cows-list'], // Use same cache key as useCows hook
     queryFn: async () => {
       const { data, error } = await supabase
         .from('cows')
@@ -165,7 +165,7 @@ export const CowsManagement = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cows'] });
+      queryClient.invalidateQueries({ queryKey: ['cows-list'] });
       setIsDialogOpen(false);
       setSelectedCow(null);
       toast({ title: "Cow added successfully!" });
@@ -185,7 +185,7 @@ export const CowsManagement = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cows'] });
+      queryClient.invalidateQueries({ queryKey: ['cows-list'] });
       setIsDialogOpen(false);
       setSelectedCow(null);
       toast({ title: "Cow updated successfully!" });
@@ -202,7 +202,7 @@ export const CowsManagement = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cows'] });
+      queryClient.invalidateQueries({ queryKey: ['cows-list'] });
       toast({ title: "Cow deleted successfully!" });
     }
   });

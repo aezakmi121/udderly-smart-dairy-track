@@ -15,11 +15,24 @@ export const useCows = () => {
       const { data, error } = await supabase
         .from('cows')
         .select('id, cow_number, status')
-        .eq('status', 'active')
-        .order('cow_number');
+        .eq('status', 'active');
       
       if (error) throw error;
-      return data as Cow[];
+      
+      // Sort numerically by cow_number
+      const sortedData = (data as Cow[]).sort((a, b) => {
+        const numA = parseFloat(a.cow_number);
+        const numB = parseFloat(b.cow_number);
+        
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB;
+        }
+        
+        return a.cow_number.localeCompare(b.cow_number);
+      });
+      
+      
+      return sortedData;
     }
   });
 
