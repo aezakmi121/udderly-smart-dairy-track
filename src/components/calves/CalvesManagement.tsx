@@ -2,13 +2,14 @@
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { CalfModal } from './CalfModal';
 import { Plus } from 'lucide-react';
 import { useCalves } from '@/hooks/useCalves';
 import { CalfForm } from './CalfForm';
 import { CalvesTable } from './CalvesTable';
 import { CalfDetailsModal } from './CalfDetailsModal';
 import { CalfFilters } from './CalfFilters';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 interface Calf {
   id: string;
@@ -44,6 +45,8 @@ export const CalvesManagement = () => {
     updateCalfMutation,
     deleteCalfMutation
   } = useCalves();
+  
+  const { canEdit } = useUserPermissions();
 
   // Get unique breeds for filter
   const uniqueBreeds = useMemo(() => {
@@ -173,33 +176,17 @@ export const CalvesManagement = () => {
           <p className="text-muted-foreground">Track and manage your calves</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              onClick={() => setSelectedCalf(null)}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Calf
-            </Button>
-          </DialogTrigger>
-          
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {selectedCalf ? 'Edit Calf' : 'Add New Calf'}
-              </DialogTitle>
-            </DialogHeader>
-            
-            <CalfForm
-              selectedCalf={selectedCalf}
-              setSelectedCalf={setSelectedCalf}
-              onSubmit={handleSubmit}
-              onCancel={handleCancel}
-              isLoading={addCalfMutation.isPending || updateCalfMutation.isPending}
-            />
-          </DialogContent>
-        </Dialog>
+        {canEdit.calves && (
+          <CalfModal
+            selectedCalf={selectedCalf}
+            onSubmit={handleSubmit}
+            isLoading={addCalfMutation.isPending || updateCalfMutation.isPending}
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+            setSelectedCalf={setSelectedCalf}
+            onCancel={handleCancel}
+          />
+        )}
       </div>
 
       <CalfFilters

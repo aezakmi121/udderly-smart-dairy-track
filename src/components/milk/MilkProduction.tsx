@@ -4,13 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { MilkProductionModal } from './MilkProductionModal';
 import { Plus } from 'lucide-react';
 import { useMilkProduction } from '@/hooks/useMilkProduction';
 import { MilkProductionForm } from './MilkProductionForm';
 import { MilkStatsCards } from './MilkStatsCards';
 import { MilkProductionTable } from './MilkProductionTable';
 import { MilkProductionFilters } from './MilkProductionFilters';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 interface MilkProduction {
   id: string;
@@ -42,6 +43,8 @@ export const MilkProduction = () => {
     updateRecordMutation,
     deleteRecordMutation
   } = useMilkProduction(selectedDate);
+  
+  const { canEdit } = useUserPermissions();
 
   // Filter and sort milk records
   const filteredAndSortedRecords = useMemo(() => {
@@ -168,33 +171,17 @@ export const MilkProduction = () => {
         </div>
         
         <div className="flex-shrink-0">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                onClick={() => setSelectedRecord(null)}
-                className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Record
-              </Button>
-            </DialogTrigger>
-            
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>
-                  {selectedRecord ? 'Edit Production Record' : 'Add Production Record'}
-                </DialogTitle>
-              </DialogHeader>
-              
-              <MilkProductionForm
-                selectedRecord={selectedRecord}
-                selectedDate={selectedDate}
-                onSubmit={handleSubmit}
-                onCancel={handleCancel}
-                isLoading={addRecordMutation.isPending || updateRecordMutation.isPending}
-              />
-            </DialogContent>
-          </Dialog>
+          {canEdit.milkProduction && (
+            <MilkProductionModal
+              selectedRecord={selectedRecord}
+              selectedDate={selectedDate}
+              onSubmit={handleSubmit}
+              isLoading={addRecordMutation.isPending || updateRecordMutation.isPending}
+              open={isDialogOpen}
+              onOpenChange={setIsDialogOpen}
+              onCancel={handleCancel}
+            />
+          )}
         </div>
       </div>
 

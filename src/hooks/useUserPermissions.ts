@@ -35,8 +35,13 @@ export const useUserPermissions = () => {
     isFarmer,
     canEdit: {
       cows: isAdmin || isWorker,
+      calves: isAdmin || isWorker,
       farmers: isAdmin,
       milkProduction: isAdmin || isWorker,
+      weightLogs: isAdmin || isWorker,
+      vaccination: isAdmin || isWorker,
+      aiTracking: isAdmin || isWorker,
+      feedManagement: isAdmin || isWorker,
       analytics: isAdmin || isWorker,
     }
   };

@@ -3,10 +3,12 @@ import React from 'react';
 import { WeightLogModal } from './WeightLogModal';
 import { WeightLogTable } from './WeightLogTable';
 import { useWeightLogs } from '@/hooks/useWeightLogs';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 export const WeightLogsManagement = () => {
   const { weightLogs, isLoading, addWeightLogMutation } = useWeightLogs();
   const [modalOpen, setModalOpen] = React.useState(false);
+  const { canEdit } = useUserPermissions();
 
   // Close modal when mutation succeeds
   React.useEffect(() => {
@@ -27,12 +29,14 @@ export const WeightLogsManagement = () => {
           <h1 className="text-3xl font-bold tracking-tight">Weight Logs</h1>
           <p className="text-muted-foreground">Track cattle weight measurements and monitor growth.</p>
         </div>
-        <WeightLogModal 
-          onSubmit={handleAddLog} 
-          isLoading={addWeightLogMutation.isPending}
-          open={modalOpen}
-          onOpenChange={setModalOpen}
-        />
+        {canEdit.weightLogs && (
+          <WeightLogModal 
+            onSubmit={handleAddLog} 
+            isLoading={addWeightLogMutation.isPending}
+            open={modalOpen}
+            onOpenChange={setModalOpen}
+          />
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow">
