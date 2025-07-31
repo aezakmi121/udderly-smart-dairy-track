@@ -109,12 +109,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, canAccess, is
       show: canAccess.cowGrouping
     },
     { 
-      id: 'delivery-boys',
-      name: 'Delivery Boys', 
-      icon: Truck,
-      show: canAccess.deliveryBoys
-    },
-    { 
       id: 'customers',
       name: 'Customer Management', 
       icon: Users,

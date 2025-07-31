@@ -6,15 +6,15 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
-  // Fetch dashboard statistics
+  // Fetch dashboard statistics - using same query key as cows section for cache sharing
   const { data: cowsCount } = useQuery({
-    queryKey: ['cows-count'],
+    queryKey: ['cows-list'],
     queryFn: async () => {
-      const { count } = await supabase
+      const { data } = await supabase
         .from('cows')
-        .select('*', { count: 'exact', head: true })
+        .select('*')
         .eq('status', 'active');
-      return count || 0;
+      return data?.length || 0;
     }
   });
 

@@ -42,14 +42,10 @@ export const AccessControlSettings = () => {
     switch (role) {
       case 'admin':
         return 'destructive';
-      case 'store_manager':
-        return 'default';
       case 'farmer':
         return 'secondary';
       case 'worker':
         return 'secondary';
-      case 'delivery_boy':
-        return 'outline';
       default:
         return 'outline';
     }
@@ -63,10 +59,6 @@ export const AccessControlSettings = () => {
         return 'Collection Centre';
       case 'worker':
         return 'Farm Worker';
-      case 'delivery_boy':
-        return 'Delivery Boy';
-      case 'store_manager':
-        return 'Store Manager';
       default:
         return 'No Role';
     }
@@ -74,7 +66,7 @@ export const AccessControlSettings = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Admin Users</CardTitle>
@@ -88,18 +80,6 @@ export const AccessControlSettings = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Store Managers</CardTitle>
-            <Store className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {users?.filter(user => user.roles.includes('store_manager' as any)).length || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Delivery management</p>
-          </CardContent>
-        </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -127,18 +107,6 @@ export const AccessControlSettings = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Delivery Boys</CardTitle>
-            <Truck className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {users?.filter(user => user.roles.includes('delivery_boy' as any)).length || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Delivery access</p>
-          </CardContent>
-        </Card>
       </div>
 
       <Card>
@@ -187,10 +155,8 @@ export const AccessControlSettings = () => {
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {user.roles.includes('admin' as any) && 'Full Access'}
-                      {user.roles.includes('store_manager' as any) && !user.roles.includes('admin' as any) && 'Store Management'}
-                      {user.roles.includes('worker' as any) && !user.roles.includes('admin' as any) && !user.roles.includes('store_manager' as any) && 'Farm Operations'}
-                      {user.roles.includes('farmer' as any) && 'Collection Operations'}
-                      {user.roles.includes('delivery_boy' as any) && 'Delivery Operations'}
+                      {user.roles.includes('worker' as any) && !user.roles.includes('admin' as any) && 'Farm Operations'}
+                      {user.roles.includes('farmer' as any) && !user.roles.includes('admin' as any) && !user.roles.includes('worker' as any) && 'Collection Operations'}
                       {user.roles.length === 0 && 'Limited Access'}
                     </TableCell>
                   </TableRow>
@@ -215,18 +181,8 @@ export const AccessControlSettings = () => {
                   <li>• User management</li>
                   <li>• Settings configuration</li>
                   <li>• All farm operations</li>
-                  <li>• All delivery operations</li>
+                  
                   <li>• Reports & analytics</li>
-                </ul>
-              </div>
-              <div className="p-4 border rounded-lg">
-                <h4 className="font-semibold text-blue-600 mb-2">Store Manager</h4>
-                <ul className="text-sm space-y-1">
-                  <li>• Delivery boys management</li>
-                  <li>• Customer management</li>
-                  <li>• Delivery orders</li>
-                  <li>• Inventory allocation</li>
-                  <li>• Performance tracking</li>
                 </ul>
               </div>
               <div className="p-4 border rounded-lg">
@@ -252,16 +208,6 @@ export const AccessControlSettings = () => {
                   <li>• Add milk collections</li>
                   <li>• View collection records</li>
                   <li>• Limited reporting</li>
-                </ul>
-              </div>
-              <div className="p-4 border rounded-lg">
-                <h4 className="font-semibold text-orange-600 mb-2">Delivery Boy</h4>
-                <ul className="text-sm space-y-1">
-                  <li>• View customer details</li>
-                  <li>• Update delivery status</li>
-                  <li>• Record collections</li>
-                  <li>• View own orders</li>
-                  <li>• Basic reporting</li>
                 </ul>
               </div>
             </div>
