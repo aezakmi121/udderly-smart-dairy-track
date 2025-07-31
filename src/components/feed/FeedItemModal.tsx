@@ -5,15 +5,23 @@ import { FeedItemForm } from './FeedItemForm';
 import { Plus } from 'lucide-react';
 
 interface FeedItemModalProps {
+  selectedFeedItem?: any;
   onSubmit: (data: any) => void;
   isLoading: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export const FeedItemModal: React.FC<FeedItemModalProps> = ({
+  selectedFeedItem,
   onSubmit,
-  isLoading
+  isLoading,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange
 }) => {
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOnOpenChange || setInternalOpen;
 
   const handleSubmit = (data: any) => {
     onSubmit(data);
@@ -30,9 +38,9 @@ export const FeedItemModal: React.FC<FeedItemModalProps> = ({
       </DialogTrigger>
       <DialogContent className="max-w-2xl bg-white">
         <DialogHeader>
-          <DialogTitle>Add Feed Item</DialogTitle>
+          <DialogTitle>{selectedFeedItem ? 'Edit Feed Item' : 'Add Feed Item'}</DialogTitle>
         </DialogHeader>
-        <FeedItemForm onSubmit={handleSubmit} isLoading={isLoading} />
+        <FeedItemForm selectedFeedItem={selectedFeedItem} onSubmit={handleSubmit} isLoading={isLoading} />
       </DialogContent>
     </Dialog>
   );

@@ -10,21 +10,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFeedManagement } from '@/hooks/useFeedManagement';
 
 interface TransactionFormProps {
+  selectedTransaction?: any;
   onSubmit: (data: any) => void;
   isLoading?: boolean;
 }
 
-export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, isLoading }) => {
+export const TransactionForm: React.FC<TransactionFormProps> = ({ selectedTransaction, onSubmit, isLoading }) => {
   const { register, handleSubmit, setValue, watch, reset } = useForm({
     defaultValues: {
-      feed_item_id: '',
-      transaction_type: 'incoming',
-      quantity: '',
-      unit_cost: '',
-      supplier_name: '',
-      invoice_number: '',
-      transaction_date: new Date().toISOString().split('T')[0],
-      notes: ''
+      feed_item_id: selectedTransaction?.feed_item_id || '',
+      transaction_type: selectedTransaction?.transaction_type || 'incoming',
+      quantity: selectedTransaction?.quantity || '',
+      unit_cost: selectedTransaction?.unit_cost || '',
+      total_cost: selectedTransaction?.total_cost || '',
+      transaction_date: selectedTransaction?.transaction_date || new Date().toISOString().split('T')[0],
+      supplier_name: selectedTransaction?.supplier_name || '',
+      invoice_number: selectedTransaction?.invoice_number || '',
+      notes: selectedTransaction?.notes || ''
     }
   });
 
@@ -46,7 +48,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, isLo
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Record Transaction</CardTitle>
+        <CardTitle>{selectedTransaction ? 'Edit Transaction' : 'Record Transaction'}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -137,7 +139,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onSubmit, isLo
 
           <div className="md:col-span-2">
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Recording...' : 'Record Transaction'}
+              {isLoading ? (selectedTransaction ? 'Updating...' : 'Recording...') : (selectedTransaction ? 'Update Transaction' : 'Record Transaction')}
             </Button>
           </div>
         </form>

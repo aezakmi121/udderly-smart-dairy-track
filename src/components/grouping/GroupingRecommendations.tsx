@@ -22,17 +22,28 @@ export const GroupingRecommendations = () => {
   const calculateAverageYield = (cow: any) => {
     if (!cow.milk_production || cow.milk_production.length === 0) return 0;
     
-    // Calculate average from last 7 days
+    // Calculate average daily total from last 7 days
     const recent = cow.milk_production
       .filter((record: any) => {
         const recordDate = new Date(record.production_date);
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
         return recordDate >= weekAgo;
-      })
-      .reduce((sum: number, record: any) => sum + record.quantity, 0);
+      });
     
-    return recent / Math.max(cow.milk_production.length, 1);
+    // Group by date and sum daily totals
+    const dailyTotals = recent.reduce((acc: { [key: string]: number }, record: any) => {
+      const date = record.production_date;
+      if (!acc[date]) acc[date] = 0;
+      acc[date] += record.quantity;
+      return acc;
+    }, {});
+    
+    const days = Object.keys(dailyTotals);
+    if (days.length === 0) return 0;
+    
+    const totalMilk = Object.values(dailyTotals).reduce((sum: number, daily: number) => sum + Number(daily), 0);
+    return Number(totalMilk) / days.length;
   };
 
   const calculateDaysInMilk = (cow: any) => {

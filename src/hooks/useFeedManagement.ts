@@ -211,6 +211,139 @@ export const useFeedManagement = () => {
     }
   });
 
+  // Update category mutation
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({ id, data: categoryData }: { id: string; data: any }) => {
+      const { data, error } = await supabase
+        .from('feed_categories')
+        .update(categoryData)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed-categories'] });
+      toast({ title: "Category updated successfully!" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to update category", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Delete category mutation
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('feed_categories')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed-categories'] });
+      toast({ title: "Category deleted successfully!" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to delete category", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Delete feed item mutation
+  const deleteFeedItemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('feed_items')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed-items'] });
+      queryClient.invalidateQueries({ queryKey: ['low-stock-items'] });
+      toast({ title: "Feed item deleted successfully!" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to delete feed item", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Update transaction mutation
+  const updateTransactionMutation = useMutation({
+    mutationFn: async ({ id, data: transactionData }: { id: string; data: any }) => {
+      const processedData = {
+        ...transactionData,
+        quantity: parseFloat(transactionData.quantity.toString()),
+        unit_cost: transactionData.unit_cost ? parseFloat(transactionData.unit_cost.toString()) : null,
+        total_cost: transactionData.total_cost ? parseFloat(transactionData.total_cost.toString()) : null
+      };
+
+      const { data, error } = await supabase
+        .from('feed_transactions')
+        .update(processedData)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['feed-items'] });
+      queryClient.invalidateQueries({ queryKey: ['low-stock-items'] });
+      toast({ title: "Transaction updated successfully!" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to update transaction", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Delete transaction mutation
+  const deleteTransactionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('feed_transactions')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['feed-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['feed-items'] });
+      queryClient.invalidateQueries({ queryKey: ['low-stock-items'] });
+      toast({ title: "Transaction deleted successfully!" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to delete transaction", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
   return {
     categories,
     feedItems,
@@ -218,8 +351,13 @@ export const useFeedManagement = () => {
     transactions,
     isLoading: categoriesLoading || itemsLoading || transactionsLoading,
     createCategoryMutation,
+    updateCategoryMutation,
+    deleteCategoryMutation,
     createFeedItemMutation,
     updateFeedItemMutation,
-    createTransactionMutation
+    deleteFeedItemMutation,
+    createTransactionMutation,
+    updateTransactionMutation,
+    deleteTransactionMutation
   };
 };

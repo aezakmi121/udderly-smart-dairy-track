@@ -2,14 +2,26 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 interface TransactionTableProps {
   transactions: any[];
   isLoading: boolean;
+  onEdit?: (transaction: any) => void;
+  onDelete?: (id: string) => void;
 }
 
-export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions, isLoading }) => {
+export const TransactionTable: React.FC<TransactionTableProps> = ({ 
+  transactions, 
+  isLoading, 
+  onEdit, 
+  onDelete 
+}) => {
+  const { canEdit } = useUserPermissions();
+
   if (isLoading) {
     return <div className="text-center py-4">Loading transactions...</div>;
   }
@@ -29,6 +41,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
           <TableHead>Unit Cost</TableHead>
           <TableHead>Total Cost</TableHead>
           <TableHead>Supplier</TableHead>
+          {canEdit.feedManagement && <TableHead>Actions</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -51,6 +64,26 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({ transactions
               {transaction.total_cost ? `₹${transaction.total_cost}` : '-'}
             </TableCell>
             <TableCell>{transaction.supplier_name || '-'}</TableCell>
+            {canEdit.feedManagement && (
+              <TableCell>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEdit?.(transaction)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onDelete?.(transaction.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>

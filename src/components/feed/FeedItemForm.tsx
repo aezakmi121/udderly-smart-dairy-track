@@ -9,18 +9,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFeedManagement } from '@/hooks/useFeedManagement';
 
 interface FeedItemFormProps {
+  selectedFeedItem?: any;
   onSubmit: (data: any) => void;
   isLoading?: boolean;
 }
 
-export const FeedItemForm: React.FC<FeedItemFormProps> = ({ onSubmit, isLoading }) => {
+export const FeedItemForm: React.FC<FeedItemFormProps> = ({ selectedFeedItem, onSubmit, isLoading }) => {
   const { register, handleSubmit, setValue, reset } = useForm({
     defaultValues: {
-      name: '',
-      category_id: '',
-      unit: '',
-      cost_per_unit: '',
-      minimum_stock_level: ''
+      name: selectedFeedItem?.name || '',
+      category_id: selectedFeedItem?.category_id || '',
+      unit: selectedFeedItem?.unit || '',
+      cost_per_unit: selectedFeedItem?.cost_per_unit || '',
+      current_stock: selectedFeedItem?.current_stock || '',
+      minimum_stock_level: selectedFeedItem?.minimum_stock_level || ''
     }
   });
 
@@ -38,7 +40,7 @@ export const FeedItemForm: React.FC<FeedItemFormProps> = ({ onSubmit, isLoading 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add Feed Item</CardTitle>
+        <CardTitle>{selectedFeedItem ? 'Edit Feed Item' : 'Add Feed Item'}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -103,7 +105,7 @@ export const FeedItemForm: React.FC<FeedItemFormProps> = ({ onSubmit, isLoading 
 
           <div className="md:col-span-2">
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Adding...' : 'Add Feed Item'}
+              {isLoading ? (selectedFeedItem ? 'Updating...' : 'Adding...') : (selectedFeedItem ? 'Update Feed Item' : 'Add Feed Item')}
             </Button>
           </div>
         </form>

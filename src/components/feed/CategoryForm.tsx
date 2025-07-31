@@ -8,15 +8,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface CategoryFormProps {
+  selectedCategory?: any;
   onSubmit: (data: any) => void;
   isLoading?: boolean;
 }
 
-export const CategoryForm: React.FC<CategoryFormProps> = ({ onSubmit, isLoading }) => {
+export const CategoryForm: React.FC<CategoryFormProps> = ({ selectedCategory, onSubmit, isLoading }) => {
   const { register, handleSubmit, reset } = useForm({
     defaultValues: {
-      name: '',
-      description: ''
+      name: selectedCategory?.name || '',
+      description: selectedCategory?.description || ''
     }
   });
 
@@ -28,7 +29,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ onSubmit, isLoading 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add Feed Category</CardTitle>
+        <CardTitle>{selectedCategory ? 'Edit Category' : 'Add Feed Category'}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
@@ -49,7 +50,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ onSubmit, isLoading 
           </div>
 
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Adding...' : 'Add Category'}
+            {isLoading ? (selectedCategory ? 'Updating...' : 'Adding...') : (selectedCategory ? 'Update Category' : 'Add Category')}
           </Button>
         </form>
       </CardContent>

@@ -5,15 +5,23 @@ import { TransactionForm } from './TransactionForm';
 import { Plus } from 'lucide-react';
 
 interface TransactionModalProps {
+  selectedTransaction?: any;
   onSubmit: (data: any) => void;
   isLoading: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export const TransactionModal: React.FC<TransactionModalProps> = ({
+  selectedTransaction,
   onSubmit,
-  isLoading
+  isLoading,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange
 }) => {
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOnOpenChange || setInternalOpen;
 
   const handleSubmit = (data: any) => {
     onSubmit(data);
@@ -30,9 +38,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       </DialogTrigger>
       <DialogContent className="max-w-2xl bg-white">
         <DialogHeader>
-          <DialogTitle>Add Feed Transaction</DialogTitle>
+          <DialogTitle>{selectedTransaction ? 'Edit Transaction' : 'Add Transaction'}</DialogTitle>
         </DialogHeader>
-        <TransactionForm onSubmit={handleSubmit} isLoading={isLoading} />
+        <TransactionForm selectedTransaction={selectedTransaction} onSubmit={handleSubmit} isLoading={isLoading} />
       </DialogContent>
     </Dialog>
   );

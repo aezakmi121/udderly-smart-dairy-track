@@ -5,15 +5,23 @@ import { CategoryForm } from './CategoryForm';
 import { Plus } from 'lucide-react';
 
 interface CategoryModalProps {
+  selectedCategory?: any;
   onSubmit: (data: any) => void;
   isLoading: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export const CategoryModal: React.FC<CategoryModalProps> = ({
+  selectedCategory,
   onSubmit,
-  isLoading
+  isLoading,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange
 }) => {
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOnOpenChange || setInternalOpen;
 
   const handleSubmit = (data: any) => {
     onSubmit(data);
@@ -30,9 +38,9 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
       </DialogTrigger>
       <DialogContent className="max-w-lg bg-white">
         <DialogHeader>
-          <DialogTitle>Add Feed Category</DialogTitle>
+          <DialogTitle>{selectedCategory ? 'Edit Category' : 'Add Category'}</DialogTitle>
         </DialogHeader>
-        <CategoryForm onSubmit={handleSubmit} isLoading={isLoading} />
+        <CategoryForm selectedCategory={selectedCategory} onSubmit={handleSubmit} isLoading={isLoading} />
       </DialogContent>
     </Dialog>
   );
