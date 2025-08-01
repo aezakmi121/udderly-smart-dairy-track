@@ -2,7 +2,7 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/dateUtils';
 
 interface MilkRateTableProps {
   rateSettings: any[];
@@ -31,7 +31,7 @@ export const MilkRateTable: React.FC<MilkRateTableProps> = ({ rateSettings, isLo
         {rateSettings.map((setting) => (
           <TableRow key={setting.id}>
             <TableCell className="font-semibold text-lg">₹{setting.rate_per_liter}</TableCell>
-            <TableCell>{format(new Date(setting.effective_from), 'MMM dd, yyyy')}</TableCell>
+            <TableCell>{formatDate(setting.effective_from)}</TableCell>
             <TableCell>
               <Badge variant={setting.is_active ? "default" : "secondary"}>
                 {setting.is_active ? "Active" : "Inactive"}

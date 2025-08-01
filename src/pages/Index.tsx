@@ -6,40 +6,42 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
-  // Fetch dashboard statistics - using same query key as cows section for cache sharing
-  const { data: cowsCount } = useQuery({
+  // Fetch dashboard statistics - using same query key as other sections for cache sharing
+  const { data: cowsData } = useQuery({
     queryKey: ['cows-list'],
     queryFn: async () => {
       const { data } = await supabase
         .from('cows')
         .select('*')
         .eq('status', 'active');
-      return data?.length || 0;
+      return data || [];
     }
   });
 
-  const { data: milkingCowsCount } = useQuery({
-    queryKey: ['milking-cows-count'],
+  const { data: calvesData } = useQuery({
+    queryKey: ['calves'],
     queryFn: async () => {
-      const { count } = await supabase
-        .from('cows')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active')
-        .not('last_calving_date', 'is', null);
-      return count || 0;
+      const { data } = await supabase
+        .from('calves')
+        .select('*');
+      return data || [];
     }
   });
 
-  const { data: farmersCount } = useQuery({
-    queryKey: ['farmers-count'],
+  const { data: farmersData } = useQuery({
+    queryKey: ['farmers-list'],
     queryFn: async () => {
-      const { count } = await supabase
+      const { data } = await supabase
         .from('farmers')
-        .select('*', { count: 'exact', head: true })
+        .select('*')
         .eq('is_active', true);
-      return count || 0;
+      return data || [];
     }
   });
+
+  const cowsCount = cowsData?.length || 0;
+  const milkingCowsCount = cowsData?.filter(cow => cow.last_calving_date).length || 0;
+  const farmersCount = farmersData?.length || 0;
 
   const { data: todaysMilk } = useQuery({
     queryKey: ['todays-milk'],

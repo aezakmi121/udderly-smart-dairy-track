@@ -151,7 +151,7 @@ export const AccessControlSettings = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                      {user.created_at ? new Date(user.created_at).toLocaleDateString('en-GB') : 'N/A'}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {user.roles.includes('admin' as any) && 'Full Access'}

@@ -325,7 +325,7 @@ export const FarmersManagement = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {farmer.created_at ? new Date(farmer.created_at).toLocaleDateString() : 'N/A'}
+                      {farmer.created_at ? new Date(farmer.created_at).toLocaleDateString('en-GB') : 'N/A'}
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">

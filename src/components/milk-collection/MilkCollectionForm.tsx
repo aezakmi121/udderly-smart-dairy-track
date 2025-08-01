@@ -16,6 +16,8 @@ interface MilkCollectionFormProps {
 }
 
 export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit, isLoading }) => {
+  const [isAutoCalculation, setIsAutoCalculation] = React.useState(true);
+  
   const { register, handleSubmit, setValue, watch, reset } = useForm({
     defaultValues: {
       farmer_id: '',
@@ -24,6 +26,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
       quantity: '',
       fat_percentage: '',
       snf_percentage: '',
+      total_amount: '',
       is_accepted: true,
       remarks: ''
     }
@@ -35,9 +38,23 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   const quantity = watch('quantity');
   const fatPercentage = watch('fat_percentage');
   const snfPercentage = watch('snf_percentage');
+  const manualAmount = watch('total_amount');
 
   const calculatedRate = calculateRate(Number(fatPercentage) || 0, Number(snfPercentage) || 0);
-  const totalAmount = (Number(quantity) || 0) * calculatedRate;
+  const totalAmount = isAutoCalculation 
+    ? (Number(quantity) || 0) * calculatedRate
+    : Number(manualAmount) || 0;
+  const derivedRate = isAutoCalculation 
+    ? calculatedRate 
+    : (Number(quantity) > 0 ? totalAmount / Number(quantity) : 0);
+
+  // Load calculation mode from localStorage
+  React.useEffect(() => {
+    const stored = localStorage.getItem('milkRateCalculationMode');
+    if (stored) {
+      setIsAutoCalculation(stored === 'auto');
+    }
+  }, []);
 
   const handleFormSubmit = (data: any) => {
     onSubmit({
@@ -45,7 +62,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
       quantity: Number(data.quantity),
       fat_percentage: Number(data.fat_percentage),
       snf_percentage: Number(data.snf_percentage),
-      rate_per_liter: calculatedRate,
+      rate_per_liter: derivedRate,
       total_amount: totalAmount
     });
     reset();
@@ -84,15 +101,24 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
 
           <div>
             <Label htmlFor="session">Session</Label>
-            <Select onValueChange={(value) => setValue('session', value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="morning">Morning</SelectItem>
-                <SelectItem value="evening">Evening</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2 mt-2">
+              <Button
+                type="button"
+                variant={watch('session') === 'morning' ? 'default' : 'outline'}
+                onClick={() => setValue('session', 'morning')}
+                className="flex-1"
+              >
+                Morning
+              </Button>
+              <Button
+                type="button"
+                variant={watch('session') === 'evening' ? 'default' : 'outline'}
+                onClick={() => setValue('session', 'evening')}
+                className="flex-1"
+              >
+                Evening
+              </Button>
+            </div>
           </div>
 
           <div>
@@ -127,20 +153,44 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
             <p className="text-xs text-muted-foreground mt-1">For record keeping only</p>
           </div>
 
-          <div>
-            <Label>Rate per Liter</Label>
-            <div className="text-lg font-medium text-blue-600">
-              ₹{calculatedRate.toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">Based on current rate setting</p>
-          </div>
+          {isAutoCalculation ? (
+            <>
+              <div>
+                <Label>Rate per Liter</Label>
+                <div className="text-lg font-medium text-blue-600">
+                  ₹{calculatedRate.toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground">Based on current rate setting</p>
+              </div>
 
-          <div>
-            <Label>Total Amount</Label>
-            <div className="text-lg font-semibold text-green-600">
-              ₹{totalAmount.toFixed(2)}
-            </div>
-          </div>
+              <div>
+                <Label>Total Amount</Label>
+                <div className="text-lg font-semibold text-green-600">
+                  ₹{totalAmount.toFixed(2)}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <Label htmlFor="total_amount">Total Amount (₹)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  {...register('total_amount', { required: true })}
+                  placeholder="Enter total amount"
+                />
+              </div>
+
+              <div>
+                <Label>Calculated Rate</Label>
+                <div className="text-lg font-medium text-blue-600">
+                  ₹{derivedRate.toFixed(2)}/L
+                </div>
+                <p className="text-xs text-muted-foreground">Rate = Amount ÷ Quantity</p>
+              </div>
+            </>
+          )}
 
           <div className="md:col-span-2">
             <Label htmlFor="remarks">Remarks</Label>

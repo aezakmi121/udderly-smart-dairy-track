@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/dateUtils';
 
 interface WeightLogTableProps {
   weightLogs: any[];
@@ -33,7 +33,7 @@ export const WeightLogTable: React.FC<WeightLogTableProps> = ({ weightLogs, isLo
         {weightLogs.map((log) => (
           <TableRow key={log.id}>
             <TableCell>{log.cows?.cow_number || 'N/A'}</TableCell>
-            <TableCell>{format(new Date(log.log_date), 'MMM dd, yyyy')}</TableCell>
+            <TableCell>{formatDate(log.log_date)}</TableCell>
             <TableCell>{log.heart_girth}</TableCell>
             <TableCell>{log.body_length}</TableCell>
             <TableCell className="font-semibold">{log.calculated_weight}</TableCell>

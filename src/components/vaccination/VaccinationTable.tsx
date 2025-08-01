@@ -2,7 +2,7 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/dateUtils';
 
 interface VaccinationTableProps {
   records: any[];
@@ -40,10 +40,10 @@ export const VaccinationTable: React.FC<VaccinationTableProps> = ({ records, isL
           <TableRow key={record.id}>
             <TableCell>{record.cows?.cow_number || 'N/A'}</TableCell>
             <TableCell>{record.vaccination_schedules?.vaccine_name || 'N/A'}</TableCell>
-            <TableCell>{format(new Date(record.vaccination_date), 'MMM dd, yyyy')}</TableCell>
+            <TableCell>{formatDate(record.vaccination_date)}</TableCell>
             <TableCell>
               <div className="flex items-center gap-2">
-                {format(new Date(record.next_due_date), 'MMM dd, yyyy')}
+                {formatDate(record.next_due_date)}
                 {isOverdue(record.next_due_date) && (
                   <Badge variant="destructive">Overdue</Badge>
                 )}

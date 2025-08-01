@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Calendar, Edit, Baby, Heart } from 'lucide-react';
 import { DeliveryWithCalfModal } from './DeliveryWithCalfModal';
 import { useCalves } from '@/hooks/useCalves';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/dateUtils';
 
 interface AITrackingTableProps {
   aiRecords: any[];
@@ -107,12 +107,12 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
           {aiRecords.map((record) => (
             <TableRow key={record.id}>
               <TableCell>{record.cows?.cow_number || 'N/A'}</TableCell>
-              <TableCell>{format(new Date(record.ai_date), 'MMM dd, yyyy')}</TableCell>
+              <TableCell>{formatDate(record.ai_date)}</TableCell>
               <TableCell>{record.service_number}</TableCell>
               <TableCell>{getStatusBadge(record.ai_status)}</TableCell>
               <TableCell>
                 {record.expected_delivery_date ? 
-                  format(new Date(record.expected_delivery_date), 'MMM dd, yyyy') : 
+                  formatDate(record.expected_delivery_date) : 
                   'N/A'
                 }
               </TableCell>
@@ -134,7 +134,7 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                   <div className="flex flex-col gap-1">
                     <Badge variant="default">Delivered</Badge>
                     <span className="text-sm text-muted-foreground">
-                      {format(new Date(record.actual_delivery_date), 'MMM dd, yyyy')}
+                      {formatDate(record.actual_delivery_date)}
                     </span>
                     {record.calf_gender && (
                       <Badge variant="outline" className="w-fit">

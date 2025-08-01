@@ -106,7 +106,7 @@ export const GroupAssignments = () => {
                           {assignment.cows?.cow_number}
                         </span>
                         <span className="text-sm text-muted-foreground">
-                          {new Date(assignment.assigned_date).toLocaleDateString()}
+                          {new Date(assignment.assigned_date).toLocaleDateString('en-GB')}
                         </span>
                       </div>
                     ))

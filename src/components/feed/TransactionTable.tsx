@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/dateUtils';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 interface TransactionTableProps {
@@ -47,7 +47,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
       <TableBody>
         {transactions.map((transaction) => (
           <TableRow key={transaction.id}>
-            <TableCell>{format(new Date(transaction.transaction_date), 'MMM dd, yyyy')}</TableCell>
+            <TableCell>{formatDate(transaction.transaction_date)}</TableCell>
             <TableCell>{transaction.feed_items?.name || 'N/A'}</TableCell>
             <TableCell>
               <Badge variant={transaction.transaction_type === 'incoming' ? "default" : "secondary"}>

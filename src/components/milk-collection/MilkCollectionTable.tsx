@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/dateUtils';
 
 interface MilkCollectionTableProps {
   collections: any[];
@@ -60,7 +60,7 @@ export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({
                 </div>
               </div>
             </TableCell>
-            <TableCell>{format(new Date(collection.collection_date), 'MMM dd, yyyy')}</TableCell>
+            <TableCell>{formatDate(collection.collection_date)}</TableCell>
             <TableCell className="capitalize">
               <Badge variant={collection.session === 'morning' ? 'default' : 'secondary'}>
                 {collection.session}

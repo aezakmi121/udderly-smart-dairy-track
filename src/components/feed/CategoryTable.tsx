@@ -44,7 +44,7 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
             <TableCell className="font-medium">{category.name}</TableCell>
             <TableCell>{category.description || '-'}</TableCell>
             <TableCell>
-              {new Date(category.created_at).toLocaleDateString()}
+              {new Date(category.created_at).toLocaleDateString('en-GB')}
             </TableCell>
             {canEdit.feedManagement && (
               <TableCell>
