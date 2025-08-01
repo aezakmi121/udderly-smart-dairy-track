@@ -9,13 +9,17 @@ interface MilkCollectionModalProps {
   isLoading: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  initialData?: any;
+  title?: string;
 }
 
 export const MilkCollectionModal: React.FC<MilkCollectionModalProps> = ({
   onSubmit,
   isLoading,
   open: externalOpen,
-  onOpenChange: externalOnOpenChange
+  onOpenChange: externalOnOpenChange,
+  initialData,
+  title = 'Add Milk Collection Record'
 }) => {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -29,20 +33,22 @@ export const MilkCollectionModal: React.FC<MilkCollectionModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Collection Record
-        </Button>
-      </DialogTrigger>
+      {!initialData && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Collection Record
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl bg-white">
         <DialogHeader>
-          <DialogTitle>Add Milk Collection Record</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            Record milk collection from farmers
+            {initialData ? 'Update milk collection record' : 'Record milk collection from farmers'}
           </DialogDescription>
         </DialogHeader>
-        <MilkCollectionForm onSubmit={handleSubmit} isLoading={isLoading} />
+        <MilkCollectionForm onSubmit={handleSubmit} isLoading={isLoading} initialData={initialData} />
       </DialogContent>
     </Dialog>
   );

@@ -1,30 +1,98 @@
-
 import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Calendar, Plus } from 'lucide-react';
 import { MilkCollectionModal } from './MilkCollectionModal';
 import { MilkCollectionTable } from './MilkCollectionTable';
+import { MilkCollectionFilters } from './MilkCollectionFilters';
 import { TodaysCollectionSummary } from './TodaysCollectionSummary';
 import { useMilkCollection } from '@/hooks/useMilkCollection';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { formatDate } from '@/lib/dateUtils';
 
 export const MilkCollectionManagement = () => {
-  const { collections, isLoading, addCollectionMutation, deleteCollectionMutation } = useMilkCollection();
-  const { canEdit, isAdmin } = useUserPermissions();
+  const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
+  const [dateRange, setDateRange] = React.useState<{ from: string; to: string }>({ from: '', to: '' });
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [editingCollection, setEditingCollection] = React.useState<any>(null);
+  const [filterMode, setFilterMode] = React.useState<'date' | 'range'>('date');
+  
+  const { 
+    collections, 
+    dailyStats,
+    isLoading, 
+    addCollectionMutation, 
+    updateCollectionMutation,
+    deleteCollectionMutation 
+  } = useMilkCollection(filterMode === 'date' ? selectedDate : undefined);
+  
+  const { canEdit, isAdmin } = useUserPermissions();
 
-  // Close modal when mutation succeeds
-  React.useEffect(() => {
-    if (addCollectionMutation.isSuccess && !addCollectionMutation.isPending) {
-      setModalOpen(false);
+  // Filter collections by date range when in range mode
+  const filteredCollections = React.useMemo(() => {
+    if (filterMode === 'range' && (dateRange.from || dateRange.to)) {
+      return collections?.filter(collection => {
+        const collectionDate = collection.collection_date;
+        if (dateRange.from && collectionDate < dateRange.from) return false;
+        if (dateRange.to && collectionDate > dateRange.to) return false;
+        return true;
+      }) || [];
     }
-  }, [addCollectionMutation.isSuccess, addCollectionMutation.isPending]);
+    return collections || [];
+  }, [collections, dateRange, filterMode]);
+
+  // Close modal when mutations succeed
+  React.useEffect(() => {
+    if ((addCollectionMutation.isSuccess || updateCollectionMutation.isSuccess) && 
+        !addCollectionMutation.isPending && !updateCollectionMutation.isPending) {
+      setModalOpen(false);
+      setEditingCollection(null);
+    }
+  }, [
+    addCollectionMutation.isSuccess, 
+    addCollectionMutation.isPending,
+    updateCollectionMutation.isSuccess,
+    updateCollectionMutation.isPending
+  ]);
 
   const handleAddCollection = (data: any) => {
-    console.log('MilkCollectionManagement - submitting:', data);
-    addCollectionMutation.mutate(data);
+    if (editingCollection) {
+      updateCollectionMutation.mutate(data);
+    } else {
+      addCollectionMutation.mutate(data);
+    }
+  };
+
+  const handleEditCollection = (collection: any) => {
+    setEditingCollection(collection);
+    setModalOpen(true);
   };
 
   const handleDeleteCollection = (id: string) => {
     deleteCollectionMutation.mutate(id);
+  };
+
+  const handleDateRangeChange = (range: { from: string; to: string }) => {
+    setDateRange(range);
+    setFilterMode('range');
+  };
+
+  const handleClearFilters = () => {
+    setDateRange({ from: '', to: '' });
+    setFilterMode('date');
+  };
+
+  const handleDateChange = (date: string) => {
+    setSelectedDate(date);
+    setFilterMode('date');
+    setDateRange({ from: '', to: '' });
+  };
+
+  const handleModalClose = () => {
+    setModalOpen(false);
+    setEditingCollection(null);
   };
 
   if (!canEdit.milkProduction) {
@@ -45,29 +113,88 @@ export const MilkCollectionManagement = () => {
           <h1 className="text-3xl font-bold tracking-tight">Milk Collection</h1>
           <p className="text-muted-foreground">Record and manage milk collections from farmers.</p>
         </div>
-        <MilkCollectionModal 
-          onSubmit={handleAddCollection} 
-          isLoading={addCollectionMutation.isPending}
-          open={modalOpen}
-          onOpenChange={setModalOpen}
-        />
+        <Button onClick={() => setModalOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Collection Record
+        </Button>
       </div>
 
-      <TodaysCollectionSummary collections={collections || []} isLoading={isLoading} />
+      {/* Date Selection and Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Collection Date & Filters
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+            <div className="flex-1">
+              <Label htmlFor="selectedDate">Select Date</Label>
+              <Input
+                id="selectedDate"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => handleDateChange(e.target.value)}
+                className="max-w-xs"
+              />
+            </div>
+            <div className="flex gap-2">
+              <MilkCollectionFilters
+                dateRange={dateRange}
+                onDateRangeChange={handleDateRangeChange}
+                onClearFilters={handleClearFilters}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-semibold">All Collection Records</h2>
-        </div>
-        <div className="p-6">
+      {/* Date-specific Summary */}
+      {filterMode === 'date' && (
+        <TodaysCollectionSummary 
+          collections={filteredCollections}
+          dailyStats={dailyStats}
+          selectedDate={selectedDate}
+          isLoading={isLoading}
+          canEdit={canEdit.milkProduction}
+          canDelete={isAdmin}
+          onEdit={handleEditCollection}
+          onDelete={handleDeleteCollection}
+        />
+      )}
+
+      {/* Collection Records Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {filterMode === 'date' 
+              ? `Collection Records - ${formatDate(selectedDate)}`
+              : 'Filtered Collection Records'
+            }
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
           <MilkCollectionTable 
-            collections={collections || []} 
+            collections={filteredCollections}
             isLoading={isLoading}
+            canEdit={canEdit.milkProduction}
             canDelete={isAdmin}
+            onEdit={handleEditCollection}
             onDelete={handleDeleteCollection}
           />
-        </div>
-      </div>
+        </CardContent>
+      </Card>
+
+      {/* Add/Edit Modal */}
+      <MilkCollectionModal 
+        onSubmit={handleAddCollection}
+        isLoading={addCollectionMutation.isPending || updateCollectionMutation.isPending}
+        open={modalOpen}
+        onOpenChange={handleModalClose}
+        initialData={editingCollection}
+        title={editingCollection ? 'Edit Collection Record' : 'Add Collection Record'}
+      />
     </div>
   );
 };

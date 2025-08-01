@@ -3,20 +3,24 @@ import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Edit } from 'lucide-react';
 import { formatDate } from '@/lib/dateUtils';
 
 interface MilkCollectionTableProps {
   collections: any[];
   isLoading: boolean;
+  canEdit?: boolean;
   canDelete?: boolean;
+  onEdit?: (collection: any) => void;
   onDelete?: (id: string) => void;
 }
 
 export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({ 
   collections, 
   isLoading, 
+  canEdit = false,
   canDelete = false,
+  onEdit,
   onDelete 
 }) => {
   if (isLoading) {
@@ -33,6 +37,12 @@ export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({
     }
   };
 
+  const handleEdit = (collection: any) => {
+    if (onEdit) {
+      onEdit(collection);
+    }
+  };
+
   return (
     <Table>
       <TableHeader>
@@ -46,7 +56,7 @@ export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({
           <TableHead>Rate</TableHead>
           <TableHead>Total Amount</TableHead>
           <TableHead>Status</TableHead>
-          {canDelete && <TableHead>Actions</TableHead>}
+          {(canEdit || canDelete) && <TableHead>Actions</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -76,15 +86,28 @@ export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({
                 {collection.is_accepted ? "Accepted" : "Rejected"}
               </Badge>
             </TableCell>
-            {canDelete && (
+            {(canEdit || canDelete) && (
               <TableCell>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDelete(collection.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex gap-2">
+                  {canEdit && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(collection)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(collection.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </TableCell>
             )}
           </TableRow>

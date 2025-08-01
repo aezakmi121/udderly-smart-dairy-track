@@ -13,13 +13,24 @@ import { useMilkRateSettings } from '@/hooks/useMilkRateSettings';
 interface MilkCollectionFormProps {
   onSubmit: (data: any) => void;
   isLoading?: boolean;
+  initialData?: any;
 }
 
-export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit, isLoading }) => {
+export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit, isLoading, initialData }) => {
   const [isAutoCalculation, setIsAutoCalculation] = React.useState(true);
   
   const { register, handleSubmit, setValue, watch, reset } = useForm({
-    defaultValues: {
+    defaultValues: initialData ? {
+      farmer_id: initialData.farmer_id || '',
+      collection_date: initialData.collection_date || new Date().toISOString().split('T')[0],
+      session: initialData.session || 'morning',
+      quantity: initialData.quantity?.toString() || '',
+      fat_percentage: initialData.fat_percentage?.toString() || '',
+      snf_percentage: initialData.snf_percentage?.toString() || '',
+      total_amount: initialData.total_amount?.toString() || '',
+      is_accepted: initialData.is_accepted ?? true,
+      remarks: initialData.remarks || ''
+    } : {
       farmer_id: '',
       collection_date: new Date().toISOString().split('T')[0],
       session: 'morning',
@@ -57,15 +68,23 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   }, []);
 
   const handleFormSubmit = (data: any) => {
-    onSubmit({
+    const submitData = {
       ...data,
       quantity: Number(data.quantity),
       fat_percentage: Number(data.fat_percentage),
       snf_percentage: Number(data.snf_percentage),
       rate_per_liter: derivedRate,
       total_amount: totalAmount
-    });
-    reset();
+    };
+    
+    if (initialData) {
+      submitData.id = initialData.id;
+    }
+    
+    onSubmit(submitData);
+    if (!initialData) {
+      reset();
+    }
   };
 
   return (
@@ -199,7 +218,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
 
           <div className="md:col-span-2">
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Recording...' : 'Record Collection'}
+              {isLoading ? (initialData ? 'Updating...' : 'Recording...') : (initialData ? 'Update Collection' : 'Record Collection')}
             </Button>
           </div>
         </form>

@@ -2,45 +2,78 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { format } from 'date-fns';
+import { Edit, Trash2 } from 'lucide-react';
+import { formatDate } from '@/lib/dateUtils';
 
 interface TodaysCollectionSummaryProps {
   collections: any[];
+  dailyStats?: any;
+  selectedDate: string;
   isLoading: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  onEdit?: (collection: any) => void;
+  onDelete?: (id: string) => void;
 }
 
 export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = ({ 
   collections, 
-  isLoading 
+  dailyStats,
+  selectedDate,
+  isLoading,
+  canEdit = false,
+  canDelete = false,
+  onEdit,
+  onDelete
 }) => {
-  const today = new Date().toISOString().split('T')[0];
-  
-  const todaysCollections = collections.filter(
-    collection => collection.collection_date === today
+  const selectedCollections = collections.filter(
+    collection => collection.collection_date === selectedDate
   );
 
-  const morningCollections = todaysCollections.filter(c => c.session === 'morning');
-  const eveningCollections = todaysCollections.filter(c => c.session === 'evening');
+  const morningCollections = selectedCollections.filter(c => c.session === 'morning');
+  const eveningCollections = selectedCollections.filter(c => c.session === 'evening');
 
-  const calculateSessionTotals = (sessionCollections: any[]) => ({
-    quantity: sessionCollections.reduce((sum, c) => sum + Number(c.quantity), 0),
-    amount: sessionCollections.reduce((sum, c) => sum + Number(c.total_amount), 0),
-    count: sessionCollections.length
-  });
+  // Use dailyStats if available, otherwise calculate from collections
+  const morningTotals = dailyStats?.morning || {
+    quantity: morningCollections.reduce((sum, c) => sum + Number(c.quantity), 0),
+    amount: morningCollections.reduce((sum, c) => sum + Number(c.total_amount), 0),
+    count: morningCollections.length
+  };
+  
+  const eveningTotals = dailyStats?.evening || {
+    quantity: eveningCollections.reduce((sum, c) => sum + Number(c.quantity), 0),
+    amount: eveningCollections.reduce((sum, c) => sum + Number(c.total_amount), 0),
+    count: eveningCollections.length
+  };
+  
+  const dayTotals = dailyStats?.total || {
+    quantity: selectedCollections.reduce((sum, c) => sum + Number(c.quantity), 0),
+    amount: selectedCollections.reduce((sum, c) => sum + Number(c.total_amount), 0),
+    count: selectedCollections.length
+  };
 
-  const morningTotals = calculateSessionTotals(morningCollections);
-  const eveningTotals = calculateSessionTotals(eveningCollections);
-  const dayTotals = calculateSessionTotals(todaysCollections);
+  const handleEdit = (collection: any) => {
+    if (onEdit) {
+      onEdit(collection);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (onDelete && confirm('Are you sure you want to delete this collection record?')) {
+      onDelete(id);
+    }
+  };
 
   if (isLoading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Today's Collection Summary</CardTitle>
+          <CardTitle>Collection Summary - {formatDate(selectedDate)}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-4">Loading today's collections...</div>
+          <div className="text-center py-4">Loading collections...</div>
         </CardContent>
       </Card>
     );
@@ -97,15 +130,15 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
 
       <Card>
         <CardHeader>
-          <CardTitle>Today's Collections by Session</CardTitle>
+          <CardTitle>Collections by Session</CardTitle>
           <p className="text-sm text-muted-foreground">
-            {format(new Date(), 'EEEE, MMMM dd, yyyy')}
+            {formatDate(selectedDate)}
           </p>
         </CardHeader>
         <CardContent>
-          {todaysCollections.length === 0 ? (
+          {selectedCollections.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No collections recorded for today yet.
+              No collections recorded for this date yet.
             </div>
           ) : (
             <div className="space-y-6">
@@ -117,7 +150,7 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
                       {morningCollections.length} collections
                     </span>
                   </h4>
-                  <Table>
+                    <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Farmer</TableHead>
@@ -126,6 +159,7 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
                         <TableHead>SNF %</TableHead>
                         <TableHead>Rate</TableHead>
                         <TableHead>Amount</TableHead>
+                        {(canEdit || canDelete) && <TableHead>Actions</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -144,6 +178,30 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
                           <TableCell>{collection.snf_percentage}%</TableCell>
                           <TableCell>₹{collection.rate_per_liter}</TableCell>
                           <TableCell className="font-semibold">₹{collection.total_amount}</TableCell>
+                          {(canEdit || canDelete) && (
+                            <TableCell>
+                              <div className="flex gap-1">
+                                {canEdit && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEdit(collection)}
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                )}
+                                {canDelete && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDelete(collection.id)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -168,6 +226,7 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
                         <TableHead>SNF %</TableHead>
                         <TableHead>Rate</TableHead>
                         <TableHead>Amount</TableHead>
+                        {(canEdit || canDelete) && <TableHead>Actions</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -186,6 +245,30 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
                           <TableCell>{collection.snf_percentage}%</TableCell>
                           <TableCell>₹{collection.rate_per_liter}</TableCell>
                           <TableCell className="font-semibold">₹{collection.total_amount}</TableCell>
+                          {(canEdit || canDelete) && (
+                            <TableCell>
+                              <div className="flex gap-1">
+                                {canEdit && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEdit(collection)}
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                )}
+                                {canDelete && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDelete(collection.id)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
