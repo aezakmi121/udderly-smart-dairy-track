@@ -95,7 +95,7 @@ export const MilkCollectionManagement = () => {
     setEditingCollection(null);
   };
 
-  if (!canEdit.milkProduction) {
+  if (!canEdit.milkCollection) {
     return (
       <div className="space-y-6">
         <div className="text-center py-8">
@@ -113,42 +113,30 @@ export const MilkCollectionManagement = () => {
           <h1 className="text-3xl font-bold tracking-tight">Milk Collection</h1>
           <p className="text-muted-foreground">Record and manage milk collections from farmers.</p>
         </div>
-        <Button onClick={() => setModalOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Collection Record
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Record
+          </Button>
+          <MilkCollectionFilters
+            dateRange={dateRange}
+            onDateRangeChange={handleDateRangeChange}
+            onClearFilters={handleClearFilters}
+          />
+        </div>
       </div>
 
-      {/* Date Selection and Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Collection Date & Filters
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-            <div className="flex-1">
-              <Label htmlFor="selectedDate">Select Date</Label>
-              <Input
-                id="selectedDate"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => handleDateChange(e.target.value)}
-                className="max-w-xs"
-              />
-            </div>
-            <div className="flex gap-2">
-              <MilkCollectionFilters
-                dateRange={dateRange}
-                onDateRangeChange={handleDateRangeChange}
-                onClearFilters={handleClearFilters}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Date Selection */}
+      <div className="flex items-center gap-4">
+        <Label htmlFor="selectedDate">Select Date:</Label>
+        <Input
+          id="selectedDate"
+          type="date"
+          value={selectedDate}
+          onChange={(e) => handleDateChange(e.target.value)}
+          className="max-w-xs"
+        />
+      </div>
 
       {/* Date-specific Summary */}
       {filterMode === 'date' && (
@@ -157,7 +145,7 @@ export const MilkCollectionManagement = () => {
           dailyStats={dailyStats}
           selectedDate={selectedDate}
           isLoading={isLoading}
-          canEdit={canEdit.milkProduction}
+          canEdit={canEdit.milkCollection}
           canDelete={isAdmin}
           onEdit={handleEditCollection}
           onDelete={handleDeleteCollection}
@@ -178,7 +166,7 @@ export const MilkCollectionManagement = () => {
           <MilkCollectionTable 
             collections={filteredCollections}
             isLoading={isLoading}
-            canEdit={canEdit.milkProduction}
+            canEdit={canEdit.milkCollection}
             canDelete={isAdmin}
             onEdit={handleEditCollection}
             onDelete={handleDeleteCollection}

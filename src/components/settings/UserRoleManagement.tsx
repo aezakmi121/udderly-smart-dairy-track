@@ -19,7 +19,7 @@ interface UserWithRoles {
 
 export const UserRoleManagement = () => {
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'worker' | 'farmer'>('worker');
+  const [inviteRole, setInviteRole] = useState<'admin' | 'worker' | 'farmer'>('farmer');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -68,11 +68,24 @@ export const UserRoleManagement = () => {
     mutationFn: async ({ email, role }: { email: string; role: string }) => {
       // First, invite the user
       const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-        data: { role },
+        data: { role, full_name: email.split('@')[0] },
         redirectTo: `${window.location.origin}/auth`
       });
       
       if (error) throw error;
+      
+      // If user is successfully invited, add their role to user_roles table
+      if (data.user) {
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({ user_id: data.user.id, role: role as 'admin' | 'worker' | 'farmer' });
+        
+        if (roleError) {
+          console.error('Error adding user role:', roleError);
+          // Continue anyway as the user was invited
+        }
+      }
+      
       return data;
     },
     onSuccess: () => {
@@ -198,8 +211,8 @@ export const UserRoleManagement = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="worker">Worker</SelectItem>
-                  <SelectItem value="farmer">Farmer</SelectItem>
+                  <SelectItem value="worker">Farm Worker</SelectItem>
+                  <SelectItem value="farmer">Collection Centre</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -234,7 +247,7 @@ export const UserRoleManagement = () => {
                           key={role}
                           className="px-2 py-1 text-xs bg-secondary text-secondary-foreground rounded"
                         >
-                          {role}
+                          {role === 'worker' ? 'Farm Worker' : role === 'farmer' ? 'Collection Centre' : 'Admin'}
                         </span>
                       ))}
                     </div>
@@ -242,7 +255,7 @@ export const UserRoleManagement = () => {
                   
                   <div className="flex gap-2 flex-shrink-0">
                     <Select
-                      value={user.roles[0] || 'worker'}
+                      value={user.roles[0] || 'farmer'}
                       onValueChange={(newRole) => 
                         updateRoleMutation.mutate({ userId: user.id, newRole })
                       }
@@ -252,8 +265,8 @@ export const UserRoleManagement = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="worker">Worker</SelectItem>
-                        <SelectItem value="farmer">Farmer</SelectItem>
+                        <SelectItem value="worker">Farm Worker</SelectItem>
+                        <SelectItem value="farmer">Collection Centre</SelectItem>
                       </SelectContent>
                     </Select>
                     

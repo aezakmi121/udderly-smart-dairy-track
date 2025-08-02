@@ -58,7 +58,7 @@ export const MainLayout = ({ currentView }: MainLayoutProps) => {
     deliveryBoys: false,
     customers: false,
     reports: canEdit.analytics,
-    settings: true,
+    settings: canEdit.settings,
   };
 
   const renderContent = () => {

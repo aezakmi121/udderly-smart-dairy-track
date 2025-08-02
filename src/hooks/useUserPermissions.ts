@@ -25,24 +25,26 @@ export const useUserPermissions = () => {
   });
 
   const isAdmin = userRole === 'admin';
-  const isWorker = userRole === 'worker';
-  const isFarmer = userRole === 'farmer';
+  const isFarmWorker = userRole === 'worker';
+  const isCollectionCentre = userRole === 'farmer';
 
   return {
     userRole,
     isAdmin,
-    isWorker,
-    isFarmer,
+    isFarmWorker,
+    isCollectionCentre,
     canEdit: {
-      cows: isAdmin || isWorker,
-      calves: isAdmin || isWorker,
+      cows: isAdmin || isFarmWorker,
+      calves: isAdmin || isFarmWorker,
       farmers: isAdmin,
-      milkProduction: isAdmin || isWorker,
-      weightLogs: isAdmin || isWorker,
-      vaccination: isAdmin || isWorker,
-      aiTracking: isAdmin || isWorker,
-      feedManagement: isAdmin || isWorker,
-      analytics: isAdmin || isWorker,
+      milkProduction: isAdmin || isFarmWorker,
+      milkCollection: isAdmin || isCollectionCentre,
+      weightLogs: isAdmin || isFarmWorker,
+      vaccination: isAdmin || isFarmWorker,
+      aiTracking: isAdmin || isFarmWorker,
+      feedManagement: isAdmin || isFarmWorker,
+      analytics: isAdmin || isFarmWorker,
+      settings: isAdmin,
     }
   };
 };
