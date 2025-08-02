@@ -114,15 +114,15 @@ export const MilkCollectionManagement = () => {
           <p className="text-muted-foreground">Record and manage milk collections from farmers.</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Record
-          </Button>
           <MilkCollectionFilters
             dateRange={dateRange}
             onDateRangeChange={handleDateRangeChange}
             onClearFilters={handleClearFilters}
           />
+          <Button onClick={() => setModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Record
+          </Button>
         </div>
       </div>
 
@@ -134,7 +134,7 @@ export const MilkCollectionManagement = () => {
           type="date"
           value={selectedDate}
           onChange={(e) => handleDateChange(e.target.value)}
-          className="max-w-xs"
+          className="w-40"
         />
       </div>
 
