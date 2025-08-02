@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
+import { formatDate } from '@/lib/dateUtils';
 
 export const Dashboard = () => {
   const { canEdit } = useUserPermissions();
@@ -72,7 +73,7 @@ export const Dashboard = () => {
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Calendar className="h-4 w-4" />
-          {new Date().toLocaleDateString()}
+          {formatDate(new Date())}
         </div>
       </div>
 
