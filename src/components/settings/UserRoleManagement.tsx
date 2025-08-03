@@ -66,36 +66,34 @@ export const UserRoleManagement = () => {
 
   const inviteUserMutation = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: string }) => {
-      // First, invite the user
-      const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-        data: { role, full_name: email.split('@')[0] },
-        redirectTo: `${window.location.origin}/auth`
-      });
-      
-      if (error) throw error;
-      
-      // If user is successfully invited, add their role to user_roles table
-      if (data.user) {
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({ user_id: data.user.id, role: role as 'admin' | 'worker' | 'farmer' });
-        
-        if (roleError) {
-          console.error('Error adding user role:', roleError);
-          // Continue anyway as the user was invited
+      const { data: user } = await supabase.auth.getUser();
+      if (!user?.user) throw new Error('Not authenticated');
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.user.id)
+        .single();
+
+      const { data, error } = await supabase.functions.invoke('send-invitation', {
+        body: {
+          email,
+          role,
+          inviterName: profile?.full_name || user.user.email || 'Admin',
         }
-      }
-      
+      });
+
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      setSuccess('User invitation sent successfully!');
+      setSuccess('Invitation sent successfully! User will receive an email with signup instructions.');
       setInviteEmail('');
       setError('');
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
     },
     onError: (error: any) => {
-      setError(error.message || 'Failed to invite user');
+      setError(error.message || 'Failed to send invitation');
     }
   });
 
