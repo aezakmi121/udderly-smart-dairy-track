@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 export const AuthForm = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isAwaitingConfirmation, setIsAwaitingConfirmation] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -56,6 +57,8 @@ export const AuthForm = () => {
           return;
         }
         await signUp(email, password, fullName, phoneNumber);
+        setIsAwaitingConfirmation(true);
+        setSuccess('Please check your email to confirm your account before signing in.');
       } else {
         await signIn(email, password);
       }
@@ -74,11 +77,13 @@ export const AuthForm = () => {
             🐄 Dairy Farm Manager
           </CardTitle>
           <CardDescription>
-            {isForgotPassword 
-              ? 'Reset your password' 
-              : isSignUp 
-                ? 'Create your account' 
-                : 'Sign in to your account'
+            {isAwaitingConfirmation
+              ? 'Check your email for confirmation'
+              : isForgotPassword 
+                ? 'Reset your password' 
+                : isSignUp 
+                  ? 'Create your account' 
+                  : 'Sign in to your account'
             }
           </CardDescription>
         </CardHeader>
@@ -93,6 +98,31 @@ export const AuthForm = () => {
               <AlertDescription>{success}</AlertDescription>
             </Alert>
           )}
+
+          {isAwaitingConfirmation ? (
+            <div className="text-center space-y-4">
+              <div className="text-6xl">📧</div>
+              <p className="text-muted-foreground">
+                We've sent a confirmation email to <strong>{email}</strong>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Click the link in the email to activate your account, then return here to sign in.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsAwaitingConfirmation(false);
+                  setIsSignUp(false);
+                  setSuccess('');
+                  setError('');
+                }}
+                className="w-full"
+              >
+                Back to Sign In
+              </Button>
+            </div>
+          ) : (
           
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && !isForgotPassword && (
@@ -202,6 +232,9 @@ export const AuthForm = () => {
               }
             </Button>
           </form>
+          )}
+          
+          {!isAwaitingConfirmation && (
           <div className="mt-4 text-center space-y-2">
             {!isForgotPassword ? (
               <>
@@ -236,6 +269,7 @@ export const AuthForm = () => {
               </Button>
             )}
           </div>
+          )}
         </CardContent>
       </Card>
     </div>
