@@ -112,7 +112,7 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
           id="quantity"
           name="quantity"
           type="number"
-          step="0.1"
+          step="0.001"
           defaultValue={selectedRecord?.quantity || ''}
           required
         />
