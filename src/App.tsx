@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { InstallPrompt } from "@/components/layout/InstallPrompt";
 import { MainLayout } from "@/components/layout/MainLayout";
 import Auth from "./pages/Auth";
 
@@ -30,6 +31,7 @@ const App = () => (
             />
           </Routes>
         </AuthProvider>
+        <InstallPrompt />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
