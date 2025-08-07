@@ -42,12 +42,12 @@ export const WeightLogsManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col space-y-4 sm:flex-row sm:justify-between sm:items-center sm:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Weight Logs</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Weight Logs</h1>
           <p className="text-muted-foreground">Track cattle weight measurements and monitor growth.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <WeightLogFiltersModal
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}

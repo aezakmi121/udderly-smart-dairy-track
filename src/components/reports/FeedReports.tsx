@@ -268,14 +268,14 @@ export const FeedReports = () => {
           <CardTitle>Export Data</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4">
-            <Button variant="outline" onClick={handleExportStockReport}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+            <Button variant="outline" onClick={handleExportStockReport} className="text-sm">
               Export Stock Report
             </Button>
-            <Button variant="outline" onClick={handleExportTransactionHistory}>
+            <Button variant="outline" onClick={handleExportTransactionHistory} className="text-sm">
               Export Transaction History
             </Button>
-            <Button variant="outline" onClick={handleExportCostAnalysis}>
+            <Button variant="outline" onClick={handleExportCostAnalysis} className="text-sm">
               Export Cost Analysis
             </Button>
           </div>

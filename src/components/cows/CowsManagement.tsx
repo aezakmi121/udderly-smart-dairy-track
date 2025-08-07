@@ -276,13 +276,13 @@ export const CowsManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col space-y-4 sm:flex-row sm:justify-between sm:items-center sm:space-y-0">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Cows Management</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Cows Management</h2>
           <p className="text-muted-foreground">Manage your dairy cows and their information</p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <CowFiltersModal
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}

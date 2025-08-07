@@ -272,11 +272,11 @@ export const MilkReports = () => {
               <Button onClick={handleGenerateCustomReport}>Generate Report</Button>
             </div>
           </div>
-          <div className="flex gap-4 mt-4">
-            <Button variant="outline" onClick={handleExportProduction}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-4 mt-4">
+            <Button variant="outline" onClick={handleExportProduction} className="text-sm">
               Export Production Data
             </Button>
-            <Button variant="outline" onClick={handleExportCollection}>
+            <Button variant="outline" onClick={handleExportCollection} className="text-sm">
               Export Collection Data
             </Button>
           </div>

@@ -11,18 +11,18 @@ export const FeedManagement = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Feed & Stock Management</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Feed & Stock Management</h1>
         <p className="text-muted-foreground">Manage feed categories, items, and stock transactions.</p>
       </div>
 
       <Tabs defaultValue="stock" className="space-y-6">
         <div className="overflow-x-auto">
-          <TabsList className="flex w-max min-w-full">
-            <TabsTrigger value="stock">Stock Overview</TabsTrigger>
-            <TabsTrigger value="daily-feed">Daily Feed</TabsTrigger>
-            <TabsTrigger value="transactions">Transactions</TabsTrigger>
-            <TabsTrigger value="items">Feed Items</TabsTrigger>
-            <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsList className="flex w-max min-w-full gap-1">
+            <TabsTrigger value="stock" className="text-xs sm:text-sm">Stock Overview</TabsTrigger>
+            <TabsTrigger value="daily-feed" className="text-xs sm:text-sm">Daily Feed</TabsTrigger>
+            <TabsTrigger value="transactions" className="text-xs sm:text-sm">Transactions</TabsTrigger>
+            <TabsTrigger value="items" className="text-xs sm:text-sm">Feed Items</TabsTrigger>
+            <TabsTrigger value="categories" className="text-xs sm:text-sm">Categories</TabsTrigger>
           </TabsList>
         </div>
         

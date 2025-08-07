@@ -276,11 +276,11 @@ export const CattleReports = () => {
               <p className="text-sm text-muted-foreground">Overdue</p>
             </div>
           </div>
-          <div className="mt-4 flex gap-4">
-            <Button onClick={handleGenerateVaccinationSchedule}>
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:gap-4">
+            <Button onClick={handleGenerateVaccinationSchedule} className="text-sm">
               Generate Vaccination Schedule
             </Button>
-            <Button variant="outline" onClick={handleExportCattleData}>
+            <Button variant="outline" onClick={handleExportCattleData} className="text-sm">
               Export Cattle Data
             </Button>
           </div>
