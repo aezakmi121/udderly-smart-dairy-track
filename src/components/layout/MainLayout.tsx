@@ -52,7 +52,7 @@ export const MainLayout = ({ currentView }: MainLayoutProps) => {
     weightLogs: canEdit.cows,
     aiTracking: canEdit.cows,
     farmers: canEdit.farmers,
-    milkCollection: canEdit.milkProduction,
+    milkCollection: canEdit.milkCollection,
     feedManagement: canEdit.cows,
     cowGrouping: canEdit.cows,
     deliveryBoys: false,
@@ -72,7 +72,7 @@ export const MainLayout = ({ currentView }: MainLayoutProps) => {
       case 'milk-production':
         return canEdit.milkProduction ? <MilkProduction /> : <div>Access Denied</div>;
       case 'milk-collection':
-        return canEdit.milkProduction ? <MilkCollectionManagement /> : <div>Access Denied</div>;
+        return canEdit.milkCollection ? <MilkCollectionManagement /> : <div>Access Denied</div>;
       case 'vaccination':
         return canEdit.cows ? <VaccinationManagement /> : <div>Access Denied</div>;
       case 'farmers':
