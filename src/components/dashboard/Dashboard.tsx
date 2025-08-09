@@ -17,7 +17,7 @@ export const Dashboard = () => {
     queryFn: async () => {
       const results = await Promise.allSettled([
         canEdit.cows ? supabase.from('cows').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
-        supabase.from('calves').select('*', { count: 'exact' }),
+        canEdit.calves ? supabase.from('calves').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
         canEdit.milkProduction ? supabase
           .from('milk_production')
           .select('quantity')
@@ -49,7 +49,7 @@ export const Dashboard = () => {
       value: stats?.totalCalves || 0,
       icon: Baby,
       color: 'text-pink-600',
-      show: true
+      show: canEdit.calves
     },
     {
       title: 'Monthly Milk (L)',
