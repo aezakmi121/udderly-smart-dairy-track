@@ -60,7 +60,7 @@ export const FeedItems = () => {
         </div>
       </div>
 
-      {/* Edit Modal */}
+      {/* Edit Modal - No trigger button needed */}
       <FeedItemModal
         selectedFeedItem={selectedItem}
         onSubmit={handleEditFeedItem}

@@ -30,12 +30,14 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Category
-        </Button>
-      </DialogTrigger>
+      {externalOpen === undefined && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Category
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-lg bg-white">
         <DialogHeader>
           <DialogTitle>{selectedCategory ? 'Edit Category' : 'Add Category'}</DialogTitle>

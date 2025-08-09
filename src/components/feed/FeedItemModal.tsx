@@ -30,12 +30,14 @@ export const FeedItemModal: React.FC<FeedItemModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Feed Item
-        </Button>
-      </DialogTrigger>
+      {externalOpen === undefined && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Feed Item
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl bg-white">
         <DialogHeader>
           <DialogTitle>{selectedFeedItem ? 'Edit Feed Item' : 'Add Feed Item'}</DialogTitle>

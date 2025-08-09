@@ -60,7 +60,7 @@ export const FeedCategories = () => {
         </div>
       </div>
 
-      {/* Edit Modal */}
+      {/* Edit Modal - No trigger button needed */}
       <CategoryModal
         selectedCategory={selectedCategory}
         onSubmit={handleEditCategory}
