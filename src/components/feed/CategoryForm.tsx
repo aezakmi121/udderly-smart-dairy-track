@@ -50,7 +50,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ selectedCategory, on
           </div>
 
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? (selectedCategory ? 'Updating...' : 'Adding...') : (selectedCategory ? 'Update Category' : 'Add Category')}
+            {isLoading ? 'Saving...' : selectedCategory ? 'Update Category' : 'Add Category'}
           </Button>
         </form>
       </CardContent>

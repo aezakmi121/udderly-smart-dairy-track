@@ -78,7 +78,7 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
             id="production_date"
             name="production_date"
             type="date"
-            defaultValue={selectedRecord?.production_date || selectedDate}
+            defaultValue={selectedRecord?.production_date || new Date().toISOString().split('T')[0]}
             required
           />
         </div>

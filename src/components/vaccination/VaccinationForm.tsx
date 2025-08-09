@@ -33,6 +33,11 @@ export const VaccinationForm: React.FC<VaccinationFormProps> = ({ onSubmit, isLo
     }
   });
 
+  // Reset form dates when component mounts or form is reset
+  React.useEffect(() => {
+    setValue('vaccination_date', new Date().toISOString().split('T')[0]);
+  }, [setValue]);
+
   const { cows } = useCows();
   const { schedules } = useVaccination();
 

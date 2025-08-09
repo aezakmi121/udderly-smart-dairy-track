@@ -105,7 +105,7 @@ export const FeedItemForm: React.FC<FeedItemFormProps> = ({ selectedFeedItem, on
 
           <div className="md:col-span-2">
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? (selectedFeedItem ? 'Updating...' : 'Adding...') : (selectedFeedItem ? 'Update Feed Item' : 'Add Feed Item')}
+              {isLoading ? 'Saving...' : selectedFeedItem ? 'Update Feed Item' : 'Add Feed Item'}
             </Button>
           </div>
         </form>

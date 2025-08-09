@@ -28,6 +28,11 @@ export const AITrackingForm: React.FC<AITrackingFormProps> = ({ onSubmit, isLoad
     }
   });
 
+  // Reset form dates when component mounts or form is reset
+  React.useEffect(() => {
+    setValue('ai_date', new Date().toISOString().split('T')[0]);
+  }, [setValue]);
+
   const { cows } = useCows();
   const { getNextServiceNumber } = useAITracking();
   const selectedCowId = watch('cow_id');

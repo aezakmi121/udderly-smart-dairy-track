@@ -29,6 +29,11 @@ export const WeightLogForm: React.FC<WeightLogFormProps> = ({ onSubmit, isLoadin
   const heartGirth = watch('heart_girth');
   const bodyLength = watch('body_length');
 
+  // Reset form dates when component mounts
+  React.useEffect(() => {
+    setValue('log_date', new Date().toISOString().split('T')[0]);
+  }, [setValue]);
+
   const calculateWeight = () => {
     if (heartGirth && bodyLength) {
       return ((Number(heartGirth) * Number(heartGirth) * Number(bodyLength)) / 300).toFixed(1);

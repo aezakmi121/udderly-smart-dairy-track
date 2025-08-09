@@ -34,6 +34,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ selectedTransa
   const quantity = watch('quantity');
   const unitCost = watch('unit_cost');
 
+  // Reset form dates when component mounts for new transactions
+  React.useEffect(() => {
+    if (!selectedTransaction) {
+      setValue('transaction_date', new Date().toISOString().split('T')[0]);
+    }
+  }, [selectedTransaction, setValue]);
+
   const handleFormSubmit = (data: any) => {
     const totalCost = Number(data.quantity) * Number(data.unit_cost || 0);
     onSubmit({
@@ -139,7 +146,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ selectedTransa
 
           <div className="md:col-span-2">
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? (selectedTransaction ? 'Updating...' : 'Recording...') : (selectedTransaction ? 'Update Transaction' : 'Record Transaction')}
+              {isLoading ? 'Saving...' : selectedTransaction ? 'Update Transaction' : 'Record Transaction'}
             </Button>
           </div>
         </form>

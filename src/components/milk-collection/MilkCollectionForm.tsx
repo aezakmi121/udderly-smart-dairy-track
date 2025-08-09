@@ -67,6 +67,13 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
     }
   }, []);
 
+  // Reset form dates when component mounts for new records
+  React.useEffect(() => {
+    if (!initialData) {
+      setValue('collection_date', new Date().toISOString().split('T')[0]);
+    }
+  }, [initialData, setValue]);
+
   const handleFormSubmit = (data: any) => {
     const submitData = {
       ...data,
