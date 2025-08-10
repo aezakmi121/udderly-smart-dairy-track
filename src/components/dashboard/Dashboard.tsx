@@ -9,11 +9,11 @@ import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { formatDate } from '@/lib/dateUtils';
 
 export const Dashboard = () => {
-  const { canEdit } = useUserPermissions();
+  const { canEdit, userRole } = useUserPermissions();
 
-  // Query for dashboard stats
-  const { data: stats } = useQuery({
-    queryKey: ['dashboard-stats'],
+  // Query for dashboard stats - only run when user role is loaded
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['dashboard-stats', userRole],
     queryFn: async () => {
       const results = await Promise.allSettled([
         canEdit.cows ? supabase.from('cows').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
@@ -34,6 +34,7 @@ export const Dashboard = () => {
         totalFarmers: results[3].status === 'fulfilled' ? results[3].value.count || 0 : 0,
       };
     },
+    enabled: !!userRole, // Only run query when user role is loaded
   });
 
   const statsCards = [
@@ -90,7 +91,9 @@ export const Dashboard = () => {
                 <Icon className={`h-4 w-4 ${stat.color}`} />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
+                <div className="text-2xl font-bold">
+                  {isLoading ? '...' : stat.value}
+                </div>
               </CardContent>
             </Card>
           );
