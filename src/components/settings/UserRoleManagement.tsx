@@ -125,7 +125,6 @@ interface UserWithRoles {
         .from('user_roles')
         .insert({ user_id: userId, role: newRole });
       if (insertRes.error) throw insertRes.error;
-      if (insertRes.error) throw insertRes.error;
 
       // Then remove all other roles for that user
       const deleteRes = await supabase
@@ -307,8 +306,9 @@ interface UserWithRoles {
                     <Select
                       value=""
                       onValueChange={(newRole) => {
-                        if (window.confirm(`Assign role "${newRole}" to ${user.full_name}?`)) {
-                          updateRoleMutation.mutate({ userId: user.id, newRole });
+                        const role = newRole as AppRole;
+                        if (window.confirm(`Assign role "${role}" to ${user.full_name}?`)) {
+                          updateRoleMutation.mutate({ userId: user.id, newRole: role });
                         }
                       }}
                     >
