@@ -14,6 +14,7 @@ import { formatDate } from '@/lib/dateUtils';
 
 export const MilkCollectionManagement = () => {
   const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
+  const [selectedSession, setSelectedSession] = React.useState<'morning' | 'evening'>('morning');
   const [dateRange, setDateRange] = React.useState<{ from: string; to: string }>({ from: '', to: '' });
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editingCollection, setEditingCollection] = React.useState<any>(null);
@@ -26,7 +27,7 @@ export const MilkCollectionManagement = () => {
     addCollectionMutation, 
     updateCollectionMutation,
     deleteCollectionMutation 
-  } = useMilkCollection(filterMode === 'date' ? selectedDate : undefined);
+  } = useMilkCollection(filterMode === 'date' ? selectedDate : undefined, selectedSession);
   
   const { canEdit, isAdmin } = useUserPermissions();
 
@@ -108,34 +109,57 @@ export const MilkCollectionManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Milk Collection</h1>
           <p className="text-muted-foreground">Record and manage milk collections from farmers.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <MilkCollectionFilters
             dateRange={dateRange}
             onDateRangeChange={handleDateRangeChange}
             onClearFilters={handleClearFilters}
           />
-          <Button onClick={() => setModalOpen(true)}>
+          <Button className="w-full sm:w-auto" onClick={() => setModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Record
           </Button>
         </div>
       </div>
 
-      {/* Date Selection */}
-      <div className="flex items-center gap-4">
-        <Label htmlFor="selectedDate">Select Date:</Label>
-        <Input
-          id="selectedDate"
-          type="date"
-          value={selectedDate}
-          onChange={(e) => handleDateChange(e.target.value)}
-          className="w-40"
-        />
+      {/* Date and Session Selection */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="flex items-center gap-4">
+          <Label htmlFor="selectedDate">Select Date:</Label>
+          <Input
+            id="selectedDate"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => handleDateChange(e.target.value)}
+            className="w-40"
+          />
+        </div>
+        <div>
+          <Label htmlFor="session-selector">Session</Label>
+          <div className="flex gap-2 mt-2">
+            <Button
+              type="button"
+              variant={selectedSession === 'morning' ? 'default' : 'outline'}
+              onClick={() => setSelectedSession('morning')}
+              className="w-28"
+            >
+              Morning
+            </Button>
+            <Button
+              type="button"
+              variant={selectedSession === 'evening' ? 'default' : 'outline'}
+              onClick={() => setSelectedSession('evening')}
+              className="w-28"
+            >
+              Evening
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Date-specific Summary */}
@@ -182,6 +206,8 @@ export const MilkCollectionManagement = () => {
         onOpenChange={handleModalClose}
         initialData={editingCollection}
         title={editingCollection ? 'Edit Collection Record' : 'Add Collection Record'}
+        selectedDate={selectedDate}
+        selectedSession={selectedSession}
       />
     </div>
   );

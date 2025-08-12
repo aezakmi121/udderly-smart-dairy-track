@@ -4,7 +4,7 @@ import { MilkRateTable } from './MilkRateTable';
 import { useMilkRateSettings } from '@/hooks/useMilkRateSettings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAppSetting } from '@/hooks/useAppSettings';
 
 export const MilkRateSettings = () => {
@@ -23,22 +23,25 @@ export const MilkRateSettings = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <Label htmlFor="calculation-mode">Rate calculation mode</Label>
-            <RadioGroup
-              id="calculation-mode"
-              value={modeSetting?.mode ?? 'auto'}
-              onValueChange={(val) => save({ mode: val as 'auto' | 'manual' })}
-              className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="auto" id="auto" />
+            <Label>Rate calculation mode</Label>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="auto"
+                  checked={(modeSetting?.mode ?? 'auto') === 'auto'}
+                  onCheckedChange={(checked) => checked && save({ mode: 'auto' })}
+                />
                 <Label htmlFor="auto">Automatic rate calculation</Label>
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="manual" id="manual" />
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="manual"
+                  checked={(modeSetting?.mode ?? 'auto') === 'manual'}
+                  onCheckedChange={(checked) => checked && save({ mode: 'manual' })}
+                />
                 <Label htmlFor="manual">Manual rate entry</Label>
               </div>
-            </RadioGroup>
+            </div>
           </div>
           <p className="text-sm text-muted-foreground mt-2">
             {(modeSetting?.mode ?? 'auto') === 'auto'

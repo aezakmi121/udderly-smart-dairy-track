@@ -236,6 +236,7 @@ export const MilkProduction = () => {
               open={isDialogOpen}
               onOpenChange={setIsDialogOpen}
               onCancel={handleCancel}
+              disabledAdd={!!milkingLog?.milking_end_time}
             />
           )}
         </div>

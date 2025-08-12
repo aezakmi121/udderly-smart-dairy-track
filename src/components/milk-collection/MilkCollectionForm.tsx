@@ -15,16 +15,18 @@ interface MilkCollectionFormProps {
   onSubmit: (data: any) => void;
   isLoading?: boolean;
   initialData?: any;
+  selectedDate: string;
+  selectedSession: 'morning' | 'evening';
 }
 
-export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit, isLoading, initialData }) => {
+export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit, isLoading, initialData, selectedDate, selectedSession }) => {
   
   
   const { register, handleSubmit, setValue, watch, reset } = useForm({
     defaultValues: initialData ? {
       farmer_id: initialData.farmer_id || '',
-      collection_date: initialData.collection_date || new Date().toISOString().split('T')[0],
-      session: initialData.session || 'morning',
+      collection_date: initialData.collection_date || selectedDate,
+      session: initialData.session || selectedSession,
       quantity: initialData.quantity?.toString() || '',
       fat_percentage: initialData.fat_percentage?.toString() || '',
       snf_percentage: initialData.snf_percentage?.toString() || '',
@@ -33,8 +35,8 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
       remarks: initialData.remarks || ''
     } : {
       farmer_id: '',
-      collection_date: new Date().toISOString().split('T')[0],
-      session: 'morning',
+      collection_date: selectedDate,
+      session: selectedSession,
       quantity: '',
       fat_percentage: '',
       snf_percentage: '',
@@ -63,12 +65,13 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
     : (Number(quantity) > 0 ? totalAmount / Number(quantity) : 0);
 
 
-  // Reset form dates when component mounts for new records
   React.useEffect(() => {
+    // keep form values in sync with selected date/session when adding new
     if (!initialData) {
-      setValue('collection_date', new Date().toISOString().split('T')[0]);
+      setValue('collection_date', selectedDate);
+      setValue('session', selectedSession);
     }
-  }, [initialData, setValue]);
+  }, [initialData, selectedDate, selectedSession, setValue]);
 
   const handleFormSubmit = (data: any) => {
     const submitData = {
@@ -117,30 +120,20 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
             <Label htmlFor="collection_date">Collection Date</Label>
             <Input
               type="date"
-              {...register('collection_date', { required: true })}
+              value={watch('collection_date')}
+              disabled
             />
+            {/* Hidden input to submit value */}
+            <input type="hidden" {...register('collection_date')} />
           </div>
 
           <div>
-            <Label htmlFor="session">Session</Label>
-            <div className="flex gap-2 mt-2">
-              <Button
-                type="button"
-                variant={watch('session') === 'morning' ? 'default' : 'outline'}
-                onClick={() => setValue('session', 'morning')}
-                className="flex-1"
-              >
-                Morning
-              </Button>
-              <Button
-                type="button"
-                variant={watch('session') === 'evening' ? 'default' : 'outline'}
-                onClick={() => setValue('session', 'evening')}
-                className="flex-1"
-              >
-                Evening
-              </Button>
+            <Label>Session</Label>
+            <div className="mt-2 text-sm font-medium">
+              {watch('session') === 'morning' ? 'Morning' : 'Evening'}
             </div>
+            {/* Hidden input to submit value */}
+            <input type="hidden" {...register('session')} />
           </div>
 
           <div>

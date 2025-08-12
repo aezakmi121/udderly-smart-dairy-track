@@ -49,6 +49,37 @@ export const useMilkRateSettings = () => {
     }
   });
 
+  const updateRateSettingMutation = useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<MilkRateSetting> & { id: string }) => {
+      const { data, error } = await supabase
+        .from('milk_rates')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['milk-rate-settings'] });
+      toast({ title: 'Rate setting updated' });
+    }
+  });
+
+  const deleteRateSettingMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('milk_rates')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['milk-rate-settings'] });
+      toast({ title: 'Rate setting deleted' });
+    }
+  });
+
   // Simplified rate calculation - just use the most recent active rate
   const calculateRate = (fatPercentage: number, snfPercentage: number) => {
     if (!rateSettings || rateSettings.length === 0) return 0;
@@ -61,6 +92,8 @@ export const useMilkRateSettings = () => {
     rateSettings,
     isLoading,
     addRateSettingMutation,
+    updateRateSettingMutation,
+    deleteRateSettingMutation,
     calculateRate
   };
 };

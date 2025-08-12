@@ -13,7 +13,9 @@ interface MilkProductionModalProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onCancel: () => void;
+  disabledAdd?: boolean;
 }
+
 
 export const MilkProductionModal: React.FC<MilkProductionModalProps> = ({
   selectedRecord,
@@ -23,7 +25,8 @@ export const MilkProductionModal: React.FC<MilkProductionModalProps> = ({
   isLoading,
   open: externalOpen,
   onOpenChange: externalOnOpenChange,
-  onCancel
+  onCancel,
+  disabledAdd
 }) => {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -32,12 +35,16 @@ export const MilkProductionModal: React.FC<MilkProductionModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-green-600 hover:bg-green-700 w-full sm:w-auto">
+        <Button 
+          className="w-full sm:w-auto"
+          disabled={!!disabledAdd && !selectedRecord}
+          title={disabledAdd ? 'Session ended — adding is locked' : undefined}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Record
         </Button>
       </DialogTrigger>
-      
+
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>

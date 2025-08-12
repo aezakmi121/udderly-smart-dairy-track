@@ -11,6 +11,8 @@ interface MilkCollectionModalProps {
   onOpenChange?: (open: boolean) => void;
   initialData?: any;
   title?: string;
+  selectedDate: string;
+  selectedSession: 'morning' | 'evening';
 }
 
 export const MilkCollectionModal: React.FC<MilkCollectionModalProps> = ({
@@ -19,7 +21,9 @@ export const MilkCollectionModal: React.FC<MilkCollectionModalProps> = ({
   open: externalOpen,
   onOpenChange: externalOnOpenChange,
   initialData,
-  title = 'Add Milk Collection Record'
+  title = 'Add Milk Collection Record',
+  selectedDate,
+  selectedSession
 }) => {
   const [internalOpen, setInternalOpen] = React.useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -40,7 +44,7 @@ export const MilkCollectionModal: React.FC<MilkCollectionModalProps> = ({
             {initialData ? 'Update milk collection record' : 'Record milk collection from farmers'}
           </DialogDescription>
         </DialogHeader>
-        <MilkCollectionForm onSubmit={handleSubmit} isLoading={isLoading} initialData={initialData} />
+        <MilkCollectionForm onSubmit={handleSubmit} isLoading={isLoading} initialData={initialData} selectedDate={selectedDate} selectedSession={selectedSession} />
       </DialogContent>
     </Dialog>
   );
