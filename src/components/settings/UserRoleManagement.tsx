@@ -29,9 +29,11 @@ interface UserWithRoles {
   roles: string[];
 }
 
-export const UserRoleManagement = () => {
+ type AppRole = 'admin' | 'worker' | 'farmer' | 'store_manager' | 'delivery_boy';
+ 
+ export const UserRoleManagement = () => {
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'worker' | 'farmer'>('farmer');
+  const [inviteRole, setInviteRole] = useState<AppRole>('farmer');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -117,23 +119,26 @@ export const UserRoleManagement = () => {
   });
 
   const updateRoleMutation = useMutation({
-    mutationFn: async ({ userId, newRole }: { userId: string; newRole: string }) => {
-      // Remove existing roles
-      await supabase
+    mutationFn: async ({ userId, newRole }: { userId: string; newRole: AppRole }) => {
+      // Insert the new role FIRST to avoid losing admin during self-updates
+      const insertRes = await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role: newRole });
+      if (insertRes.error) throw insertRes.error;
+      if (insertRes.error) throw insertRes.error;
+
+      // Then remove all other roles for that user
+      const deleteRes = await supabase
         .from('user_roles')
         .delete()
-        .eq('user_id', userId);
-      
-      // Add new role
-      const { error } = await supabase
-        .from('user_roles')
-        .insert({ user_id: userId, role: newRole as 'admin' | 'worker' | 'farmer' });
-      
-      if (error) throw error;
+        .eq('user_id', userId)
+        .neq('role', newRole);
+      if (deleteRes.error) throw deleteRes.error;
     },
     onSuccess: () => {
       setSuccess('User role updated successfully!');
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['user-role'] });
     },
     onError: (error: any) => {
       setError(error.message || 'Failed to update user role');
@@ -219,9 +224,15 @@ export const UserRoleManagement = () => {
                   
                   <div className="flex gap-2 flex-shrink-0">
                     <Select
+                      value={user.roles[0] || ''}
                       onValueChange={(newRole) => {
-                        if (window.confirm(`Assign role "${newRole}" to ${user.full_name}?`)) {
-                          updateRoleMutation.mutate({ userId: user.id, newRole });
+                        const role = newRole as AppRole;
+                        const isSelf = currentUserId === user.id;
+                        const msg = isSelf && role !== 'admin'
+                          ? `You are changing your own role to "${role}". You will lose admin access. Continue?`
+                          : `Assign role "${role}" to ${user.full_name}?`;
+                        if (window.confirm(msg)) {
+                          updateRoleMutation.mutate({ userId: user.id, newRole: role });
                         }
                       }}
                     >

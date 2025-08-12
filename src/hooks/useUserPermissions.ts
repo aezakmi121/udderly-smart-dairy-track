@@ -3,33 +3,34 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export const useUserPermissions = () => {
-  const { data: userRole } = useQuery({
+  const { data: roles } = useQuery({
     queryKey: ['user-role'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
+      if (!user) return [] as string[];
 
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', user.id);
 
       if (error) {
-        console.error('Error fetching user role:', error);
-        return 'worker'; // Default role
+        console.error('Error fetching user roles:', error);
+        return [] as string[];
       }
 
-      return data?.role || 'worker';
+      return (data || []).map(r => r.role);
     },
   });
 
-  const isAdmin = userRole === 'admin';
-  const isFarmWorker = userRole === 'worker';
-  const isCollectionCentre = userRole === 'farmer';
+  const isAdmin = roles?.includes('admin') ?? false;
+  const isFarmWorker = roles?.includes('worker') ?? false;
+  const isCollectionCentre = roles?.includes('farmer') ?? false;
+
+  const primaryRole = isAdmin ? 'admin' : isFarmWorker ? 'worker' : isCollectionCentre ? 'farmer' : 'worker';
 
   return {
-    userRole,
+    userRole: primaryRole,
     isAdmin,
     isFarmWorker,
     isCollectionCentre,
