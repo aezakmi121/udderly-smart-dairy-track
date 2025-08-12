@@ -81,6 +81,8 @@ export const UserRoleManagement = () => {
     enabled: isAdmin,
   });
 
+  const existingUsers = users.filter((u) => u.roles.length > 0);
+  const pendingUsers = users.filter((u) => u.roles.length === 0);
   const inviteUserMutation = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: string }) => {
       const { data: user } = await supabase.auth.getUser();
@@ -143,18 +145,17 @@ export const UserRoleManagement = () => {
       if (currentUserId && userId === currentUserId) {
         throw new Error("You can't remove your own admin access.");
       }
-      // Remove user roles
-      await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
+      const { error } = await supabase.functions.invoke('delete-user', {
+        body: { userId }
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
-      setSuccess('User access removed successfully!');
+      setSuccess('User deleted successfully!');
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
     },
     onError: (error: any) => {
-      setError(error.message || 'Failed to remove user');
+      setError(error.message || 'Failed to delete user');
     }
   });
 
@@ -186,16 +187,16 @@ export const UserRoleManagement = () => {
       <Card>
         <CardHeader>
           <CardTitle>Existing Users</CardTitle>
-          <CardDescription>
-            Manage roles for existing users in the system. New signups appear here without a role until approved by an admin.
-          </CardDescription>
+            <CardDescription>
+              Manage roles for existing users. Pending approvals are shown below.
+            </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <p>Loading users...</p>
           ) : (
             <div className="space-y-4">
-              {users.map((user) => (
+              {existingUsers.map((user) => (
                 <div key={user.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg gap-4">
                   <div className="flex-1">
                     <h4 className="font-medium">{user.full_name}</h4>
@@ -218,10 +219,11 @@ export const UserRoleManagement = () => {
                   
                   <div className="flex gap-2 flex-shrink-0">
                     <Select
-                      value={user.roles[0] || ''}
-                      onValueChange={(newRole) => 
-                        updateRoleMutation.mutate({ userId: user.id, newRole })
-                      }
+                      onValueChange={(newRole) => {
+                        if (window.confirm(`Assign role "${newRole}" to ${user.full_name}?`)) {
+                          updateRoleMutation.mutate({ userId: user.id, newRole });
+                        }
+                      }}
                     >
                       <SelectTrigger className="w-40">
                         <SelectValue placeholder="Assign role" />
@@ -264,7 +266,7 @@ export const UserRoleManagement = () => {
                 </div>
               ))}
               
-              {users.length === 0 && (
+              {existingUsers.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">
                   No users found
                 </p>
@@ -273,6 +275,76 @@ export const UserRoleManagement = () => {
           )}
         </CardContent>
       </Card>
+      {pendingUsers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Pending Approvals</CardTitle>
+            <CardDescription>New signups awaiting role assignment.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {pendingUsers.map((user) => (
+                <div key={user.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg gap-4">
+                  <div className="flex-1">
+                    <h4 className="font-medium">{user.full_name}</h4>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                    <div className="flex gap-2 mt-2">
+                      <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">Pending approval</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <Select
+                      value=""
+                      onValueChange={(newRole) => {
+                        if (window.confirm(`Assign role "${newRole}" to ${user.full_name}?`)) {
+                          updateRoleMutation.mutate({ userId: user.id, newRole });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue placeholder="Assign role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="worker">Farm Worker</SelectItem>
+                        <SelectItem value="farmer">Collection Centre</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          disabled={currentUserId === user.id}
+                          title={currentUserId === user.id ? "You can't remove yourself" : undefined}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete pending user?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently remove the user and their profile.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => removeUserMutation.mutate(user.id)}>
+                            Confirm
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

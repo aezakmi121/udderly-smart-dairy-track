@@ -36,16 +36,15 @@ serve(async (req: Request) => {
       });
     }
 
-    const { data: roleRow } = await anonClient
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
+    const { data: isAdmin, error: roleErr } = await anonClient.rpc('has_role', {
+      _user_id: user.id,
+      _role: 'admin'
+    });
 
-    if (roleRow?.role !== "admin") {
-      return new Response(JSON.stringify({ error: "Admin access required" }), {
+    if (roleErr || !isAdmin) {
+      return new Response(JSON.stringify({ error: 'Admin access required' }), {
         status: 403,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 

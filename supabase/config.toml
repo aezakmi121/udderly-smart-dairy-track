@@ -41,3 +41,6 @@ enable_confirmations = false
 
 [functions.send-invitation]
 verify_jwt = true
+
+[functions.delete-user]
+verify_jwt = true
