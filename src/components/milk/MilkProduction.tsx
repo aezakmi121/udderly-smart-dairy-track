@@ -31,6 +31,10 @@ export const MilkProduction = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedSession, setSelectedSession] = useState<'morning' | 'evening'>('morning');
 
+  const { log: milkingLog, isLoading: milkingLogLoading, startLog, endLog } = useMilkingLog(selectedDate, selectedSession);
+  const { canEdit, isAdmin, isFarmWorker } = useUserPermissions();
+  const { toast } = useToast();
+
   // Filter and sort states
   const [searchTerm, setSearchTerm] = useState('');
   const [sessionFilter, setSessionFilter] = useState('all');
