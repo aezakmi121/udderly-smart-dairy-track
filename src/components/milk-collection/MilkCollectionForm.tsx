@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMilkCollection } from '@/hooks/useMilkCollection';
 import { useMilkRateSettings } from '@/hooks/useMilkRateSettings';
+import { useAppSetting } from '@/hooks/useAppSettings';
 
 interface MilkCollectionFormProps {
   onSubmit: (data: any) => void;
@@ -17,7 +18,7 @@ interface MilkCollectionFormProps {
 }
 
 export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit, isLoading, initialData }) => {
-  const [isAutoCalculation, setIsAutoCalculation] = React.useState(true);
+  
   
   const { register, handleSubmit, setValue, watch, reset } = useForm({
     defaultValues: initialData ? {
@@ -52,20 +53,15 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   const manualAmount = watch('total_amount');
 
   const calculatedRate = calculateRate(Number(fatPercentage) || 0, Number(snfPercentage) || 0);
-  const totalAmount = isAutoCalculation 
+  const { value: modeSetting } = useAppSetting<{ mode: 'auto' | 'manual' }>('milk_rate_mode');
+  const isAuto = (modeSetting?.mode ?? 'auto') === 'auto';
+  const totalAmount = isAuto 
     ? (Number(quantity) || 0) * calculatedRate
     : Number(manualAmount) || 0;
-  const derivedRate = isAutoCalculation 
+  const derivedRate = isAuto 
     ? calculatedRate 
     : (Number(quantity) > 0 ? totalAmount / Number(quantity) : 0);
 
-  // Load calculation mode from localStorage
-  React.useEffect(() => {
-    const stored = localStorage.getItem('milkRateCalculationMode');
-    if (stored) {
-      setIsAutoCalculation(stored === 'auto');
-    }
-  }, []);
 
   // Reset form dates when component mounts for new records
   React.useEffect(() => {
@@ -179,7 +175,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
             <p className="text-xs text-muted-foreground mt-1">For record keeping only</p>
           </div>
 
-          {isAutoCalculation ? (
+          {isAuto ? (
             <>
               <div>
                 <Label>Rate per Liter</Label>

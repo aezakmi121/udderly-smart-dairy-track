@@ -86,5 +86,33 @@ export const useMilkingLog = (productionDate: string, session: MilkingSession) =
     invalidate();
   };
 
-  return { log, isLoading, startLog, endLog };
+  const unlockLog = async (date: string, s: MilkingSession) => {
+    const { data: existing, error: fetchError } = await supabase
+      .from('milking_logs')
+      .select('*')
+      .eq('production_date', date)
+      .eq('session', s)
+      .maybeSingle();
+    if (fetchError) throw fetchError;
+
+    if (!existing) {
+      const { error: insertError } = await supabase.from('milking_logs').insert({
+        production_date: date,
+        session: s,
+        milking_start_time: null,
+        milking_end_time: null,
+      });
+      if (insertError) throw insertError;
+    } else {
+      const { error: updateError } = await supabase
+        .from('milking_logs')
+        .update({ milking_end_time: null })
+        .eq('id', existing.id);
+      if (updateError) throw updateError;
+    }
+
+    invalidate();
+  };
+
+  return { log, isLoading, startLog, endLog, unlockLog };
 };

@@ -7,11 +7,13 @@ import { MilkRateSettings } from './MilkRateSettings';
 import { AccessControlSettings } from './AccessControlSettings';
 import { UserRoleManagement } from './UserRoleManagement';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { SessionUnlock } from './SessionUnlock';
 
 export const SettingsManagement = () => {
   const { isAdmin } = useUserPermissions();
   const [openSections, setOpenSections] = useState({
     milkRates: false,
+    milkingSessions: false,
     accessControl: false,
     userRoles: false,
   });
@@ -64,6 +66,30 @@ export const SettingsManagement = () => {
             </CollapsibleContent>
           </Card>
         </Collapsible>
+
+        {/* Milking Session Controls */}
+        <Collapsible open={openSections.milkingSessions} onOpenChange={() => toggleSection('milkingSessions')}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Milking Session Controls</CardTitle>
+                  {openSections.milkingSessions ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <SessionUnlock />
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
 
         {/* Access Control Settings */}
         <Collapsible open={openSections.accessControl} onOpenChange={() => toggleSection('accessControl')}>
