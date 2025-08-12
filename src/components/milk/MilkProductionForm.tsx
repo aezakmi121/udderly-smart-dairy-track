@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,7 +36,7 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
   isLoading
 }) => {
   const { cows } = useCows();
-  const [selectedSession, setSelectedSession] = useState(selectedRecord?.session || defaultSession || 'morning');
+  const selectedSession = selectedRecord?.session || defaultSession || 'morning';
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -87,25 +87,9 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
         </div>
         
         <div>
-          <Label htmlFor="session">Session *</Label>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={selectedSession === 'morning' ? 'default' : 'outline'}
-              onClick={() => setSelectedSession('morning')}
-              className="flex-1"
-            >
-              Morning
-            </Button>
-            <Button
-              type="button"
-              variant={selectedSession === 'evening' ? 'default' : 'outline'}
-              onClick={() => setSelectedSession('evening')}
-              className="flex-1"
-            >
-              Evening
-            </Button>
-          </div>
+          <Label htmlFor="session">Session</Label>
+          <Input id="session" value={selectedSession.charAt(0).toUpperCase() + selectedSession.slice(1)} readOnly disabled />
+          <input type="hidden" name="session" value={selectedSession} />
         </div>
       </div>
 
