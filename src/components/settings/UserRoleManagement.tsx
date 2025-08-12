@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { UserPlus, Trash2 } from 'lucide-react';
+import { useEffect } from 'react';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +37,11 @@ export const UserRoleManagement = () => {
   const [success, setSuccess] = useState('');
   const { isAdmin } = useUserPermissions();
   const queryClient = useQueryClient();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
+  }, []);
 
   // Fetch all users with their roles
   const { data: users = [], isLoading } = useQuery({
@@ -134,14 +140,14 @@ export const UserRoleManagement = () => {
 
   const removeUserMutation = useMutation({
     mutationFn: async (userId: string) => {
+      if (currentUserId && userId === currentUserId) {
+        throw new Error("You can't remove your own admin access.");
+      }
       // Remove user roles
       await supabase
         .from('user_roles')
         .delete()
         .eq('user_id', userId);
-      
-      // Note: We can't delete from auth.users via client, only disable
-      // In production, you'd want to use admin API for this
     },
     onSuccess: () => {
       setSuccess('User access removed successfully!');
@@ -179,65 +185,9 @@ export const UserRoleManagement = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" />
-            Invite New User
-          </CardTitle>
-          <CardDescription>
-            Send an invitation email to add a new user to the system
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          {success && (
-            <Alert className="mb-4">
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
-          
-          <form onSubmit={handleInviteUser} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="inviteEmail">Email Address</Label>
-              <Input
-                id="inviteEmail"
-                type="email"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="user@example.com"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="inviteRole">Role</Label>
-              <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as any)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="worker">Farm Worker</SelectItem>
-                  <SelectItem value="farmer">Collection Centre</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Sending Invitation...' : 'Send Invitation'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Existing Users</CardTitle>
           <CardDescription>
-            Manage roles for existing users in the system
+            Manage roles for existing users in the system. New signups appear here without a role until approved by an admin.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -251,26 +201,30 @@ export const UserRoleManagement = () => {
                     <h4 className="font-medium">{user.full_name}</h4>
                     <p className="text-sm text-muted-foreground">{user.email}</p>
                     <div className="flex gap-2 mt-2">
-                      {user.roles.map((role) => (
-                        <span
-                          key={role}
-                          className="px-2 py-1 text-xs bg-secondary text-secondary-foreground rounded"
-                        >
-                          {role === 'worker' ? 'Farm Worker' : role === 'farmer' ? 'Collection Centre' : 'Admin'}
-                        </span>
-                      ))}
+                      {user.roles.length === 0 ? (
+                        <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">Pending approval</span>
+                      ) : (
+                        user.roles.map((role) => (
+                          <span
+                            key={role}
+                            className="px-2 py-1 text-xs bg-secondary text-secondary-foreground rounded"
+                          >
+                            {role === 'worker' ? 'Farm Worker' : role === 'farmer' ? 'Collection Centre' : 'Admin'}
+                          </span>
+                        ))
+                      )}
                     </div>
                   </div>
                   
                   <div className="flex gap-2 flex-shrink-0">
                     <Select
-                      value={user.roles[0] || 'farmer'}
+                      value={user.roles[0] || ''}
                       onValueChange={(newRole) => 
                         updateRoleMutation.mutate({ userId: user.id, newRole })
                       }
                     >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
+                      <SelectTrigger className="w-40">
+                        <SelectValue placeholder="Assign role" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="admin">Admin</SelectItem>
@@ -285,6 +239,8 @@ export const UserRoleManagement = () => {
                           variant="outline"
                           size="sm"
                           className="text-destructive hover:text-destructive"
+                          disabled={currentUserId === user.id}
+                          title={currentUserId === user.id ? "You can't remove yourself" : undefined}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -293,7 +249,7 @@ export const UserRoleManagement = () => {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Remove user access?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will remove the user’s roles. You can re-invite them later if needed.
+                            This will remove the user’s roles. You can re-assign them later if needed.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

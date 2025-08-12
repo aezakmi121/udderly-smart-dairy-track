@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface Notification {
   id: string;
-  type: 'low_stock' | 'pd_due' | 'vaccination_due' | 'delivery_due';
+  type: 'low_stock' | 'pd_due' | 'vaccination_due' | 'delivery_due' | 'ai_due';
   title: string;
   message: string;
   priority: 'high' | 'medium' | 'low';
@@ -41,7 +41,8 @@ export const useNotifications = () => {
           });
         });
 
-        // Check for PD due records - Fixed foreign key relationship
+        // Check for PD due records (within 30 days) and flag those due today as high priority
+        const today = new Date().toISOString().split('T')[0];
         const { data: pdDueRecords } = await supabase
           .from('ai_records')
           .select(`
@@ -52,12 +53,13 @@ export const useNotifications = () => {
           .lte('pd_date', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 
         pdDueRecords?.forEach(record => {
+          const isToday = record.pd_date === today;
           notifications.push({
             id: `pd_due_${record.id}`,
             type: 'pd_due',
-            title: 'PD Check Due',
-            message: `PD check due for cow ${record.cows?.cow_number || 'Unknown'}`,
-            priority: 'medium',
+            title: isToday ? 'PD Check Due Today' : 'PD Check Due',
+            message: `PD check ${isToday ? 'is due today' : 'due soon'} for cow ${record.cows?.cow_number || 'Unknown'}`,
+            priority: isToday ? 'high' : 'medium',
             read: false,
             created_at: new Date().toISOString(),
             entity_id: record.id,
@@ -89,7 +91,7 @@ export const useNotifications = () => {
           });
         });
 
-        // Check for expected deliveries - Fixed foreign key relationship
+        // Check for expected deliveries (within 30 days)
         const { data: deliveriesDue } = await supabase
           .from('ai_records')
           .select(`
@@ -101,12 +103,37 @@ export const useNotifications = () => {
           .lte('expected_delivery_date', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 
         deliveriesDue?.forEach(record => {
+          const isToday = record.expected_delivery_date === today;
           notifications.push({
             id: `delivery_due_${record.id}`,
             type: 'delivery_due',
-            title: 'Delivery Expected',
-            message: `Cow ${record.cows?.cow_number || 'Unknown'} expected to deliver soon`,
-            priority: 'high',
+            title: isToday ? 'Delivery Expected Today' : 'Delivery Expected',
+            message: `Cow ${record.cows?.cow_number || 'Unknown'} ${isToday ? 'may deliver today' : 'expected to deliver soon'}`,
+            priority: isToday ? 'high' : 'high',
+            read: false,
+            created_at: new Date().toISOString(),
+            entity_id: record.id,
+            entity_type: 'ai_record'
+          });
+        });
+
+        // AI due today (scheduled inseminations)
+        const { data: aiDueToday } = await supabase
+          .from('ai_records')
+          .select(`
+            *,
+            cows!ai_records_cow_id_fkey (cow_number)
+          `)
+          .eq('ai_status', 'pending')
+          .eq('ai_date', today);
+
+        aiDueToday?.forEach(record => {
+          notifications.push({
+            id: `ai_due_${record.id}`,
+            type: 'ai_due',
+            title: 'AI Scheduled Today',
+            message: `AI scheduled today for cow ${record.cows?.cow_number || 'Unknown'}`,
+            priority: 'medium',
             read: false,
             created_at: new Date().toISOString(),
             entity_id: record.id,
