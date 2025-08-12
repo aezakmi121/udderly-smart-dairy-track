@@ -91,7 +91,7 @@ export const useMilkCollection = (selectedDate?: string, selectedSession?: 'morn
         .from('farmers')
         .select('id, name, farmer_code')
         .eq('is_active', true)
-        .order('name');
+        .order('farmer_code');
       
       if (error) throw error;
       return data;

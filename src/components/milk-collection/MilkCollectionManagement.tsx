@@ -12,6 +12,7 @@ import { useMilkCollection } from '@/hooks/useMilkCollection';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { formatDate } from '@/lib/dateUtils';
 import { useMilkingLog } from '@/hooks/useMilkingLogs';
+import { useToast } from '@/hooks/use-toast';
 
 export const MilkCollectionManagement = () => {
   const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
@@ -32,6 +33,12 @@ export const MilkCollectionManagement = () => {
   
   const { canEdit, isAdmin } = useUserPermissions();
   const { log: milkingLog } = useMilkingLog(selectedDate, selectedSession);
+  const { toast } = useToast();
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === todayStr;
+  const isUnlocked = !!(milkingLog && !milkingLog.milking_start_time && !milkingLog.milking_end_time);
+  const canModify = isAdmin || isToday || isUnlocked;
 
   // Filter collections by date range when in range mode
   const filteredCollections = React.useMemo(() => {
@@ -61,6 +68,10 @@ export const MilkCollectionManagement = () => {
   ]);
 
   const handleAddCollection = (data: any) => {
+    if (!canModify) {
+      toast({ title: 'Editing locked', description: "Only today's collections allowed unless an admin unlocks this date.", variant: 'destructive' });
+      return;
+    }
     if (editingCollection) {
       updateCollectionMutation.mutate(data);
     } else {
@@ -122,7 +133,7 @@ export const MilkCollectionManagement = () => {
             onDateRangeChange={handleDateRangeChange}
             onClearFilters={handleClearFilters}
           />
-          <Button className="w-full sm:w-auto" onClick={() => setModalOpen(true)}>
+          <Button className="w-full sm:w-auto" onClick={() => setModalOpen(true)} disabled={!canModify} title={!canModify ? 'Only today allowed unless unlocked by admin' : undefined}>
             <Plus className="h-4 w-4 mr-2" />
             Add Record
           </Button>
@@ -171,8 +182,8 @@ export const MilkCollectionManagement = () => {
           dailyStats={dailyStats}
           selectedDate={selectedDate}
           isLoading={isLoading}
-          canEdit={!!(milkingLog?.milking_end_time ? isAdmin : (isAdmin || canEdit.milkCollection))}
-          canDelete={!!(milkingLog?.milking_end_time ? isAdmin : (isAdmin || canEdit.milkCollection))}
+          canEdit={canModify}
+          canDelete={canModify}
           onEdit={handleEditCollection}
           onDelete={handleDeleteCollection}
         />
@@ -192,8 +203,8 @@ export const MilkCollectionManagement = () => {
           <MilkCollectionTable 
             collections={filteredCollections}
             isLoading={isLoading}
-            canEdit={!!(milkingLog?.milking_end_time ? isAdmin : (isAdmin || canEdit.milkCollection))}
-            canDelete={!!(milkingLog?.milking_end_time ? isAdmin : (isAdmin || canEdit.milkCollection))}
+            canEdit={canModify}
+            canDelete={canModify}
             onEdit={handleEditCollection}
             onDelete={handleDeleteCollection}
           />

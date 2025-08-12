@@ -13,6 +13,7 @@ import { MilkProductionTable } from './MilkProductionTable';
 import { MilkProductionFiltersModal } from './MilkProductionFiltersModal';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useMilkingLog } from '@/hooks/useMilkingLogs';
+import { useToast } from '@/hooks/use-toast';
 interface MilkProduction {
   id: string;
   cow_id?: string;
@@ -32,11 +33,16 @@ export const MilkProduction = () => {
   const prevSessionRef = useRef<'morning' | 'evening' | null>(null);
 
   const { log: milkingLog, isLoading: milkingLogLoading, startLog, endLog } = useMilkingLog(selectedDate, selectedSession);
+  const { canEdit, isAdmin } = useUserPermissions();
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Ensure log exists and has start time when date/session is selected
-    startLog(selectedDate, selectedSession).catch(() => {});
-  }, [selectedDate, selectedSession]);
+    // Auto-start logs only for today or for admins
+    const today = new Date().toISOString().split('T')[0];
+    if (isAdmin || selectedDate === today) {
+      startLog(selectedDate, selectedSession).catch(() => {});
+    }
+  }, [selectedDate, selectedSession, isAdmin]);
 
   useEffect(() => {
     if (prevSessionRef.current && prevSessionRef.current !== selectedSession) {
@@ -62,7 +68,10 @@ export const MilkProduction = () => {
     deleteRecordMutation
   } = useMilkProduction(selectedDate);
   
-  const { canEdit, isAdmin } = useUserPermissions();
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === todayStr;
+  const isUnlocked = !!(milkingLog && !milkingLog.milking_start_time && !milkingLog.milking_end_time);
+  const canModify = isAdmin || isToday || isUnlocked;
 
   // Filter and sort milk records
   const filteredAndSortedRecords = useMemo(() => {
@@ -142,6 +151,10 @@ export const MilkProduction = () => {
   };
 
   const handleSubmit = (recordData: any) => {
+    if (!canModify) {
+      toast({ title: 'Editing locked', description: "Only today's records allowed unless an admin unlocks this date.", variant: 'destructive' });
+      return;
+    }
     if (selectedRecord) {
       updateRecordMutation.mutate({ id: selectedRecord.id, ...recordData });
     } else {
@@ -236,7 +249,7 @@ export const MilkProduction = () => {
               open={isDialogOpen}
               onOpenChange={setIsDialogOpen}
               onCancel={handleCancel}
-              disabledAdd={!!milkingLog?.milking_end_time}
+              disabledAdd={!canModify}
             />
           )}
         </div>
@@ -270,8 +283,8 @@ export const MilkProduction = () => {
             milkRecords={filteredAndSortedRecords || []}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            canEdit={!!(milkingLog?.milking_end_time ? isAdmin : (isAdmin || canEdit.milkProduction))}
-            canDelete={!!(milkingLog?.milking_end_time ? isAdmin : (isAdmin || canEdit.milkProduction))}
+            canEdit={canModify}
+            canDelete={canModify}
           />
         </CardContent>
       </Card>
