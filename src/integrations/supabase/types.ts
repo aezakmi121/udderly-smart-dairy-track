@@ -678,6 +678,36 @@ export type Database = {
         }
         Relationships: []
       }
+      milking_logs: {
+        Row: {
+          created_at: string
+          id: string
+          milking_end_time: string | null
+          milking_start_time: string | null
+          production_date: string
+          session: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          milking_end_time?: string | null
+          milking_start_time?: string | null
+          production_date: string
+          session: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          milking_end_time?: string | null
+          milking_start_time?: string | null
+          production_date?: string
+          session?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
