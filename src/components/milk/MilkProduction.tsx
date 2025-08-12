@@ -35,6 +35,7 @@ export const MilkProduction = () => {
   const { canEdit, isAdmin, isFarmWorker } = useUserPermissions();
   const { toast } = useToast();
 
+
   // Filter and sort states
   const [searchTerm, setSearchTerm] = useState('');
   const [sessionFilter, setSessionFilter] = useState('all');
