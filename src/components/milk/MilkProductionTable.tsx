@@ -9,12 +9,16 @@ interface MilkProductionTableProps {
   milkRecords: any[];
   onEdit: (record: any) => void;
   onDelete: (id: string) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 export const MilkProductionTable: React.FC<MilkProductionTableProps> = ({
   milkRecords,
   onEdit,
-  onDelete
+  onDelete,
+  canEdit = false,
+  canDelete = false
 }) => {
   return (
     <div className="overflow-x-auto">
@@ -27,7 +31,7 @@ export const MilkProductionTable: React.FC<MilkProductionTableProps> = ({
             <TableHead>Fat %</TableHead>
             <TableHead>SNF %</TableHead>
             <TableHead>Remarks</TableHead>
-            <TableHead>Actions</TableHead>
+            {(canEdit || canDelete) && <TableHead>Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -45,28 +49,34 @@ export const MilkProductionTable: React.FC<MilkProductionTableProps> = ({
               <TableCell>{record.fat_percentage ? `${record.fat_percentage}%` : 'N/A'}</TableCell>
               <TableCell>{record.snf_percentage ? `${record.snf_percentage}%` : 'N/A'}</TableCell>
               <TableCell>{record.remarks || 'N/A'}</TableCell>
-              <TableCell>
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onEdit(record)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (confirm('Are you sure you want to delete this record?')) {
-                        onDelete(record.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </TableCell>
+              {(canEdit || canDelete) && (
+                <TableCell>
+                  <div className="flex space-x-2">
+                    {canEdit && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onEdit(record)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm('Are you sure you want to delete this record?')) {
+                            onDelete(record.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>

@@ -11,6 +11,7 @@ import { TodaysCollectionSummary } from './TodaysCollectionSummary';
 import { useMilkCollection } from '@/hooks/useMilkCollection';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { formatDate } from '@/lib/dateUtils';
+import { useMilkingLog } from '@/hooks/useMilkingLogs';
 
 export const MilkCollectionManagement = () => {
   const [selectedDate, setSelectedDate] = React.useState(new Date().toISOString().split('T')[0]);
@@ -30,6 +31,7 @@ export const MilkCollectionManagement = () => {
   } = useMilkCollection(filterMode === 'date' ? selectedDate : undefined, selectedSession);
   
   const { canEdit, isAdmin } = useUserPermissions();
+  const { log: milkingLog } = useMilkingLog(selectedDate, selectedSession);
 
   // Filter collections by date range when in range mode
   const filteredCollections = React.useMemo(() => {
@@ -169,8 +171,8 @@ export const MilkCollectionManagement = () => {
           dailyStats={dailyStats}
           selectedDate={selectedDate}
           isLoading={isLoading}
-          canEdit={canEdit.milkCollection}
-          canDelete={isAdmin}
+          canEdit={!!(milkingLog?.milking_end_time ? isAdmin : (isAdmin || canEdit.milkCollection))}
+          canDelete={!!(milkingLog?.milking_end_time ? isAdmin : (isAdmin || canEdit.milkCollection))}
           onEdit={handleEditCollection}
           onDelete={handleDeleteCollection}
         />
@@ -190,8 +192,8 @@ export const MilkCollectionManagement = () => {
           <MilkCollectionTable 
             collections={filteredCollections}
             isLoading={isLoading}
-            canEdit={canEdit.milkCollection}
-            canDelete={isAdmin}
+            canEdit={!!(milkingLog?.milking_end_time ? isAdmin : (isAdmin || canEdit.milkCollection))}
+            canDelete={!!(milkingLog?.milking_end_time ? isAdmin : (isAdmin || canEdit.milkCollection))}
             onEdit={handleEditCollection}
             onDelete={handleDeleteCollection}
           />

@@ -62,7 +62,7 @@ export const MilkProduction = () => {
     deleteRecordMutation
   } = useMilkProduction(selectedDate);
   
-  const { canEdit } = useUserPermissions();
+  const { canEdit, isAdmin } = useUserPermissions();
 
   // Filter and sort milk records
   const filteredAndSortedRecords = useMemo(() => {
@@ -270,6 +270,8 @@ export const MilkProduction = () => {
             milkRecords={filteredAndSortedRecords || []}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            canEdit={!!(milkingLog?.milking_end_time ? isAdmin : (isAdmin || canEdit.milkProduction))}
+            canDelete={!!(milkingLog?.milking_end_time ? isAdmin : (isAdmin || canEdit.milkProduction))}
           />
         </CardContent>
       </Card>
