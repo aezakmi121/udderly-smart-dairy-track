@@ -42,7 +42,7 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
     
     const recordData = {
       cow_id: formData.get('cow_id') as string,
-      production_date: formData.get('production_date') as string,
+      production_date: selectedDate,
       session: selectedSession,
       quantity: parseFloat(formData.get('quantity') as string),
       fat_percentage: parseFloat(formData.get('fat_percentage') as string) || null,
@@ -73,14 +73,15 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="production_date">Date *</Label>
+          <Label htmlFor="production_date">Date (locked)</Label>
           <Input
             id="production_date"
-            name="production_date"
             type="date"
-            defaultValue={selectedRecord?.production_date || new Date().toISOString().split('T')[0]}
-            required
+            value={selectedDate}
+            disabled
+            readOnly
           />
+          <input type="hidden" name="production_date" value={selectedDate} />
         </div>
         
         <div>
