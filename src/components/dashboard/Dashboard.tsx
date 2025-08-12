@@ -101,28 +101,8 @@ export const Dashboard = () => {
       </div>
 
       {/* Notifications Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <NotificationPanel />
-        </div>
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Use the sidebar to navigate to different sections of the farm management system.
-              </p>
-              <div className="text-xs text-muted-foreground">
-                Access is based on your assigned role and permissions.
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div>
+        <NotificationPanel />
       </div>
     </div>
   );

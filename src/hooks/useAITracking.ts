@@ -104,6 +104,7 @@ export const useAITracking = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai-records'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast({ title: "AI record added successfully!" });
     }
   });
@@ -122,15 +123,33 @@ export const useAITracking = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai-records'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast({ title: "AI record updated successfully!" });
     }
   });
 
+  const deleteAIRecordMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('ai_records')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai-records'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      toast({ title: "AI record deleted successfully!" });
+    }
+  });
+  
   return {
     aiRecords,
     isLoading,
     addAIRecordMutation,
     updateAIRecordMutation,
+    deleteAIRecordMutation,
     getNextServiceNumber
   };
 };

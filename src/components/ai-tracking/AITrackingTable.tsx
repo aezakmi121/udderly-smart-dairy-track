@@ -14,12 +14,14 @@ interface AITrackingTableProps {
   aiRecords: any[];
   isLoading: boolean;
   onUpdateRecord?: (id: string, updates: any) => void;
+  onDeleteRecord?: (id: string) => void;
 }
 
 export const AITrackingTable: React.FC<AITrackingTableProps> = ({ 
   aiRecords, 
   isLoading, 
-  onUpdateRecord 
+  onUpdateRecord,
+  onDeleteRecord
 }) => {
   const [pdDialog, setPdDialog] = useState<string | null>(null);
   const [deliveryDialog, setDeliveryDialog] = useState<string | null>(null);
@@ -275,6 +277,17 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                     <span className="text-sm text-muted-foreground px-2 py-1">
                       PD not due yet
                     </span>
+                  )}
+                  {onDeleteRecord && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => {
+                        if (confirm('Delete this AI record?')) onDeleteRecord(record.id);
+                      }}
+                    >
+                      Delete
+                    </Button>
                   )}
                 </div>
               </TableCell>

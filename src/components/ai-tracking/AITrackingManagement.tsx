@@ -19,7 +19,7 @@ export const AITrackingManagement = () => {
     pdStatus: 'all'
   });
   
-  const { aiRecords, isLoading, addAIRecordMutation, updateAIRecordMutation } = useAITracking();
+  const { aiRecords, isLoading, addAIRecordMutation, updateAIRecordMutation, deleteAIRecordMutation } = useAITracking();
 
   const filteredRecords = useMemo(() => {
     if (!aiRecords) return [];
@@ -63,6 +63,9 @@ export const AITrackingManagement = () => {
     updateAIRecordMutation.mutate({ id, ...updates });
   };
 
+  const handleDeleteRecord = (id: string) => {
+    deleteAIRecordMutation.mutate(id);
+  };
   const getActiveFiltersCount = () => {
     return Object.values(filters).filter(value => value && value !== 'all').length;
   };
@@ -121,6 +124,7 @@ export const AITrackingManagement = () => {
             aiRecords={filteredRecords} 
             isLoading={isLoading}
             onUpdateRecord={handleUpdateRecord}
+            onDeleteRecord={handleDeleteRecord}
           />
         </div>
       </div>

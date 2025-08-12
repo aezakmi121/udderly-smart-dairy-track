@@ -41,30 +41,37 @@ export const useNotifications = () => {
           });
         });
 
-        // Check for PD due records (within 30 days) and flag those due today as high priority
-        const today = new Date().toISOString().split('T')[0];
-        const { data: pdDueRecords } = await supabase
+        // Check for PD due records using ai_date + 60 days when pd_date is not set
+        const todayDate = new Date();
+        const today = todayDate.toISOString().split('T')[0];
+        const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        const { data: pdCandidates } = await supabase
           .from('ai_records')
           .select(`
             *,
             cows!ai_records_cow_id_fkey (cow_number)
           `)
-          .eq('pd_done', false)
-          .lte('pd_date', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+          .eq('pd_done', false);
 
-        pdDueRecords?.forEach(record => {
-          const isToday = record.pd_date === today;
-          notifications.push({
-            id: `pd_due_${record.id}`,
-            type: 'pd_due',
-            title: isToday ? 'PD Check Due Today' : 'PD Check Due',
-            message: `PD check ${isToday ? 'is due today' : 'due soon'} for cow ${record.cows?.cow_number || 'Unknown'}`,
-            priority: isToday ? 'high' : 'medium',
-            read: false,
-            created_at: new Date().toISOString(),
-            entity_id: record.id,
-            entity_type: 'ai_record'
-          });
+        pdCandidates?.forEach(record => {
+          const ai = new Date(record.ai_date);
+          const due = record.pd_date ? new Date(record.pd_date) : new Date(ai.getTime() + 60 * 24 * 60 * 60 * 1000);
+          if (due <= endDate) {
+            const dueStr = due.toISOString().split('T')[0];
+            const isToday = dueStr === today;
+            const isOverdue = due < todayDate;
+            notifications.push({
+              id: `pd_due_${record.id}`,
+              type: 'pd_due',
+              title: isOverdue ? 'PD Check Overdue' : isToday ? 'PD Check Due Today' : 'PD Check Due',
+              message: `PD check ${isOverdue ? 'is overdue' : isToday ? 'is due today' : 'due soon'} for cow ${record.cows?.cow_number || 'Unknown'}`,
+              priority: isOverdue || isToday ? 'high' : 'medium',
+              read: false,
+              created_at: new Date().toISOString(),
+              entity_id: record.id,
+              entity_type: 'ai_record'
+            });
+          }
         });
 
         // Check for vaccination due - Fixed foreign key relationship
