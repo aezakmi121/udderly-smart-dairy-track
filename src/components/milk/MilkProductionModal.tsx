@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react';
 interface MilkProductionModalProps {
   selectedRecord?: any;
   selectedDate: string;
+  defaultSession?: 'morning' | 'evening';
   onSubmit: (data: any) => void;
   isLoading: boolean;
   open?: boolean;
@@ -17,6 +18,7 @@ interface MilkProductionModalProps {
 export const MilkProductionModal: React.FC<MilkProductionModalProps> = ({
   selectedRecord,
   selectedDate,
+  defaultSession,
   onSubmit,
   isLoading,
   open: externalOpen,
@@ -46,6 +48,7 @@ export const MilkProductionModal: React.FC<MilkProductionModalProps> = ({
         <MilkProductionForm
           selectedRecord={selectedRecord}
           selectedDate={selectedDate}
+          defaultSession={defaultSession}
           onSubmit={onSubmit}
           onCancel={onCancel}
           isLoading={isLoading}

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { MilkStatsCards } from './MilkStatsCards';
 import { MilkProductionTable } from './MilkProductionTable';
 import { MilkProductionFiltersModal } from './MilkProductionFiltersModal';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
-
+import { useMilkingLog } from '@/hooks/useMilkingLogs';
 interface MilkProduction {
   id: string;
   cow_id?: string;
@@ -28,7 +28,24 @@ export const MilkProduction = () => {
   const [selectedRecord, setSelectedRecord] = useState<MilkProduction | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  
+  const [selectedSession, setSelectedSession] = useState<'morning' | 'evening'>('morning');
+  const prevSessionRef = useRef<'morning' | 'evening' | null>(null);
+
+  const { log: milkingLog, isLoading: milkingLogLoading, startLog, endLog } = useMilkingLog(selectedDate, selectedSession);
+
+  useEffect(() => {
+    // Ensure log exists and has start time when date/session is selected
+    startLog(selectedDate, selectedSession).catch(() => {});
+  }, [selectedDate, selectedSession]);
+
+  useEffect(() => {
+    if (prevSessionRef.current && prevSessionRef.current !== selectedSession) {
+      // Auto-complete previous session if switching sessions
+      endLog(selectedDate, prevSessionRef.current).catch(() => {});
+    }
+    prevSessionRef.current = selectedSession;
+  }, [selectedSession, selectedDate]);
+
   // Filter and sort states
   const [searchTerm, setSearchTerm] = useState('');
   const [sessionFilter, setSessionFilter] = useState('all');
@@ -159,15 +176,38 @@ export const MilkProduction = () => {
           <h2 className="text-3xl font-bold tracking-tight">Milk Production</h2>
           <p className="text-muted-foreground">Track daily milk production records</p>
           
-          <div className="mt-4">
-            <Label htmlFor="date-filter">Select Date</Label>
-            <Input
-              id="date-filter"
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full sm:w-40"
-            />
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="date-filter">Select Date</Label>
+              <Input
+                id="date-filter"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-full sm:w-40"
+              />
+            </div>
+            <div>
+              <Label htmlFor="session-selector">Session</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={selectedSession === 'morning' ? 'default' : 'outline'}
+                  onClick={() => setSelectedSession('morning')}
+                  className="w-28"
+                >
+                  Morning
+                </Button>
+                <Button
+                  type="button"
+                  variant={selectedSession === 'evening' ? 'default' : 'outline'}
+                  onClick={() => setSelectedSession('evening')}
+                  className="w-28"
+                >
+                  Evening
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -190,6 +230,7 @@ export const MilkProduction = () => {
             <MilkProductionModal
               selectedRecord={selectedRecord}
               selectedDate={selectedDate}
+              defaultSession={selectedSession}
               onSubmit={handleSubmit}
               isLoading={addRecordMutation.isPending || updateRecordMutation.isPending}
               open={isDialogOpen}
@@ -200,12 +241,25 @@ export const MilkProduction = () => {
         </div>
       </div>
 
-      <MilkStatsCards dailyStats={dailyStats} />
+      {/* Milking log status */}
+      {milkingLog && (
+        <div className="text-sm text-muted-foreground flex items-center gap-2">
+          <span>
+            Session: {selectedSession === 'morning' ? 'Morning' : 'Evening'} • Started {milkingLog.milking_start_time ? new Date(milkingLog.milking_start_time).toLocaleTimeString() : '—'}{milkingLog.milking_end_time ? ` • Ended ${new Date(milkingLog.milking_end_time).toLocaleTimeString()}` : ' • In progress'}
+          </span>
+          {!milkingLog.milking_end_time && (
+            <Button size="sm" variant="outline" onClick={() => endLog(selectedDate, selectedSession)}>
+              End Session
+            </Button>
+          )}
+        </div>
+      )}
 
+      <MilkStatsCards dailyStats={dailyStats} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Production Records for {selectedDate}</CardTitle>
+          <CardTitle>Production Records for {selectedDate} — {selectedSession === 'morning' ? 'Morning' : 'Evening'}</CardTitle>
           <CardDescription>
             {filteredAndSortedRecords.length} of {milkRecords?.length || 0} records shown
           </CardDescription>

@@ -21,6 +21,7 @@ interface MilkProduction {
 interface MilkProductionFormProps {
   selectedRecord: MilkProduction | null;
   selectedDate: string;
+  defaultSession?: 'morning' | 'evening';
   onSubmit: (data: any) => void;
   onCancel: () => void;
   isLoading: boolean;
@@ -29,12 +30,13 @@ interface MilkProductionFormProps {
 export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
   selectedRecord,
   selectedDate,
+  defaultSession,
   onSubmit,
   onCancel,
   isLoading
 }) => {
   const { cows } = useCows();
-  const [selectedSession, setSelectedSession] = useState(selectedRecord?.session || 'morning');
+  const [selectedSession, setSelectedSession] = useState(selectedRecord?.session || defaultSession || 'morning');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
