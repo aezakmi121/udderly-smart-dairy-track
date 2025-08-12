@@ -8,12 +8,14 @@ import { AccessControlSettings } from './AccessControlSettings';
 import { UserRoleManagement } from './UserRoleManagement';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { SessionUnlock } from './SessionUnlock';
+import { AlertSettings } from './AlertSettings';
 
 export const SettingsManagement = () => {
   const { isAdmin } = useUserPermissions();
   const [openSections, setOpenSections] = useState({
     milkRates: false,
     milkingSessions: false,
+    alerts: false,
     accessControl: false,
     userRoles: false,
   });
@@ -90,6 +92,28 @@ export const SettingsManagement = () => {
           </Card>
         </Collapsible>
 
+        {/* Alerts & Notifications Settings */}
+        <Collapsible open={openSections.alerts} onOpenChange={() => toggleSection('alerts')}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Alerts & Notifications</CardTitle>
+                  {openSections.alerts ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <AlertSettings />
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
 
         {/* Access Control Settings */}
         <Collapsible open={openSections.accessControl} onOpenChange={() => toggleSection('accessControl')}>

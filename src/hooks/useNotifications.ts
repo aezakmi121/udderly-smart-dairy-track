@@ -1,6 +1,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAppSetting } from '@/hooks/useAppSettings';
 
 export interface Notification {
   id: string;
@@ -15,8 +16,13 @@ export interface Notification {
 }
 
 export const useNotifications = () => {
+  const { value: pdDays } = useAppSetting<number>('pd_alert_days');
+  const { value: deliveryDays } = useAppSetting<number>('delivery_expected_days');
+  const pdAlertDays = Number(pdDays ?? 60);
+  const expectedDeliveryDays = Number(deliveryDays ?? 283);
+
   const { data: notifications = [], isLoading } = useQuery({
-    queryKey: ['notifications'],
+    queryKey: ['notifications', pdAlertDays, expectedDeliveryDays],
     queryFn: async (): Promise<Notification[]> => {
       const notifications: Notification[] = [];
 
@@ -55,7 +61,7 @@ export const useNotifications = () => {
 
         pdCandidates?.forEach(record => {
           const ai = new Date(record.ai_date);
-          const due = record.pd_date ? new Date(record.pd_date) : new Date(ai.getTime() + 60 * 24 * 60 * 60 * 1000);
+          const due = record.pd_date ? new Date(record.pd_date) : new Date(ai.getTime() + pdAlertDays * 24 * 60 * 60 * 1000);
           if (due <= endDate) {
             const dueStr = due.toISOString().split('T')[0];
             const isToday = dueStr === today;
@@ -105,23 +111,28 @@ export const useNotifications = () => {
             *,
             cows!ai_records_cow_id_fkey (cow_number)
           `)
-          .eq('pd_result', 'positive')
-          .not('expected_delivery_date', 'is', null)
-          .lte('expected_delivery_date', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+          .eq('pd_result', 'positive');
 
         deliveriesDue?.forEach(record => {
-          const isToday = record.expected_delivery_date === today;
-          notifications.push({
-            id: `delivery_due_${record.id}`,
-            type: 'delivery_due',
-            title: isToday ? 'Delivery Expected Today' : 'Delivery Expected',
-            message: `Cow ${record.cows?.cow_number || 'Unknown'} ${isToday ? 'may deliver today' : 'expected to deliver soon'}`,
-            priority: isToday ? 'high' : 'high',
-            read: false,
-            created_at: new Date().toISOString(),
-            entity_id: record.id,
-            entity_type: 'ai_record'
-          });
+          const ai = new Date(record.ai_date);
+          const dueDate = record.expected_delivery_date
+            ? new Date(record.expected_delivery_date)
+            : new Date(ai.getTime() + expectedDeliveryDays * 24 * 60 * 60 * 1000);
+
+          if (dueDate <= endDate) {
+            const isTodayDelivery = dueDate.toISOString().split('T')[0] === today;
+            notifications.push({
+              id: `delivery_due_${record.id}`,
+              type: 'delivery_due',
+              title: isTodayDelivery ? 'Delivery Expected Today' : 'Delivery Expected',
+              message: `Cow ${record.cows?.cow_number || 'Unknown'} ${isTodayDelivery ? 'may deliver today' : 'expected to deliver soon'}`,
+              priority: 'high',
+              read: false,
+              created_at: new Date().toISOString(),
+              entity_id: record.id,
+              entity_type: 'ai_record'
+            });
+          }
         });
 
         // AI due today (scheduled inseminations)

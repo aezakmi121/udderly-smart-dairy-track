@@ -30,27 +30,6 @@ export const MilkProduction = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedSession, setSelectedSession] = useState<'morning' | 'evening'>('morning');
-  const prevSessionRef = useRef<'morning' | 'evening' | null>(null);
-
-  const { log: milkingLog, isLoading: milkingLogLoading, startLog, endLog } = useMilkingLog(selectedDate, selectedSession);
-  const { canEdit, isAdmin } = useUserPermissions();
-  const { toast } = useToast();
-
-  useEffect(() => {
-    // Auto-start logs only for today or for admins
-    const today = new Date().toISOString().split('T')[0];
-    if (isAdmin || selectedDate === today) {
-      startLog(selectedDate, selectedSession).catch(() => {});
-    }
-  }, [selectedDate, selectedSession, isAdmin]);
-
-  useEffect(() => {
-    if (prevSessionRef.current && prevSessionRef.current !== selectedSession) {
-      // Auto-complete previous session if switching sessions
-      endLog(selectedDate, prevSessionRef.current).catch(() => {});
-    }
-    prevSessionRef.current = selectedSession;
-  }, [selectedSession, selectedDate]);
 
   // Filter and sort states
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,8 +49,9 @@ export const MilkProduction = () => {
   
   const todayStr = new Date().toISOString().split('T')[0];
   const isToday = selectedDate === todayStr;
-  const isUnlocked = !!(milkingLog && !milkingLog.milking_start_time && !milkingLog.milking_end_time);
-  const canModify = isAdmin || isToday || isUnlocked;
+  const started = !!milkingLog?.milking_start_time;
+  const ended = !!milkingLog?.milking_end_time;
+  const canModify = isAdmin ? true : isFarmWorker ? (isToday && started && !ended) : false;
 
   // Filter and sort milk records
   const filteredAndSortedRecords = useMemo(() => {
@@ -152,7 +132,7 @@ export const MilkProduction = () => {
 
   const handleSubmit = (recordData: any) => {
     if (!canModify) {
-      toast({ title: 'Editing locked', description: "Only today's records allowed unless an admin unlocks this date.", variant: 'destructive' });
+      toast({ title: 'Session locked', description: 'Start today\'s session to add records, and end it when done.', variant: 'destructive' });
       return;
     }
     if (selectedRecord) {
@@ -255,19 +235,21 @@ export const MilkProduction = () => {
         </div>
       </div>
 
-      {/* Milking log status */}
-      {milkingLog && (
-        <div className="text-sm text-muted-foreground flex items-center gap-2">
-          <span>
-            Session: {selectedSession === 'morning' ? 'Morning' : 'Evening'} • Started {milkingLog.milking_start_time ? new Date(milkingLog.milking_start_time).toLocaleTimeString() : '—'}{milkingLog.milking_end_time ? ` • Ended ${new Date(milkingLog.milking_end_time).toLocaleTimeString()}` : ' • In progress'}
-          </span>
-          {!milkingLog.milking_end_time && (
-            <Button size="sm" variant="outline" onClick={() => endLog(selectedDate, selectedSession)}>
-              End Session
-            </Button>
-          )}
-        </div>
-      )}
+      <div className="text-sm text-muted-foreground flex items-center gap-2">
+        <span>
+          Session: {selectedSession === 'morning' ? 'Morning' : 'Evening'} • {started ? `Started ${milkingLog?.milking_start_time ? new Date(milkingLog.milking_start_time).toLocaleTimeString() : ''}${ended ? ` • Ended ${milkingLog?.milking_end_time ? new Date(milkingLog.milking_end_time).toLocaleTimeString() : ''}` : ' • In progress'}` : 'Not started'}
+        </span>
+        {!started && (
+          <Button size="sm" variant="outline" onClick={async () => { await startLog(selectedDate, selectedSession); toast({ title: 'Session started' }); }}>
+            Start Session
+          </Button>
+        )}
+        {started && !ended && (
+          <Button size="sm" variant="outline" onClick={async () => { await endLog(selectedDate, selectedSession); toast({ title: 'Session ended' }); }}>
+            End Session
+          </Button>
+        )}
+      </div>
 
       <MilkStatsCards dailyStats={dailyStats} />
 
