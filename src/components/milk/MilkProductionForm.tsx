@@ -73,7 +73,7 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="production_date">Date (locked)</Label>
+          <Label htmlFor="production_date">Date </Label>
           <Input
             id="production_date"
             type="date"
