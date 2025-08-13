@@ -2,7 +2,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, Calendar, Syringe, Heart, Package, Bell } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, Calendar, Syringe, Heart, Package, Bell, X } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +36,7 @@ const getPriorityBadge = (priority: string) => {
 };
 
 export const NotificationPanel = () => {
-  const { notifications, isLoading, highPriorityCount } = useNotifications();
+  const { notifications, isLoading, highPriorityCount, markAsRead } = useNotifications();
 
   if (isLoading) {
     return (
@@ -93,11 +94,21 @@ export const NotificationPanel = () => {
                       {getNotificationIcon(notification.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-start justify-between mb-1 gap-2">
                         <p className="text-sm font-medium text-red-900">
                           {notification.title}
                         </p>
-                        {getPriorityBadge(notification.priority)}
+                        <div className="flex items-center gap-2">
+                          {getPriorityBadge(notification.priority)}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Dismiss notification"
+                            onClick={() => markAsRead(notification.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                       <p className="text-sm text-red-700">
                         {notification.message}
@@ -136,14 +147,24 @@ export const NotificationPanel = () => {
                       {getNotificationIcon(notification.type)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-start justify-between mb-1 gap-2">
                         <p className={cn(
                           "text-sm font-medium",
                           notification.priority === 'medium' ? "text-orange-900" : "text-gray-900"
                         )}>
                           {notification.title}
                         </p>
-                        {getPriorityBadge(notification.priority)}
+                        <div className="flex items-center gap-2">
+                          {getPriorityBadge(notification.priority)}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Dismiss notification"
+                            onClick={() => markAsRead(notification.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                       <p className={cn(
                         "text-sm",

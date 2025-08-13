@@ -14,6 +14,8 @@ import { MilkProductionFiltersModal } from './MilkProductionFiltersModal';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useMilkingLog } from '@/hooks/useMilkingLogs';
 import { useToast } from '@/hooks/use-toast';
+import { useAppSetting } from '@/hooks/useAppSettings';
+import { fromZonedTime } from 'date-fns-tz';
 interface MilkProduction {
   id: string;
   cow_id?: string;
@@ -31,10 +33,11 @@ export const MilkProduction = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedSession, setSelectedSession] = useState<'morning' | 'evening'>('morning');
 
-  const { log: milkingLog, isLoading: milkingLogLoading, startLog, endLog } = useMilkingLog(selectedDate, selectedSession);
+  const { log: milkingLog, isLoading: milkingLogLoading, startLog, endLog, setStartTime, setEndTime } = useMilkingLog(selectedDate, selectedSession);
   const { canEdit, isAdmin, isFarmWorker } = useUserPermissions();
   const { toast } = useToast();
-
+  const { value: sessionSettings } = useAppSetting<any>('milking_session_settings');
+  const tz = sessionSettings?.timezone || 'Asia/Kolkata';
 
   // Filter and sort states
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,8 +55,8 @@ export const MilkProduction = () => {
     deleteRecordMutation
   } = useMilkProduction(selectedDate);
   
-  const todayStr = new Date().toISOString().split('T')[0];
-  const isToday = selectedDate === todayStr;
+  const todayStrTz = new Date().toLocaleDateString('en-CA', { timeZone: tz });
+  const isToday = selectedDate === todayStrTz;
   const started = !!milkingLog?.milking_start_time;
   const ended = !!milkingLog?.milking_end_time;
   const canModify = isAdmin ? true : isFarmWorker ? (!!milkingLog && !ended) : false;
@@ -240,19 +243,19 @@ export const MilkProduction = () => {
         </div>
       </div>
 
-      <div className="text-sm text-muted-foreground flex items-center gap-2">
+      <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-2">
         <span>
           Session: {selectedSession === 'morning' ? 'Morning' : 'Evening'} • {started
             ? `Started ${milkingLog?.milking_start_time ? new Date(milkingLog.milking_start_time).toLocaleTimeString() : ''}${ended ? ` • Ended ${milkingLog?.milking_end_time ? new Date(milkingLog.milking_end_time).toLocaleTimeString() : ''}` : ' • In progress'}`
             : (milkingLog && !ended ? 'Unlocked (no start time)' : 'Not started')}
         </span>
         {!started && (
-          <Button size="sm" variant="outline" onClick={async () => { await startLog(selectedDate, selectedSession); toast({ title: 'Session started' }); }}>
+          <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={async () => { await startLog(selectedDate, selectedSession); toast({ title: 'Session started' }); }}>
             Start Session
           </Button>
         )}
         {started && !ended && (
-          <Button size="sm" variant="outline" onClick={async () => { await endLog(selectedDate, selectedSession); toast({ title: 'Session ended' }); }}>
+          <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={async () => { await endLog(selectedDate, selectedSession); toast({ title: 'Session ended' }); }}>
             End Session
           </Button>
         )}

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Bell, AlertTriangle, Calendar, Syringe, Heart, Package } from 'lucide-react';
+import { Bell, AlertTriangle, Calendar, Syringe, Heart, Package, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -104,15 +104,28 @@ export const NotificationBell = () => {
                     {getNotificationIcon(notification.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">
-                      {notification.title}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(notification.created_at).toLocaleString()}
-                    </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {notification.title}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {notification.message}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {new Date(notification.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0"
+                        aria-label="Dismiss notification"
+                        onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

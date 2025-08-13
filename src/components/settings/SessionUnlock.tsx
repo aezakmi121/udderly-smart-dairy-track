@@ -81,10 +81,10 @@ export const SessionUnlock: React.FC = () => {
             <Label htmlFor="endAt">Set end time</Label>
             <Input id="endAt" type="time" value={endAt} onChange={(e) => setEndAtInput(e.target.value)} />
           </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" type="button" onClick={handleSetStart}>Save start</Button>
-            <Button variant="outline" type="button" onClick={handleSetEnd}>Save end (lock)</Button>
-            <Button type="button" onClick={handleUnlock}>Unlock session</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button className="w-full sm:w-auto" variant="secondary" type="button" onClick={handleSetStart}>Save start</Button>
+            <Button className="w-full sm:w-auto" variant="outline" type="button" onClick={handleSetEnd}>Save end (lock)</Button>
+            <Button className="w-full sm:w-auto" type="button" onClick={handleUnlock}>Unlock session</Button>
           </div>
         </div>
       </CardContent>
