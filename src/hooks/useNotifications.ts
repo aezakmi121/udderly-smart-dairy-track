@@ -190,6 +190,27 @@ export const useNotifications = () => {
     localStorage.setItem('notification_read_ids', JSON.stringify(Array.from(readIds)));
   }, [readIds]);
 
+  // Sync read state across components and tabs
+  useEffect(() => {
+    const sync = () => {
+      try {
+        const stored = JSON.parse(localStorage.getItem('notification_read_ids') || '[]');
+        const current = Array.from(readIds);
+        const storedStr = JSON.stringify(stored);
+        const currentStr = JSON.stringify(current);
+        if (storedStr !== currentStr) {
+          setReadIds(new Set<string>(stored));
+        }
+      } catch {}
+    };
+    window.addEventListener('notifications:read-changed', sync as EventListener);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('notifications:read-changed', sync as EventListener);
+      window.removeEventListener('storage', sync);
+    };
+  }, [readIds]);
+
   const notifications = useMemo(
     () => rawNotifications.map(n => ({ ...n, read: readIds.has(n.id) })),
     [rawNotifications, readIds]
@@ -199,14 +220,21 @@ export const useNotifications = () => {
     setReadIds(prev => {
       const next = new Set(prev);
       next.add(id);
+      try {
+        localStorage.setItem('notification_read_ids', JSON.stringify(Array.from(next)));
+        window.dispatchEvent(new CustomEvent('notifications:read-changed'));
+      } catch {}
       return next;
     });
   };
-
   const markAllAsRead = () => {
-    setReadIds(new Set(rawNotifications.map(n => n.id)));
+    const all = new Set(rawNotifications.map(n => n.id));
+    setReadIds(all);
+    try {
+      localStorage.setItem('notification_read_ids', JSON.stringify(Array.from(all)));
+      window.dispatchEvent(new CustomEvent('notifications:read-changed'));
+    } catch {}
   };
-
   const unreadCount = notifications.filter(n => !n.read).length;
   const highPriorityCount = notifications.filter(n => n.priority === 'high' && !n.read).length;
 

@@ -59,7 +59,27 @@ export const MilkProduction = () => {
   const isToday = selectedDate === todayStrTz;
   const started = !!milkingLog?.milking_start_time;
   const ended = !!milkingLog?.milking_end_time;
-  const canModify = isAdmin ? true : isFarmWorker ? (!!milkingLog && !ended) : false;
+  const sessionWindow = sessionSettings?.[selectedSession] ?? { start: '00:00', end: '23:59' };
+  const startTs = fromZonedTime(`${selectedDate}T${sessionWindow.start}:00`, tz).getTime();
+  const endTs = fromZonedTime(`${selectedDate}T${sessionWindow.end}:00`, tz).getTime();
+  const withinWindow = Date.now() >= startTs && Date.now() <= endTs;
+  const canModify = isAdmin ? true : isFarmWorker ? (!!milkingLog && !ended && (!sessionSettings?.enforceWindow || withinWindow)) : false;
+
+  // Auto start/end based on settings and timezone
+  useEffect(() => {
+    if (!sessionSettings?.auto) return;
+    const win = sessionWindow;
+    const now = Date.now();
+    const sStart = fromZonedTime(`${selectedDate}T${win.start}:00`, tz).getTime();
+    const sEnd = fromZonedTime(`${selectedDate}T${win.end}:00`, tz).getTime();
+
+    if (!milkingLog?.milking_start_time && now >= sStart) {
+      setStartTime(selectedDate, selectedSession, win.start, tz);
+    }
+    if (!milkingLog?.milking_end_time && now >= sEnd) {
+      setEndTime(selectedDate, selectedSession, win.end, tz);
+    }
+  }, [selectedDate, selectedSession, tz, sessionSettings?.auto, sessionSettings?.morning?.start, sessionSettings?.morning?.end, sessionSettings?.evening?.start, sessionSettings?.evening?.end, milkingLog?.milking_start_time, milkingLog?.milking_end_time]);
 
   // Filter and sort milk records
   const filteredAndSortedRecords = useMemo(() => {

@@ -95,13 +95,13 @@ export const SettingsManagement = () => {
         </Collapsible>
 
         {/* Milking Session Settings */}
-        <Collapsible open={openSections.milkingSessions} onOpenChange={() => toggleSection('milkingSessions')}>
+        <Collapsible open={openSections.milkingSessionSettings} onOpenChange={() => toggleSection('milkingSessionSettings')}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">Milking Session Settings</CardTitle>
-                  {openSections.milkingSessions ? (
+                  {openSections.milkingSessionSettings ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
                     <ChevronDown className="h-4 w-4" />
