@@ -2,6 +2,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppSetting } from '@/hooks/useAppSettings';
+import { useEffect, useMemo, useState } from 'react';
+import { formatDate } from '@/lib/dateUtils';
 
 export interface Notification {
   id: string;
@@ -21,7 +23,7 @@ export const useNotifications = () => {
   const pdAlertDays = Number(pdDays ?? 60);
   const expectedDeliveryDays = Number(deliveryDays ?? 283);
 
-  const { data: notifications = [], isLoading } = useQuery({
+  const { data: rawNotifications = [], isLoading } = useQuery({
     queryKey: ['notifications', pdAlertDays, expectedDeliveryDays],
     queryFn: async (): Promise<Notification[]> => {
       const notifications: Notification[] = [];
@@ -69,8 +71,8 @@ export const useNotifications = () => {
             notifications.push({
               id: `pd_due_${record.id}`,
               type: 'pd_due',
-              title: isOverdue ? 'PD Check Overdue' : isToday ? 'PD Check Due Today' : 'PD Check Due',
-              message: `PD check ${isOverdue ? 'is overdue' : isToday ? 'is due today' : 'due soon'} for cow ${record.cows?.cow_number || 'Unknown'}`,
+            title: isOverdue ? 'PD Check Overdue' : isToday ? 'PD Check Due Today' : 'PD Check Due',
+              message: `PD check ${isOverdue ? 'overdue' : isToday ? 'due today' : 'due'} on ${formatDate(due)} for cow ${record.cows?.cow_number || 'Unknown'}`,
               priority: isOverdue || isToday ? 'high' : 'medium',
               read: false,
               created_at: new Date().toISOString(),
@@ -95,7 +97,7 @@ export const useNotifications = () => {
             id: `vaccination_due_${record.id}`,
             type: 'vaccination_due',
             title: 'Vaccination Due',
-            message: `${record.vaccination_schedules?.vaccine_name} vaccination due for cow ${record.cows?.cow_number || 'Unknown'}`,
+            message: `${record.vaccination_schedules?.vaccine_name} due on ${formatDate(record.next_due_date)} for cow ${record.cows?.cow_number || 'Unknown'}`,
             priority: 'medium',
             read: false,
             created_at: new Date().toISOString(),
@@ -124,8 +126,8 @@ export const useNotifications = () => {
             notifications.push({
               id: `delivery_due_${record.id}`,
               type: 'delivery_due',
-              title: isTodayDelivery ? 'Delivery Expected Today' : 'Delivery Expected',
-              message: `Cow ${record.cows?.cow_number || 'Unknown'} ${isTodayDelivery ? 'may deliver today' : 'expected to deliver soon'}`,
+            title: isTodayDelivery ? 'Delivery Expected Today' : 'Delivery Expected',
+              message: `${isTodayDelivery ? 'May deliver today' : 'Expected delivery on ' + formatDate(dueDate)} for cow ${record.cows?.cow_number || 'Unknown'}`,
               priority: 'high',
               read: false,
               created_at: new Date().toISOString(),
@@ -150,7 +152,7 @@ export const useNotifications = () => {
             id: `ai_due_${record.id}`,
             type: 'ai_due',
             title: 'AI Scheduled Today',
-            message: `AI scheduled today for cow ${record.cows?.cow_number || 'Unknown'}`,
+            message: `AI scheduled on ${formatDate(record.ai_date)} for cow ${record.cows?.cow_number || 'Unknown'}`,
             priority: 'medium',
             read: false,
             created_at: new Date().toISOString(),
@@ -174,6 +176,36 @@ export const useNotifications = () => {
     },
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
   });
+  // Local read-state (no DB changes)
+  const [readIds, setReadIds] = useState<Set<string>>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('notification_read_ids') || '[]');
+      return new Set<string>(stored);
+    } catch {
+      return new Set<string>();
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('notification_read_ids', JSON.stringify(Array.from(readIds)));
+  }, [readIds]);
+
+  const notifications = useMemo(
+    () => rawNotifications.map(n => ({ ...n, read: readIds.has(n.id) })),
+    [rawNotifications, readIds]
+  );
+
+  const markAsRead = (id: string) => {
+    setReadIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  };
+
+  const markAllAsRead = () => {
+    setReadIds(new Set(rawNotifications.map(n => n.id)));
+  };
 
   const unreadCount = notifications.filter(n => !n.read).length;
   const highPriorityCount = notifications.filter(n => n.priority === 'high' && !n.read).length;
@@ -182,6 +214,8 @@ export const useNotifications = () => {
     notifications,
     unreadCount,
     highPriorityCount,
-    isLoading
+    isLoading,
+    markAsRead,
+    markAllAsRead,
   };
 };

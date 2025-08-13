@@ -56,7 +56,7 @@ export const MilkProduction = () => {
   const isToday = selectedDate === todayStr;
   const started = !!milkingLog?.milking_start_time;
   const ended = !!milkingLog?.milking_end_time;
-  const canModify = isAdmin ? true : isFarmWorker ? (isToday && started && !ended) : false;
+  const canModify = isAdmin ? true : isFarmWorker ? (!!milkingLog && !ended) : false;
 
   // Filter and sort milk records
   const filteredAndSortedRecords = useMemo(() => {
@@ -242,7 +242,9 @@ export const MilkProduction = () => {
 
       <div className="text-sm text-muted-foreground flex items-center gap-2">
         <span>
-          Session: {selectedSession === 'morning' ? 'Morning' : 'Evening'} • {started ? `Started ${milkingLog?.milking_start_time ? new Date(milkingLog.milking_start_time).toLocaleTimeString() : ''}${ended ? ` • Ended ${milkingLog?.milking_end_time ? new Date(milkingLog.milking_end_time).toLocaleTimeString() : ''}` : ' • In progress'}` : 'Not started'}
+          Session: {selectedSession === 'morning' ? 'Morning' : 'Evening'} • {started
+            ? `Started ${milkingLog?.milking_start_time ? new Date(milkingLog.milking_start_time).toLocaleTimeString() : ''}${ended ? ` • Ended ${milkingLog?.milking_end_time ? new Date(milkingLog.milking_end_time).toLocaleTimeString() : ''}` : ' • In progress'}`
+            : (milkingLog && !ended ? 'Unlocked (no start time)' : 'Not started')}
         </span>
         {!started && (
           <Button size="sm" variant="outline" onClick={async () => { await startLog(selectedDate, selectedSession); toast({ title: 'Session started' }); }}>

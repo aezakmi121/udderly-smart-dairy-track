@@ -44,7 +44,7 @@ const getPriorityColor = (priority: string) => {
 
 export const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { notifications, isLoading, highPriorityCount, unreadCount } = useNotifications();
+  const { notifications, isLoading, highPriorityCount, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   if (isLoading) {
     return (
@@ -70,55 +70,54 @@ export const NotificationBell = () => {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
-        <div className="p-4 border-b">
-          <h3 className="font-semibold">Notifications</h3>
-          {unreadCount > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {unreadCount} notification{unreadCount === 1 ? '' : 's'}
-              {highPriorityCount > 0 && (
-                <span className="text-red-600 font-medium">
-                  {' '}({highPriorityCount} urgent)
-                </span>
-              )}
-            </p>
+        <div className="p-4 border-b flex items-center justify-between gap-2">
+          <div>
+            <h3 className="font-semibold">Notifications</h3>
+            {unreadCount > 0 && (
+              <p className="text-sm text-muted-foreground">
+                {unreadCount} notification{unreadCount === 1 ? '' : 's'}
+                {highPriorityCount > 0 && (
+                  <span className="text-red-600 font-medium"> {' '}({highPriorityCount} urgent)</span>
+                )}
+              </p>
+            )}
+          </div>
+          {notifications.length > 0 && (
+            <Button variant="outline" size="xs" onClick={() => markAllAsRead()}>
+              Mark all as read
+            </Button>
           )}
         </div>
         <ScrollArea className="max-h-96">
-          {notifications.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground">
-              <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No notifications</p>
-            </div>
-          ) : (
-            <div className="divide-y">
-              {notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={cn(
-                    "p-3 hover:bg-gray-50 cursor-pointer border-l-4",
-                    getPriorityColor(notification.priority)
-                  )}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                      {getNotificationIcon(notification.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">
-                        {notification.title}
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {notification.message}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {new Date(notification.created_at).toLocaleString()}
-                      </p>
-                    </div>
+          <div className="divide-y">
+            {notifications.map((notification) => (
+              <div
+                key={notification.id}
+                onClick={() => markAsRead(notification.id)}
+                className={cn(
+                  "p-3 hover:bg-gray-50 cursor-pointer border-l-4",
+                  getPriorityColor(notification.priority)
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-0.5">
+                    {getNotificationIcon(notification.type)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">
+                      {notification.title}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {notification.message}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {new Date(notification.created_at).toLocaleString()}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
         </ScrollArea>
       </PopoverContent>
     </Popover>
