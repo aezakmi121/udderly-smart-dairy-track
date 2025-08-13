@@ -83,7 +83,7 @@ export const NotificationBell = () => {
             )}
           </div>
           {notifications.length > 0 && (
-            <Button variant="outline" size="xs" onClick={() => markAllAsRead()}>
+            <Button variant="outline" size="sm" onClick={() => markAllAsRead()}>
               Mark all as read
             </Button>
           )}
