@@ -6,12 +6,26 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useMilkingLog, MilkingSession } from '@/hooks/useMilkingLogs';
 import { useToast } from '@/hooks/use-toast';
+import { useAppSetting } from '@/hooks/useAppSettings';
 
 export const SessionUnlock: React.FC = () => {
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [session, setSession] = useState<MilkingSession>('morning');
-  const { log, isLoading, startLog, endLog, unlockLog } = useMilkingLog(date, session);
+  const { log, isLoading, setStartTime, setEndTime, unlockLog } = useMilkingLog(date, session);
   const { toast } = useToast();
+  const { value: sessionSettings } = useAppSetting<any>('milking_session_settings');
+  const tz = sessionSettings?.timezone || 'Asia/Kolkata';
+  const [startAt, setStartAtInput] = useState<string>('05:00');
+  const [endAt, setEndAtInput] = useState<string>('06:30');
+
+  const handleSetStart = async () => {
+    await setStartTime(date, session, startAt, tz);
+    toast({ title: 'Start time set', description: `${session} start set to ${startAt} for ${date}` });
+  };
+  const handleSetEnd = async () => {
+    await setEndTime(date, session, endAt, tz);
+    toast({ title: 'End time set', description: `${session} end set to ${endAt} for ${date}` });
+  };
 
   const handleUnlock = async () => {
     await unlockLog(date, session);
@@ -58,10 +72,20 @@ export const SessionUnlock: React.FC = () => {
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" type="button" onClick={() => startLog(date, session)}>Set start time now</Button>
-          <Button variant="outline" type="button" onClick={() => endLog(date, session)}>Set end time now (lock)</Button>
-          <Button type="button" onClick={handleUnlock}>Unlock session</Button>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+          <div>
+            <Label htmlFor="startAt">Set start time</Label>
+            <Input id="startAt" type="time" value={startAt} onChange={(e) => setStartAtInput(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="endAt">Set end time</Label>
+            <Input id="endAt" type="time" value={endAt} onChange={(e) => setEndAtInput(e.target.value)} />
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" type="button" onClick={handleSetStart}>Save start</Button>
+            <Button variant="outline" type="button" onClick={handleSetEnd}>Save end (lock)</Button>
+            <Button type="button" onClick={handleUnlock}>Unlock session</Button>
+          </div>
         </div>
       </CardContent>
     </Card>

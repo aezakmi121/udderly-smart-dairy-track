@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fromZonedTime } from 'date-fns-tz';
 
 export type MilkingSession = 'morning' | 'evening';
 
@@ -114,5 +115,70 @@ export const useMilkingLog = (productionDate: string, session: MilkingSession) =
     invalidate();
   };
 
-  return { log, isLoading, startLog, endLog, unlockLog };
+  // Set start/end times explicitly
+  const setStartAt = async (date: string, s: MilkingSession, iso: string) => {
+    const { data: existing, error: fetchError } = await supabase
+      .from('milking_logs')
+      .select('*')
+      .eq('production_date', date)
+      .eq('session', s)
+      .maybeSingle();
+    if (fetchError) throw fetchError;
+
+    if (!existing) {
+      const { error: insertError } = await supabase.from('milking_logs').insert({
+        production_date: date,
+        session: s,
+        milking_start_time: iso,
+      });
+      if (insertError) throw insertError;
+    } else {
+      const { error: updateError } = await supabase
+        .from('milking_logs')
+        .update({ milking_start_time: iso })
+        .eq('id', existing.id);
+      if (updateError) throw updateError;
+    }
+    invalidate();
+  };
+
+  const setEndAt = async (date: string, s: MilkingSession, iso: string) => {
+    const { data: existing, error: fetchError } = await supabase
+      .from('milking_logs')
+      .select('*')
+      .eq('production_date', date)
+      .eq('session', s)
+      .maybeSingle();
+    if (fetchError) throw fetchError;
+
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from('milking_logs')
+        .update({ milking_end_time: iso })
+        .eq('id', existing.id);
+      if (updateError) throw updateError;
+    } else {
+      const { error: insertError } = await supabase.from('milking_logs').insert({
+        production_date: date,
+        session: s,
+        milking_start_time: null,
+        milking_end_time: iso,
+      });
+      if (insertError) throw insertError;
+    }
+    invalidate();
+  };
+
+  // Helpers to set by HH:mm in a given timezone
+  const setStartTime = async (date: string, s: MilkingSession, timeHHmm: string, timeZone: string) => {
+    const iso = fromZonedTime(`${date}T${timeHHmm}:00`, timeZone).toISOString();
+    await setStartAt(date, s, iso);
+  };
+
+  const setEndTime = async (date: string, s: MilkingSession, timeHHmm: string, timeZone: string) => {
+    const iso = fromZonedTime(`${date}T${timeHHmm}:00`, timeZone).toISOString();
+    await setEndAt(date, s, iso);
+  };
+
+  return { log, isLoading, startLog, endLog, unlockLog, setStartAt, setEndAt, setStartTime, setEndTime };
 };

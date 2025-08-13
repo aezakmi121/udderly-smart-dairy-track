@@ -9,6 +9,7 @@ import { UserRoleManagement } from './UserRoleManagement';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { SessionUnlock } from './SessionUnlock';
 import { AlertSettings } from './AlertSettings';
+import { MilkingSessionSettings } from './MilkingSessionSettings';
 
 export const SettingsManagement = () => {
   const { isAdmin } = useUserPermissions();
