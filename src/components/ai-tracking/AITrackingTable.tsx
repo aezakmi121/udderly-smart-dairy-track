@@ -105,32 +105,32 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Cow Number</TableHead>
-            <TableHead>AI Date</TableHead>
-            <TableHead>Service #</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Expected Delivery</TableHead>
-            <TableHead>PD Due</TableHead>
-            <TableHead>PD Status</TableHead>
-            <TableHead>Delivery Status</TableHead>
-            <TableHead>Actions</TableHead>
+            <TableHead className="whitespace-nowrap">Cow Number</TableHead>
+            <TableHead className="whitespace-nowrap">AI Date</TableHead>
+            <TableHead className="whitespace-nowrap">Service #</TableHead>
+            <TableHead className="whitespace-nowrap">Status</TableHead>
+            <TableHead className="whitespace-nowrap">Expected Delivery</TableHead>
+            <TableHead className="whitespace-nowrap">PD Due</TableHead>
+            <TableHead className="whitespace-nowrap">PD Status</TableHead>
+            <TableHead className="whitespace-nowrap">Delivery Status</TableHead>
+            <TableHead className="whitespace-nowrap">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {aiRecords.map((record) => (
             <TableRow key={record.id}>
               <TableCell>{record.cows?.cow_number || 'N/A'}</TableCell>
-              <TableCell>{formatDate(record.ai_date)}</TableCell>
-              <TableCell>{record.service_number}</TableCell>
-              <TableCell>{getStatusBadge(record.ai_status)}</TableCell>
-              <TableCell>
+              <TableCell className="whitespace-nowrap">{formatDate(record.ai_date)}</TableCell>
+              <TableCell className="whitespace-nowrap">{record.service_number}</TableCell>
+              <TableCell className="whitespace-nowrap">{getStatusBadge(record.ai_status)}</TableCell>
+              <TableCell className="whitespace-nowrap">
                 {record.expected_delivery_date ? 
                   formatDate(record.expected_delivery_date) : 
                   'N/A'
                 }
               </TableCell>
-              <TableCell>{getPDDueDate(record.ai_date)}</TableCell>
-              <TableCell>
+              <TableCell className="whitespace-nowrap">{getPDDueDate(record.ai_date)}</TableCell>
+              <TableCell className="whitespace-nowrap">
                 <div className="flex items-center gap-2">
                   {record.pd_done ? (
                     <Badge variant={record.pd_result === 'positive' ? 'default' : 'secondary'}>
