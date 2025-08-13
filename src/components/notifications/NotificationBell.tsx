@@ -45,6 +45,7 @@ const getPriorityColor = (priority: string) => {
 export const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { notifications, isLoading, highPriorityCount, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const unread = notifications.filter(n => !n.read);
 
   if (isLoading) {
     return (
@@ -89,48 +90,54 @@ export const NotificationBell = () => {
           )}
         </div>
         <ScrollArea className="max-h-96">
-          <div className="divide-y">
-            {notifications.map((notification) => (
-              <div
-                key={notification.id}
-                onClick={() => markAsRead(notification.id)}
-                className={cn(
-                  "p-3 hover:bg-gray-50 cursor-pointer border-l-4",
-                  getPriorityColor(notification.priority)
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 mt-0.5">
-                    {getNotificationIcon(notification.type)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {notification.title}
-                        </p>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {new Date(notification.created_at).toLocaleString()}
-                        </p>
+          {unread.length === 0 ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              All caught up — no new notifications
+            </div>
+          ) : (
+            <div className="divide-y">
+              {unread.map((notification) => (
+                <div
+                  key={notification.id}
+                  onClick={() => markAsRead(notification.id)}
+                  className={cn(
+                    "p-3 hover:bg-gray-50 cursor-pointer border-l-4",
+                    getPriorityColor(notification.priority)
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {notification.title}
+                          </p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {new Date(notification.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0"
+                          aria-label="Dismiss notification"
+                          onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="shrink-0"
-                        aria-label="Dismiss notification"
-                        onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </ScrollArea>
       </PopoverContent>
     </Popover>

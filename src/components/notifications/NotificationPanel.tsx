@@ -37,6 +37,7 @@ const getPriorityBadge = (priority: string) => {
 
 export const NotificationPanel = () => {
   const { notifications, isLoading, highPriorityCount, markAsRead } = useNotifications();
+  const unread = notifications.filter(n => !n.read);
 
   if (isLoading) {
     return (
@@ -54,8 +55,8 @@ export const NotificationPanel = () => {
     );
   }
 
-  const urgentNotifications = notifications.filter(n => n.priority === 'high');
-  const otherNotifications = notifications.filter(n => n.priority !== 'high');
+  const urgentNotifications = unread.filter(n => n.priority === 'high');
+  const otherNotifications = unread.filter(n => n.priority !== 'high');
 
   return (
     <Card>
@@ -71,11 +72,11 @@ export const NotificationPanel = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {notifications.length === 0 ? (
+        {unread.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No notifications at this time</p>
-            <p className="text-sm">All systems are running smoothly</p>
+            <p>No new notifications</p>
+            <p className="text-sm">You're all caught up</p>
           </div>
         ) : (
           <>

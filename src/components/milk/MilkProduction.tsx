@@ -274,11 +274,6 @@ export const MilkProduction = () => {
             Start Session
           </Button>
         )}
-        {started && !ended && (
-          <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={async () => { await endLog(selectedDate, selectedSession); toast({ title: 'Session ended' }); }}>
-            End Session
-          </Button>
-        )}
       </div>
 
       <MilkStatsCards dailyStats={dailyStats} />
