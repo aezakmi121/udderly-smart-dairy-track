@@ -120,12 +120,14 @@ export const AITrackingManagement = () => {
           </h2>
         </div>
         <div className="p-6">
-          <AITrackingTable 
-            aiRecords={filteredRecords} 
-            isLoading={isLoading}
-            onUpdateRecord={handleUpdateRecord}
-            onDeleteRecord={handleDeleteRecord}
-          />
+          <div className="max-h-[70vh] overflow-auto">
+            <AITrackingTable 
+              aiRecords={filteredRecords} 
+              isLoading={isLoading}
+              onUpdateRecord={handleUpdateRecord}
+              onDeleteRecord={handleDeleteRecord}
+            />
+          </div>
         </div>
       </div>
     </div>

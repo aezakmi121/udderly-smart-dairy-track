@@ -9,6 +9,7 @@ import { Calendar, Edit, Baby, Heart } from 'lucide-react';
 import { DeliveryWithCalfModal } from './DeliveryWithCalfModal';
 import { useCalves } from '@/hooks/useCalves';
 import { formatDate } from '@/lib/dateUtils';
+import { useAppSetting } from '@/hooks/useAppSettings';
 
 interface AITrackingTableProps {
   aiRecords: any[];
@@ -31,6 +32,9 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
   const [calfGender, setCalfGender] = useState('');
   
   const { createCalfFromDelivery } = useCalves();
+
+  const pdAlert = useAppSetting<number>('pd_alert_days');
+  const pdDays = typeof pdAlert.value === 'number' ? pdAlert.value : 60;
 
   if (isLoading) {
     return <div className="text-center py-4">Loading AI records...</div>;
@@ -84,10 +88,16 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
     return daysDiff <= 30; // Due within 30 days
   };
 
+  const getPDDueDate = (aiDate: string) => {
+    const due = new Date(aiDate);
+    due.setDate(due.getDate() + pdDays);
+    return formatDate(due);
+  };
+
   const isPDDue = (aiDate: string) => {
-    const pdDate = new Date(aiDate);
-    pdDate.setMonth(pdDate.getMonth() + 2); // PD typically done 2 months after AI
-    return new Date() >= pdDate;
+    const due = new Date(aiDate);
+    due.setDate(due.getDate() + pdDays);
+    return new Date() >= due;
   };
 
   return (
@@ -100,6 +110,7 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
             <TableHead>Service #</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Expected Delivery</TableHead>
+            <TableHead>PD Due</TableHead>
             <TableHead>PD Status</TableHead>
             <TableHead>Delivery Status</TableHead>
             <TableHead>Actions</TableHead>
@@ -118,6 +129,7 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                   'N/A'
                 }
               </TableCell>
+              <TableCell>{getPDDueDate(record.ai_date)}</TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
                   {record.pd_done ? (
