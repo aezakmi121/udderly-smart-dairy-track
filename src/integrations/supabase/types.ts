@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -729,6 +729,96 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_history: {
+        Row: {
+          created_at: string
+          dismissed_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          group_key: string | null
+          id: string
+          is_grouped: boolean | null
+          message: string
+          notification_id: string
+          priority: string
+          read_at: string | null
+          snoozed_until: string | null
+          status: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dismissed_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          group_key?: string | null
+          id?: string
+          is_grouped?: boolean | null
+          message: string
+          notification_id: string
+          priority?: string
+          read_at?: string | null
+          snoozed_until?: string | null
+          status?: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dismissed_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          group_key?: string | null
+          id?: string
+          is_grouped?: boolean | null
+          message?: string
+          notification_id?: string
+          priority?: string
+          read_at?: string | null
+          snoozed_until?: string | null
+          status?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          category: string
+          channels: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          quiet_hours: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          channels?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          quiet_hours?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          channels?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          quiet_hours?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -939,8 +1029,8 @@ export type Database = {
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }

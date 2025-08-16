@@ -7,7 +7,7 @@ import { formatDate } from '@/lib/dateUtils';
 
 export interface Notification {
   id: string;
-  type: 'low_stock' | 'pd_due' | 'vaccination_due' | 'delivery_due' | 'ai_due';
+  type: 'low_stock' | 'pd_due' | 'vaccination_due' | 'delivery_due' | 'ai_due' | 'system_alert' | 'info_update' | 'payment_due' | 'sync_failed' | 'delivery_delay';
   title: string;
   message: string;
   priority: 'high' | 'medium' | 'low';
@@ -15,6 +15,10 @@ export interface Notification {
   created_at: string;
   entity_id?: string;
   entity_type?: string;
+  category?: 'reminders' | 'alerts' | 'updates';
+  snoozed_until?: string | null;
+  is_overdue?: boolean;
+  group_count?: number;
 }
 
 export const useNotifications = () => {
@@ -177,12 +181,22 @@ export const useNotifications = () => {
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
   });
   // Local read-state (no DB changes)
+  // Enhanced state management with snoozing
   const [readIds, setReadIds] = useState<Set<string>>(() => {
     try {
       const stored = JSON.parse(localStorage.getItem('notification_read_ids') || '[]');
       return new Set<string>(stored);
     } catch {
       return new Set<string>();
+    }
+  });
+
+  const [snoozedNotifications, setSnoozedNotifications] = useState<Record<string, string>>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('notification_snoozed') || '{}');
+      return stored;
+    } catch {
+      return {};
     }
   });
 
@@ -211,10 +225,26 @@ export const useNotifications = () => {
     };
   }, [readIds]);
 
-  const notifications = useMemo(
-    () => rawNotifications.map(n => ({ ...n, read: readIds.has(n.id) })),
-    [rawNotifications, readIds]
-  );
+  const notifications = useMemo(() => {
+    const now = new Date();
+    return rawNotifications
+      .map(n => {
+        const snoozedUntil = snoozedNotifications[n.id];
+        const isSnoozed = snoozedUntil && new Date(snoozedUntil) > now;
+        
+        return {
+          ...n,
+          read: readIds.has(n.id),
+          snoozed_until: snoozedUntil || null,
+          category: getCategoryForType(n.type),
+          is_overdue: isNotificationOverdue(n),
+        };
+      })
+      .filter(n => {
+        const snoozedUntil = snoozedNotifications[n.id];
+        return !snoozedUntil || new Date(snoozedUntil) <= now;
+      });
+  }, [rawNotifications, readIds, snoozedNotifications]);
 
   const markAsRead = (id: string) => {
     setReadIds(prev => {
@@ -235,15 +265,135 @@ export const useNotifications = () => {
       window.dispatchEvent(new CustomEvent('notifications:read-changed'));
     } catch {}
   };
+
+  const snoozeNotification = (id: string, hours: number) => {
+    const snoozedUntil = new Date();
+    snoozedUntil.setHours(snoozedUntil.getHours() + hours);
+    
+    setSnoozedNotifications(prev => {
+      const next = { ...prev, [id]: snoozedUntil.toISOString() };
+      try {
+        localStorage.setItem('notification_snoozed', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const dismissNotification = (id: string) => {
+    markAsRead(id);
+  };
+
+  // Group similar notifications
+  const groupedNotifications = useMemo(() => {
+    const groups: Record<string, Notification[]> = {};
+    
+    notifications.forEach(notification => {
+      if (notification.read) return;
+      
+      const groupKey = getGroupKey(notification);
+      if (!groups[groupKey]) {
+        groups[groupKey] = [];
+      }
+      groups[groupKey].push(notification);
+    });
+
+    return Object.entries(groups).map(([key, items]) => {
+      if (items.length === 1) {
+        return items[0];
+      }
+      
+      // Create grouped notification
+      const first = items[0];
+      return {
+        ...first,
+        id: `group_${key}`,
+        title: getGroupTitle(first.type, items.length),
+        message: getGroupMessage(first.type, items.length),
+        group_count: items.length,
+      };
+    }).sort((a, b) => {
+      const priorityOrder = { high: 3, medium: 2, low: 1 };
+      if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+        return priorityOrder[b.priority] - priorityOrder[a.priority];
+      }
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [notifications]);
+
   const unreadCount = notifications.filter(n => !n.read).length;
   const highPriorityCount = notifications.filter(n => n.priority === 'high' && !n.read).length;
 
   return {
-    notifications,
+    notifications: groupedNotifications,
     unreadCount,
     highPriorityCount,
     isLoading,
     markAsRead,
     markAllAsRead,
+    snoozeNotification,
+    dismissNotification,
   };
+};
+
+// Helper functions
+const getCategoryForType = (type: string): 'reminders' | 'alerts' | 'updates' => {
+  switch (type) {
+    case 'pd_due':
+    case 'vaccination_due':
+    case 'delivery_due':
+    case 'ai_due':
+    case 'payment_due':
+      return 'reminders';
+    case 'low_stock':
+    case 'sync_failed':
+    case 'delivery_delay':
+    case 'system_alert':
+      return 'alerts';
+    default:
+      return 'updates';
+  }
+};
+
+const isNotificationOverdue = (notification: Notification): boolean => {
+  const now = new Date();
+  const created = new Date(notification.created_at);
+  const hoursDiff = (now.getTime() - created.getTime()) / (1000 * 60 * 60);
+  
+  if (notification.priority === 'high') return hoursDiff > 24;
+  if (notification.priority === 'medium') return hoursDiff > 72;
+  return hoursDiff > 168; // 1 week
+};
+
+const getGroupKey = (notification: Notification): string => {
+  return notification.type;
+};
+
+const getGroupTitle = (type: string, count: number): string => {
+  switch (type) {
+    case 'pd_due':
+      return `${count} PD Checks Due`;
+    case 'vaccination_due':
+      return `${count} Vaccinations Due`;
+    case 'delivery_due':
+      return `${count} Deliveries Expected`;
+    case 'low_stock':
+      return `${count} Items Low in Stock`;
+    default:
+      return `${count} Notifications`;
+  }
+};
+
+const getGroupMessage = (type: string, count: number): string => {
+  switch (type) {
+    case 'pd_due':
+      return `${count} cows need pregnancy diagnosis checks`;
+    case 'vaccination_due':
+      return `${count} cows need vaccinations`;
+    case 'delivery_due':
+      return `${count} cows expected to deliver soon`;
+    case 'low_stock':
+      return `${count} feed items are running low`;
+    default:
+      return `${count} notifications require attention`;
+  }
 };
