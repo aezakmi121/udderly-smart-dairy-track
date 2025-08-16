@@ -10,6 +10,7 @@ import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { SessionUnlock } from './SessionUnlock';
 import { AlertSettings } from './AlertSettings';
 import { MilkingSessionSettings } from './MilkingSessionSettings';
+import { PushNotificationSettings } from '@/components/notifications/PushNotificationSettings';
 
 export const SettingsManagement = () => {
   const { isAdmin } = useUserPermissions();
@@ -18,6 +19,7 @@ export const SettingsManagement = () => {
     milkingSessions: false,
     milkingSessionSettings: false,
     alerts: false,
+    pushNotifications: false,
     accessControl: false,
     userRoles: false,
   });
@@ -135,6 +137,29 @@ export const SettingsManagement = () => {
             <CollapsibleContent>
               <CardContent>
                 <AlertSettings />
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
+        {/* Push Notifications Settings */}
+        <Collapsible open={openSections.pushNotifications} onOpenChange={() => toggleSection('pushNotifications')}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">Push Notifications</CardTitle>
+                  {openSections.pushNotifications ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent>
+                <PushNotificationSettings />
               </CardContent>
             </CollapsibleContent>
           </Card>

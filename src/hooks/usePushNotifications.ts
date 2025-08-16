@@ -87,7 +87,7 @@ export const usePushNotifications = () => {
         // Save token to user profile
         const { error } = await supabase
           .from('profiles')
-          .update({ fcm_token: currentToken })
+          .update({ fcm_token: currentToken } as any)
           .eq('id', (await supabase.auth.getUser()).data.user?.id);
 
         if (error) {
