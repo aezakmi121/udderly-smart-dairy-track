@@ -1,33 +1,43 @@
 import { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-
-// Firebase configuration - replace with your actual config
-const firebaseConfig = {
-  apiKey: "your-api-key",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "your-sender-id",
-  appId: "your-app-id"
-};
-
-// VAPID key - replace with your actual VAPID key
-const VAPID_KEY = "your-vapid-key";
+import { notificationScheduler } from '@/services/notificationScheduler';
 
 export const usePushNotifications = () => {
   const [isSupported, setIsSupported] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [isEnabled, setIsEnabled] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     // Check if the browser supports notifications
     setIsSupported('Notification' in window && 'serviceWorker' in navigator);
     setPermission(Notification.permission);
+    
+    // Check if user has already enabled notifications
+    checkNotificationStatus();
   }, []);
+
+  const checkNotificationStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('fcm_token')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.fcm_token) {
+          setToken(profile.fcm_token);
+          setIsEnabled(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking notification status:', error);
+    }
+  };
 
   const requestPermission = async (): Promise<boolean> => {
     if (!isSupported) {
@@ -44,7 +54,7 @@ export const usePushNotifications = () => {
       setPermission(permission);
       
       if (permission === 'granted') {
-        await initializeFirebaseMessaging();
+        await enableNotifications();
         return true;
       } else {
         toast({
@@ -65,72 +75,92 @@ export const usePushNotifications = () => {
     }
   };
 
-  const initializeFirebaseMessaging = async () => {
+  const enableNotifications = async () => {
     try {
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const messaging = getMessaging(app);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
 
-      // Register service worker
-      const registration = await navigator.serviceWorker.register('/sw.js');
+      // Generate a simple token based on user ID and timestamp
+      const browserToken = `browser_${user.id}_${Date.now()}`;
       
-      // Get FCM token
-      const currentToken = await getToken(messaging, {
-        vapidKey: VAPID_KEY,
-        serviceWorkerRegistration: registration
+      // Save token to user profile
+      const { error } = await supabase
+        .from('profiles')
+        .update({ fcm_token: browserToken } as any)
+        .eq('id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setToken(browserToken);
+      setIsEnabled(true);
+      
+      // Register service worker for notifications
+      if ('serviceWorker' in navigator) {
+        await navigator.serviceWorker.register('/sw.js');
+      }
+
+      // Start notification scheduler
+      notificationScheduler.start();
+
+      toast({
+        title: 'Notifications Enabled',
+        description: 'You will now receive push notifications for milking sessions and collection times.',
       });
 
-      if (currentToken) {
-        console.log('FCM Token:', currentToken);
-        setToken(currentToken);
-        
-        // Save token to user profile
-        const { error } = await supabase
-          .from('profiles')
-          .update({ fcm_token: currentToken } as any)
-          .eq('id', (await supabase.auth.getUser()).data.user?.id);
-
-        if (error) {
-          console.error('Error saving FCM token:', error);
-        } else {
-          toast({
-            title: 'Notifications Enabled',
-            description: 'You will now receive push notifications.',
-          });
-        }
-
-        // Handle foreground messages
-        onMessage(messaging, (payload) => {
-          console.log('Message received in foreground:', payload);
-          
-          toast({
-            title: payload.notification?.title || 'New Notification',
-            description: payload.notification?.body || '',
-          });
-        });
-
-      } else {
-        console.log('No registration token available.');
-        toast({
-          title: 'Token Error',
-          description: 'Unable to generate notification token.',
-          variant: 'destructive'
-        });
-      }
     } catch (error) {
-      console.error('Error initializing Firebase messaging:', error);
+      console.error('Error enabling notifications:', error);
       toast({
-        title: 'Initialization Error',
-        description: 'Failed to initialize push notifications.',
+        title: 'Failed to Enable',
+        description: 'Unable to enable notifications. Please try again.',
+        variant: 'destructive'
+      });
+      throw error;
+    }
+  };
+
+  const disableNotifications = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ fcm_token: null } as any)
+        .eq('id', user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      setToken(null);
+      setIsEnabled(false);
+
+      // Stop notification scheduler
+      notificationScheduler.stop();
+
+      toast({
+        title: 'Notifications Disabled',
+        description: 'You will no longer receive push notifications.',
+      });
+
+    } catch (error) {
+      console.error('Error disabling notifications:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to disable notifications.',
         variant: 'destructive'
       });
     }
   };
 
   const testNotification = async () => {
-    if (!token) {
+    if (!token || !isEnabled) {
       toast({
-        title: 'No Token',
+        title: 'Notifications Not Enabled',
         description: 'Please enable notifications first.',
         variant: 'destructive'
       });
@@ -138,23 +168,19 @@ export const usePushNotifications = () => {
     }
 
     try {
-      const { error } = await supabase.functions.invoke('send-push-notification', {
-        body: {
-          tokens: [token],
-          title: 'Test Notification',
-          body: 'This is a test push notification from Dairy Farm Manager!',
-          data: { type: 'test' }
-        }
-      });
+      // Show a browser notification directly
+      if (Notification.permission === 'granted') {
+        new Notification('Test Notification', {
+          body: 'This is a test notification from Dairy Farm Manager!',
+          icon: '/android-chrome-192x192.png',
+          tag: 'test'
+        });
 
-      if (error) {
-        throw error;
+        toast({
+          title: 'Test Sent',
+          description: 'Test notification sent successfully!',
+        });
       }
-
-      toast({
-        title: 'Test Sent',
-        description: 'Test notification sent successfully!',
-      });
     } catch (error) {
       console.error('Error sending test notification:', error);
       toast({
@@ -169,7 +195,9 @@ export const usePushNotifications = () => {
     isSupported,
     permission,
     token,
+    isEnabled,
     requestPermission,
+    disableNotifications,
     testNotification
   };
 };

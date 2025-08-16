@@ -4,7 +4,7 @@ import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { Bell, BellOff, Send } from 'lucide-react';
 
 export const PushNotificationSettings = () => {
-  const { isSupported, permission, token, requestPermission, testNotification } = usePushNotifications();
+  const { isSupported, permission, token, isEnabled, requestPermission, disableNotifications, testNotification } = usePushNotifications();
 
   if (!isSupported) {
     return (
@@ -37,21 +37,27 @@ export const PushNotificationSettings = () => {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">
-              Status: {permission === 'granted' ? 'Enabled' : permission === 'denied' ? 'Denied' : 'Not enabled'}
+              Status: {isEnabled ? 'Enabled' : permission === 'denied' ? 'Denied' : 'Not enabled'}
             </p>
             <p className="text-xs text-muted-foreground">
               {token ? 'Device registered for notifications' : 'Device not registered'}
             </p>
           </div>
           
-          {permission !== 'granted' && (
+          {!isEnabled && permission !== 'denied' && (
             <Button onClick={requestPermission}>
               Enable Notifications
             </Button>
           )}
+          
+          {isEnabled && (
+            <Button onClick={disableNotifications} variant="outline">
+              Disable Notifications
+            </Button>
+          )}
         </div>
 
-        {permission === 'granted' && token && (
+        {isEnabled && token && (
           <div className="space-y-2">
             <Button 
               onClick={testNotification} 
