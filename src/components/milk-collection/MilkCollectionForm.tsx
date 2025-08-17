@@ -140,7 +140,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
             <Label htmlFor="quantity">Quantity (Liters)</Label>
             <Input
               type="number"
-              step="0.1"
+              step="0.001"
               {...register('quantity', { required: true })}
               placeholder="Milk quantity"
             />
