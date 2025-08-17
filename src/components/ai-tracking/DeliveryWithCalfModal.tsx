@@ -38,7 +38,7 @@ export const DeliveryWithCalfModal: React.FC<DeliveryWithCalfModalProps> = ({
       calfGender,
       motherCowId: record.cow_id,
       birthWeight: birthWeight ? parseFloat(birthWeight) : undefined,
-      calfNumber: calfNumber || undefined,
+      calfNumber: calfGender === 'male' ? undefined : (calfNumber || undefined),
       notes: notes || undefined
     };
     
@@ -122,12 +122,14 @@ export const DeliveryWithCalfModal: React.FC<DeliveryWithCalfModalProps> = ({
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="calf_number">Calf Number</Label>
+                <Label htmlFor="calf_number">Calf Number {calfGender === 'male' && '(Not applicable for males)'}</Label>
                 <Input
                   id="calf_number"
                   value={calfNumber}
                   onChange={(e) => setCalfNumber(e.target.value)}
-                  placeholder="Auto-generated if empty"
+                  placeholder={calfGender === 'male' ? "Males don't get calf numbers" : "Auto-generated if empty"}
+                  disabled={calfGender === 'male'}
+                  className={calfGender === 'male' ? 'bg-muted text-muted-foreground' : ''}
                 />
               </div>
               
