@@ -158,7 +158,16 @@ export const usePushNotifications = () => {
   };
 
   const testNotification = async () => {
-    if (!token || !isEnabled) {
+    if (!isSupported) {
+      toast({
+        title: 'Not Supported',
+        description: 'Push notifications are not supported in this browser.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (!isEnabled || !token) {
       toast({
         title: 'Notifications Not Enabled',
         description: 'Please enable notifications first.',
@@ -168,24 +177,49 @@ export const usePushNotifications = () => {
     }
 
     try {
-      // Show a browser notification directly
-      if (Notification.permission === 'granted') {
-        new Notification('Test Notification', {
-          body: 'This is a test notification from Dairy Farm Manager!',
-          icon: '/android-chrome-192x192.png',
-          tag: 'test'
-        });
-
+      // Check if permission is still granted
+      if (Notification.permission !== 'granted') {
         toast({
-          title: 'Test Sent',
-          description: 'Test notification sent successfully!',
+          title: 'Permission Required',
+          description: 'Please grant notification permission to send test notifications.',
+          variant: 'destructive'
         });
+        return;
       }
+
+      // Ensure service worker is registered
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        if (!registration) {
+          await navigator.serviceWorker.register('/sw.js');
+        }
+      }
+
+      // Show a browser notification directly
+      const notification = new Notification('Test Notification', {
+        body: 'This is a test notification from Dairy Farm Manager! 🥛',
+        icon: '/android-chrome-192x192.png',
+        badge: '/favicon-32x32.png',
+        tag: 'test',
+        requireInteraction: false,
+        silent: false
+      });
+
+      // Auto-close after 5 seconds
+      setTimeout(() => {
+        notification.close();
+      }, 5000);
+
+      toast({
+        title: 'Test Sent',
+        description: 'Test notification sent successfully!',
+      });
+
     } catch (error) {
       console.error('Error sending test notification:', error);
       toast({
         title: 'Send Error',
-        description: 'Failed to send test notification.',
+        description: `Failed to send test notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive'
       });
     }

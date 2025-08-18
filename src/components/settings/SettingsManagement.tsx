@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Milk, Bell, Settings as SettingsIcon, Users, Shield } from 'lucide-react';
 import { MilkRateSettings } from './MilkRateSettings';
 import { AccessControlSettings } from './AccessControlSettings';
 import { UserRoleManagement } from './UserRoleManagement';
@@ -15,21 +14,18 @@ import { PushNotificationSettings } from '@/components/notifications/PushNotific
 export const SettingsManagement = () => {
   const { isAdmin } = useUserPermissions();
   const [openSections, setOpenSections] = useState({
-    milkRates: false,
-    milkingSessions: false,
-    milkingSessionSettings: false,
-    alerts: false,
-    pushNotifications: false,
-    accessControl: false,
-    userRoles: false,
+    milkingSettings: false,
+    notificationSettings: false,
+    systemSettings: false,
+    userManagement: false,
   });
 
   if (!isAdmin) {
     return (
       <div className="space-y-6">
         <div className="text-center py-8">
-          <h2 className="text-2xl font-bold text-gray-600">Access Restricted</h2>
-          <p className="text-gray-500 mt-2">You don't have permission to access settings.</p>
+          <h2 className="text-2xl font-bold text-muted-foreground">Access Restricted</h2>
+          <p className="text-muted-foreground mt-2">You don't have permission to access settings.</p>
         </div>
       </div>
     );
@@ -50,14 +46,17 @@ export const SettingsManagement = () => {
       </div>
 
       <div className="space-y-4">
-        {/* Milk Rate Settings */}
-        <Collapsible open={openSections.milkRates} onOpenChange={() => toggleSection('milkRates')}>
+        {/* Milking & Production Settings */}
+        <Collapsible open={openSections.milkingSettings} onOpenChange={() => toggleSection('milkingSettings')}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Milk Rate Settings</CardTitle>
-                  {openSections.milkRates ? (
+                  <div className="flex items-center gap-2">
+                    <Milk className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-lg">Milking & Production</CardTitle>
+                  </div>
+                  {openSections.milkingSettings ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
                     <ChevronDown className="h-4 w-4" />
@@ -66,21 +65,37 @@ export const SettingsManagement = () => {
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent>
-                <MilkRateSettings />
+              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="text-md font-semibold mb-3">Milk Rates</h3>
+                  <MilkRateSettings />
+                </div>
+                
+                <div className="border-t pt-6">
+                  <h3 className="text-md font-semibold mb-3">Session Controls</h3>
+                  <SessionUnlock />
+                </div>
+                
+                <div className="border-t pt-6">
+                  <h3 className="text-md font-semibold mb-3">Session Settings</h3>
+                  <MilkingSessionSettings />
+                </div>
               </CardContent>
             </CollapsibleContent>
           </Card>
         </Collapsible>
 
-        {/* Milking Session Controls */}
-        <Collapsible open={openSections.milkingSessions} onOpenChange={() => toggleSection('milkingSessions')}>
+        {/* Notifications & Alerts */}
+        <Collapsible open={openSections.notificationSettings} onOpenChange={() => toggleSection('notificationSettings')}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Milking Session Controls</CardTitle>
-                  {openSections.milkingSessions ? (
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-lg">Notifications & Alerts</CardTitle>
+                  </div>
+                  {openSections.notificationSettings ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
                     <ChevronDown className="h-4 w-4" />
@@ -89,90 +104,32 @@ export const SettingsManagement = () => {
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent>
-                <SessionUnlock />
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        {/* Milking Session Settings */}
-        <Collapsible open={openSections.milkingSessionSettings} onOpenChange={() => toggleSection('milkingSessionSettings')}>
-          <Card>
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Milking Session Settings</CardTitle>
-                  {openSections.milkingSessionSettings ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
+              <CardContent className="space-y-6">
+                <div>
+                  <h3 className="text-md font-semibold mb-3">Push Notifications</h3>
+                  <PushNotificationSettings />
                 </div>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent>
-                <MilkingSessionSettings />
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        {/* Alerts & Notifications Settings */}
-        <Collapsible open={openSections.alerts} onOpenChange={() => toggleSection('alerts')}>
-          <Card>
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Alerts & Notifications</CardTitle>
-                  {openSections.alerts ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
+                
+                <div className="border-t pt-6">
+                  <h3 className="text-md font-semibold mb-3">Alert Settings</h3>
+                  <AlertSettings />
                 </div>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent>
-                <AlertSettings />
               </CardContent>
             </CollapsibleContent>
           </Card>
         </Collapsible>
 
-        {/* Push Notifications Settings */}
-        <Collapsible open={openSections.pushNotifications} onOpenChange={() => toggleSection('pushNotifications')}>
+        {/* System & Access Control */}
+        <Collapsible open={openSections.systemSettings} onOpenChange={() => toggleSection('systemSettings')}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Push Notifications</CardTitle>
-                  {openSections.pushNotifications ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </div>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent>
-                <PushNotificationSettings />
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-
-        {/* Access Control Settings */}
-        <Collapsible open={openSections.accessControl} onOpenChange={() => toggleSection('accessControl')}>
-          <Card>
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Access Control</CardTitle>
-                  {openSections.accessControl ? (
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-lg">System & Security</CardTitle>
+                  </div>
+                  {openSections.systemSettings ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
                     <ChevronDown className="h-4 w-4" />
@@ -188,14 +145,17 @@ export const SettingsManagement = () => {
           </Card>
         </Collapsible>
 
-        {/* User Role Management */}
-        <Collapsible open={openSections.userRoles} onOpenChange={() => toggleSection('userRoles')}>
+        {/* User Management */}
+        <Collapsible open={openSections.userManagement} onOpenChange={() => toggleSection('userManagement')}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">User Role Management</CardTitle>
-                  {openSections.userRoles ? (
+                  <div className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-lg">User Management</CardTitle>
+                  </div>
+                  {openSections.userManagement ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
                     <ChevronDown className="h-4 w-4" />
