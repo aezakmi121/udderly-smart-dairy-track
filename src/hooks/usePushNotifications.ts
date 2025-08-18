@@ -158,7 +158,11 @@ export const usePushNotifications = () => {
   };
 
   const testNotification = async () => {
+    console.log('Test notification called, isSupported:', isSupported, 'isEnabled:', isEnabled, 'token:', token);
+    console.log('Notification permission:', Notification.permission);
+    
     if (!isSupported) {
+      console.log('Browser not supported');
       toast({
         title: 'Not Supported',
         description: 'Push notifications are not supported in this browser.',
@@ -168,6 +172,7 @@ export const usePushNotifications = () => {
     }
 
     if (!isEnabled || !token) {
+      console.log('Notifications not enabled or no token');
       toast({
         title: 'Notifications Not Enabled',
         description: 'Please enable notifications first.',
@@ -179,6 +184,7 @@ export const usePushNotifications = () => {
     try {
       // Check if permission is still granted
       if (Notification.permission !== 'granted') {
+        console.log('Permission not granted:', Notification.permission);
         toast({
           title: 'Permission Required',
           description: 'Please grant notification permission to send test notifications.',
@@ -187,13 +193,7 @@ export const usePushNotifications = () => {
         return;
       }
 
-      // Ensure service worker is registered
-      if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.ready;
-        if (!registration) {
-          await navigator.serviceWorker.register('/sw.js');
-        }
-      }
+      console.log('Attempting to show notification...');
 
       // Show a browser notification directly
       const notification = new Notification('Test Notification', {
@@ -204,6 +204,8 @@ export const usePushNotifications = () => {
         requireInteraction: false,
         silent: false
       });
+
+      console.log('Notification created:', notification);
 
       // Auto-close after 5 seconds
       setTimeout(() => {

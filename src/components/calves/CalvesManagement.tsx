@@ -61,7 +61,8 @@ export const CalvesManagement = () => {
     if (!calves) return [];
     
     let filtered = calves.filter(calf => {
-      const matchesSearch = calf.calf_number?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+      // If no search term, show all calves, otherwise filter by calf_number if it exists
+      const matchesSearch = searchTerm === '' || (calf.calf_number?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
       const matchesGender = genderFilter === 'all' || calf.gender === genderFilter;
       const matchesStatus = statusFilter === 'all' || calf.status === statusFilter;
       const matchesBreed = breedFilter === 'all' || calf.breed === breedFilter;
