@@ -274,11 +274,7 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                       size="sm" 
                       variant="outline"
                       className="flex items-center gap-1"
-                      onClick={() => {
-                        setDeliveryDialog(record.id);
-                        setDeliveryDate(record.actual_delivery_date || '');
-                        setCalfGender(record.calf_gender || '');
-                      }}
+                      onClick={() => setDeliveryWithCalfDialog(record.id)}
                     >
                       <Edit className="h-3 w-3" />
                       Edit Delivery
