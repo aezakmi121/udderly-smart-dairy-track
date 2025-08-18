@@ -193,29 +193,31 @@ export const usePushNotifications = () => {
         return;
       }
 
-      console.log('Attempting to show notification...');
+      console.log('Attempting to show notification via service worker...');
 
-      // Show a browser notification directly
-      const notification = new Notification('Test Notification', {
-        body: 'This is a test notification from Dairy Farm Manager! 🥛',
-        icon: '/android-chrome-192x192.png',
-        badge: '/favicon-32x32.png',
-        tag: 'test',
-        requireInteraction: false,
-        silent: false
-      });
+      // Use service worker registration to show notification
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        console.log('Service worker registration:', registration);
+        
+        await registration.showNotification('Test Notification', {
+          body: 'This is a test notification from Dairy Farm Manager! 🥛',
+          icon: '/android-chrome-192x192.png',
+          badge: '/favicon-32x32.png',
+          tag: 'test',
+          requireInteraction: false,
+          silent: false
+        });
 
-      console.log('Notification created:', notification);
+        console.log('Notification sent via service worker');
 
-      // Auto-close after 5 seconds
-      setTimeout(() => {
-        notification.close();
-      }, 5000);
-
-      toast({
-        title: 'Test Sent',
-        description: 'Test notification sent successfully!',
-      });
+        toast({
+          title: 'Test Sent',
+          description: 'Test notification sent successfully!',
+        });
+      } else {
+        throw new Error('Service worker not supported');
+      }
 
     } catch (error) {
       console.error('Error sending test notification:', error);
