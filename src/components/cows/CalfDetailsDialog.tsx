@@ -8,7 +8,6 @@ interface Calf {
   calf_number?: string;
   gender: 'male' | 'female';
   date_of_birth: string;
-  date_of_conception?: string;
   mother_cow_id?: string;
   breed?: string;
   birth_weight?: number;
@@ -103,12 +102,6 @@ export const CalfDetailsDialog: React.FC<CalfDetailsDialogProps> = ({
                             <span className="text-sm text-gray-600">Date of Birth:</span>
                             <span className="ml-2">{new Date(calf.date_of_birth).toLocaleDateString()}</span>
                           </div>
-                          {calf.date_of_conception && (
-                            <div>
-                              <span className="text-sm text-gray-600">Date of Conception:</span>
-                              <span className="ml-2">{new Date(calf.date_of_conception).toLocaleDateString()}</span>
-                            </div>
-                          )}
                         </div>
                       </div>
                       

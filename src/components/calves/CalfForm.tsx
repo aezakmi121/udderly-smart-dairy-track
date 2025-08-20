@@ -14,7 +14,6 @@ interface Calf {
   calf_number?: string;
   gender: 'male' | 'female';
   date_of_birth: string;
-  date_of_conception?: string;
   mother_cow_id?: string;
   breed?: string;
   birth_weight?: number;
@@ -78,41 +77,11 @@ export const CalfForm: React.FC<CalfFormProps> = ({
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
-    const motherCowId = formData.get('mother_cow_id') as string;
-    
-    // Check if trying to add a male calf to a mother that already has a male calf
-    if (selectedGender === 'male' && motherCowId && motherCowId !== 'none' && !selectedCalf) {
-      const { data: existingMaleCalves, error } = await supabase
-        .from('calves')
-        .select('id')
-        .eq('mother_cow_id', motherCowId)
-        .eq('gender', 'male');
-
-      if (error) {
-        toast({ 
-          title: "Error checking existing calves", 
-          description: error.message,
-          variant: "destructive" 
-        });
-        return;
-      }
-
-      if (existingMaleCalves && existingMaleCalves.length > 0) {
-        toast({ 
-          title: "Cannot add male calf", 
-          description: "This mother cow already has a male calf. Only one male calf per mother is allowed.",
-          variant: "destructive" 
-        });
-        return;
-      }
-    }
-    
     const calfData = {
       calf_number: selectedGender === 'male' ? null : (formData.get('calf_number') as string || null),
       gender: selectedGender,
       date_of_birth: formData.get('date_of_birth') as string,
-      date_of_conception: formData.get('date_of_conception') as string || null,
-      mother_cow_id: motherCowId === 'none' ? null : motherCowId,
+      mother_cow_id: formData.get('mother_cow_id') as string === 'none' ? null : formData.get('mother_cow_id') as string,
       breed: formData.get('breed') as string,
       birth_weight: parseFloat(formData.get('birth_weight') as string) || null,
       status: formData.get('status') as 'alive' | 'dead' | 'sold',
@@ -169,12 +138,11 @@ export const CalfForm: React.FC<CalfFormProps> = ({
         </div>
         
         <div>
-          <Label htmlFor="date_of_conception">Date of Conception</Label>
+          <Label htmlFor="breed">Breed</Label>
           <Input
-            id="date_of_conception"
-            name="date_of_conception"
-            type="date"
-            defaultValue={selectedCalf?.date_of_conception || ''}
+            id="breed"
+            name="breed"
+            defaultValue={selectedCalf?.breed || ''}
           />
         </div>
       </div>
@@ -197,15 +165,6 @@ export const CalfForm: React.FC<CalfFormProps> = ({
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="breed">Breed</Label>
-          <Input
-            id="breed"
-            name="breed"
-            defaultValue={selectedCalf?.breed || ''}
-          />
-        </div>
-        
         <div>
           <Label htmlFor="birth_weight">Birth Weight (kg)</Label>
           <Input

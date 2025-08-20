@@ -267,16 +267,9 @@ export const CalfDetailsModal: React.FC<CalfDetailsModalProps> = ({
                 <span className="font-medium">Mother Cow:</span>
                 <span>{motherCow?.cow_number || 'Unknown'}</span>
                 
-                <span className="font-medium">Mother Breed:</span>
-                <span>{motherCow?.breed || 'N/A'}</span>
-                
-                {calf.date_of_conception && (
-                  <>
-                    <span className="font-medium">Conception Date:</span>
-                    <span>{format(new Date(calf.date_of_conception), 'MMM dd, yyyy')}</span>
-                  </>
-                )}
-              </div>
+                 <span className="font-medium">Mother Breed:</span>
+                 <span>{motherCow?.breed || 'N/A'}</span>
+               </div>
             </CardContent>
           </Card>
 

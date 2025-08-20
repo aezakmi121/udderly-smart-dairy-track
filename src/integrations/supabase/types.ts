@@ -134,7 +134,6 @@ export type Database = {
           calf_number: string | null
           created_at: string | null
           date_of_birth: string
-          date_of_conception: string | null
           gender: Database["public"]["Enums"]["gender"]
           id: string
           image_url: string | null
@@ -149,7 +148,6 @@ export type Database = {
           calf_number?: string | null
           created_at?: string | null
           date_of_birth: string
-          date_of_conception?: string | null
           gender: Database["public"]["Enums"]["gender"]
           id?: string
           image_url?: string | null
@@ -164,7 +162,6 @@ export type Database = {
           calf_number?: string | null
           created_at?: string | null
           date_of_birth?: string
-          date_of_conception?: string | null
           gender?: Database["public"]["Enums"]["gender"]
           id?: string
           image_url?: string | null
