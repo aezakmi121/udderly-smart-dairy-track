@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,8 +39,14 @@ export const CalfForm: React.FC<CalfFormProps> = ({
   isLoading
 }) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedGender, setSelectedGender] = useState<'male' | 'female'>(selectedCalf?.gender || 'male');
   const { toast } = useToast();
   const { cows } = useCows();
+
+  // Update selectedGender when selectedCalf changes (for editing)
+  useEffect(() => {
+    setSelectedGender(selectedCalf?.gender || 'male');
+  }, [selectedCalf]);
 
   const handleImageUpload = async (file: File, calfId?: string) => {
     setIsUploading(true);
@@ -72,12 +78,41 @@ export const CalfForm: React.FC<CalfFormProps> = ({
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
+    const motherCowId = formData.get('mother_cow_id') as string;
+    
+    // Check if trying to add a male calf to a mother that already has a male calf
+    if (selectedGender === 'male' && motherCowId && motherCowId !== 'none' && !selectedCalf) {
+      const { data: existingMaleCalves, error } = await supabase
+        .from('calves')
+        .select('id')
+        .eq('mother_cow_id', motherCowId)
+        .eq('gender', 'male');
+
+      if (error) {
+        toast({ 
+          title: "Error checking existing calves", 
+          description: error.message,
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      if (existingMaleCalves && existingMaleCalves.length > 0) {
+        toast({ 
+          title: "Cannot add male calf", 
+          description: "This mother cow already has a male calf. Only one male calf per mother is allowed.",
+          variant: "destructive" 
+        });
+        return;
+      }
+    }
+    
     const calfData = {
-      calf_number: formData.get('calf_number') as string,
-      gender: formData.get('gender') as 'male' | 'female',
+      calf_number: selectedGender === 'male' ? null : (formData.get('calf_number') as string || null),
+      gender: selectedGender,
       date_of_birth: formData.get('date_of_birth') as string,
       date_of_conception: formData.get('date_of_conception') as string || null,
-      mother_cow_id: formData.get('mother_cow_id') as string === 'none' ? null : formData.get('mother_cow_id') as string,
+      mother_cow_id: motherCowId === 'none' ? null : motherCowId,
       breed: formData.get('breed') as string,
       birth_weight: parseFloat(formData.get('birth_weight') as string) || null,
       status: formData.get('status') as 'alive' | 'dead' | 'sold',
@@ -97,12 +132,19 @@ export const CalfForm: React.FC<CalfFormProps> = ({
             id="calf_number"
             name="calf_number"
             defaultValue={selectedCalf?.calf_number || ''}
+            disabled={selectedGender === 'male'}
+            placeholder={selectedGender === 'male' ? 'Auto-generated for male calves' : 'Enter calf number'}
           />
         </div>
         
         <div>
           <Label htmlFor="gender">Gender *</Label>
-          <Select name="gender" defaultValue={selectedCalf?.gender || 'male'} required>
+          <Select 
+            name="gender" 
+            value={selectedGender} 
+            onValueChange={(value: 'male' | 'female') => setSelectedGender(value)}
+            required
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select gender" />
             </SelectTrigger>
