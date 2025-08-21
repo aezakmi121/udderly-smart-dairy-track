@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus } from 'lucide-react';
+import { useBreeds } from '@/hooks/useBreeds';
 
 interface CowModalProps {
   selectedCow?: any;
@@ -31,6 +32,7 @@ export const CowModal: React.FC<CowModalProps> = ({
   const [internalOpen, setInternalOpen] = React.useState(false);
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = externalOnOpenChange || setInternalOpen;
+  const { breeds } = useBreeds();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -62,11 +64,18 @@ export const CowModal: React.FC<CowModalProps> = ({
             
             <div>
               <Label htmlFor="breed">Breed</Label>
-              <Input
-                id="breed"
-                name="breed"
-                defaultValue={selectedCow?.breed || ''}
-              />
+              <Select name="breed" defaultValue={selectedCow?.breed || ''}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select breed" />
+                </SelectTrigger>
+                <SelectContent>
+                  {breeds?.map((breed) => (
+                    <SelectItem key={breed.id} value={breed.name}>
+                      {breed.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

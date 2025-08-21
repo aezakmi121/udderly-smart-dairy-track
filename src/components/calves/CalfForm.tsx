@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCows } from '@/hooks/useCows';
+import { useBreeds } from '@/hooks/useBreeds';
 
 interface Calf {
   id: string;
@@ -41,6 +42,7 @@ export const CalfForm: React.FC<CalfFormProps> = ({
   const [selectedGender, setSelectedGender] = useState<'male' | 'female'>(selectedCalf?.gender || 'male');
   const { toast } = useToast();
   const { cows } = useCows();
+  const { breeds } = useBreeds();
 
   // Update selectedGender when selectedCalf changes (for editing)
   useEffect(() => {
@@ -139,11 +141,18 @@ export const CalfForm: React.FC<CalfFormProps> = ({
         
         <div>
           <Label htmlFor="breed">Breed</Label>
-          <Input
-            id="breed"
-            name="breed"
-            defaultValue={selectedCalf?.breed || ''}
-          />
+          <Select name="breed" defaultValue={selectedCalf?.breed || ''}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select breed" />
+            </SelectTrigger>
+            <SelectContent>
+              {breeds?.map((breed) => (
+                <SelectItem key={breed.id} value={breed.name}>
+                  {breed.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

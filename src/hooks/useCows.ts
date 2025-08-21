@@ -31,6 +31,37 @@ export const useCows = () => {
         return a.cow_number.localeCompare(b.cow_number);
       });
       
+      return sortedData;
+    }
+  });
+
+  return { cows };
+};
+
+// Hook for milk production (excludes dry cows)
+export const useMilkingCows = () => {
+  const { data: cows } = useQuery({
+    queryKey: ['milking-cows-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cows')
+        .select('id, cow_number, status')
+        .neq('status', 'dry')
+        .neq('status', 'sold');
+      
+      if (error) throw error;
+      
+      // Sort numerically by cow_number
+      const sortedData = (data as Cow[]).sort((a, b) => {
+        const numA = parseFloat(a.cow_number);
+        const numB = parseFloat(b.cow_number);
+        
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB;
+        }
+        
+        return a.cow_number.localeCompare(b.cow_number);
+      });
       
       return sortedData;
     }

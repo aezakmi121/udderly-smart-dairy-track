@@ -3,9 +3,11 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Filter } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AITrackingFormModal } from './AITrackingFormModal';
 import { AITrackingTable } from './AITrackingTable';
 import { AITrackingFiltersModal } from './AITrackingFiltersModal';
+import { LatestAIUpdates } from './LatestAIUpdates';
 import { useAITracking } from '@/hooks/useAITracking';
 
 export const AITrackingManagement = () => {
@@ -113,23 +115,51 @@ export const AITrackingManagement = () => {
         isLoading={addAIRecordMutation.isPending}
       />
 
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-semibold">
-            AI Records ({filteredRecords.length})
-          </h2>
-        </div>
-        <div className="p-6">
-          <div className="max-h-[70vh] overflow-auto overflow-x-auto">
-            <AITrackingTable 
-              aiRecords={filteredRecords} 
-              isLoading={isLoading}
-              onUpdateRecord={handleUpdateRecord}
-              onDeleteRecord={handleDeleteRecord}
-            />
+      <Tabs defaultValue="latest" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="latest">Latest AI Updates</TabsTrigger>
+          <TabsTrigger value="all">All Records</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="latest" className="space-y-4">
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-semibold">
+                Latest AI Updates per Cow
+              </h2>
+              <p className="text-muted-foreground text-sm">
+                Sorted by delivery due date, PD due date, and latest AI date
+              </p>
+            </div>
+            <div className="p-6">
+              <LatestAIUpdates 
+                onUpdateRecord={handleUpdateRecord}
+                onDeleteRecord={handleDeleteRecord}
+              />
+            </div>
           </div>
-        </div>
-      </div>
+        </TabsContent>
+        
+        <TabsContent value="all" className="space-y-4">
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-semibold">
+                AI Records ({filteredRecords.length})
+              </h2>
+            </div>
+            <div className="p-6">
+              <div className="max-h-[70vh] overflow-auto overflow-x-auto">
+                <AITrackingTable 
+                  aiRecords={filteredRecords} 
+                  isLoading={isLoading}
+                  onUpdateRecord={handleUpdateRecord}
+                  onDeleteRecord={handleDeleteRecord}
+                />
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

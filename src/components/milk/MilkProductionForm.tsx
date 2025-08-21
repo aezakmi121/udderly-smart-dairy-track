@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useCows } from '@/hooks/useCows';
+import { useMilkingCows } from '@/hooks/useCows';
 
 interface MilkProduction {
   id: string;
@@ -35,7 +35,7 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
   onCancel,
   isLoading
 }) => {
-  const { cows } = useCows();
+  const { cows } = useMilkingCows();
   const selectedSession = selectedRecord?.session || defaultSession || 'morning';
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
