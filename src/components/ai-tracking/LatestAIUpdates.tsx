@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Eye, Edit, Trash2 } from 'lucide-react';
+import { Calendar, Clock, Check, CheckCircle } from 'lucide-react';
 import { useAITracking } from '@/hooks/useAITracking';
 import { format, parseISO, differenceInDays } from 'date-fns';
 
@@ -16,6 +16,7 @@ export const LatestAIUpdates: React.FC<LatestAIUpdatesProps> = ({
   onDeleteRecord
 }) => {
   const { aiRecords, isLoading } = useAITracking();
+  const [movedToMilking, setMovedToMilking] = useState<Set<string>>(new Set());
 
   const uniqueCowRecords = useMemo(() => {
     if (!aiRecords) return [];
@@ -34,21 +35,20 @@ export const LatestAIUpdates: React.FC<LatestAIUpdatesProps> = ({
     
     const uniqueRecords = Array.from(cowMap.values());
     
-    // Sort by priority: cows about to deliver first, then PD due, then others
+    // Sort by priority: cows about to deliver first (earliest delivery dates), then PD due, then others
     return uniqueRecords.sort((a, b) => {
       const today = new Date();
-      const todayStr = format(today, 'yyyy-MM-dd');
       
-      // Priority 1: Cows about to deliver (within 10 days of expected delivery)
+      // Priority 1: Cows about to deliver - sort by expected delivery date (earliest first)
       const aDelivery = a.expected_delivery_date ? differenceInDays(parseISO(a.expected_delivery_date), today) : 999;
       const bDelivery = b.expected_delivery_date ? differenceInDays(parseISO(b.expected_delivery_date), today) : 999;
       
-      const aAboutToDeliver = aDelivery >= 0 && aDelivery <= 10;
-      const bAboutToDeliver = bDelivery >= 0 && bDelivery <= 10;
+      const aAboutToDeliver = aDelivery >= 0 && aDelivery <= 30; // Within 30 days
+      const bAboutToDeliver = bDelivery >= 0 && bDelivery <= 30;
       
       if (aAboutToDeliver && !bAboutToDeliver) return -1;
       if (!aAboutToDeliver && bAboutToDeliver) return 1;
-      if (aAboutToDeliver && bAboutToDeliver) return aDelivery - bDelivery;
+      if (aAboutToDeliver && bAboutToDeliver) return aDelivery - bDelivery; // Earliest delivery first
       
       // Priority 2: PD due (45-60 days after AI)
       const aDaysAfterAI = differenceInDays(today, parseISO(a.ai_date));
@@ -71,8 +71,15 @@ export const LatestAIUpdates: React.FC<LatestAIUpdatesProps> = ({
     
     if (record.expected_delivery_date) {
       const daysToDelivery = differenceInDays(parseISO(record.expected_delivery_date), today);
-      if (daysToDelivery >= 0 && daysToDelivery <= 10) {
+      if (daysToDelivery >= 0 && daysToDelivery <= 3) {
         return <Badge variant="destructive">Delivery Due in {daysToDelivery} days</Badge>;
+      }
+      if (daysToDelivery >= 0 && daysToDelivery <= 10) {
+        return <Badge variant="secondary">Delivery Due in {daysToDelivery} days</Badge>;
+      }
+      // Group change needed (30 days before delivery)
+      if (daysToDelivery >= 25 && daysToDelivery <= 35) {
+        return <Badge variant="outline">Move to Milking Group</Badge>;
       }
     }
     
@@ -81,6 +88,10 @@ export const LatestAIUpdates: React.FC<LatestAIUpdatesProps> = ({
     }
     
     return null;
+  };
+
+  const handleMarkAsMoved = (recordId: string) => {
+    setMovedToMilking(prev => new Set(prev).add(recordId));
   };
 
   const getStatusColor = (record: any) => {
@@ -174,20 +185,33 @@ export const LatestAIUpdates: React.FC<LatestAIUpdatesProps> = ({
                 </div>
                 
                 <div className="flex gap-2 ml-4">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onUpdateRecord(record.id, {})}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onDeleteRecord(record.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {record.expected_delivery_date && (
+                    (() => {
+                      const daysToDelivery = differenceInDays(parseISO(record.expected_delivery_date), new Date());
+                      const needsGroupChange = daysToDelivery >= 25 && daysToDelivery <= 35;
+                      const isMoved = movedToMilking.has(record.id);
+                      
+                      if (needsGroupChange) {
+                        return isMoved ? (
+                          <Badge variant="default" className="flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Moved to Milking
+                          </Badge>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleMarkAsMoved(record.id)}
+                            className="flex items-center gap-1"
+                          >
+                            <Check className="h-4 w-4" />
+                            Mark as Moved
+                          </Button>
+                        );
+                      }
+                      return null;
+                    })()
+                  )}
                 </div>
               </div>
             </CardContent>

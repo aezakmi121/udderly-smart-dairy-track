@@ -7,7 +7,7 @@ import { formatDate } from '@/lib/dateUtils';
 
 export interface Notification {
   id: string;
-  type: 'low_stock' | 'pd_due' | 'vaccination_due' | 'delivery_due' | 'ai_due' | 'system_alert' | 'info_update' | 'payment_due' | 'sync_failed' | 'delivery_delay';
+  type: 'low_stock' | 'pd_due' | 'vaccination_due' | 'delivery_due' | 'ai_due' | 'system_alert' | 'info_update' | 'payment_due' | 'sync_failed' | 'delivery_delay' | 'group_change_due';
   title: string;
   message: string;
   priority: 'high' | 'medium' | 'low';
@@ -133,6 +133,24 @@ export const useNotifications = () => {
             title: isTodayDelivery ? 'Delivery Expected Today' : 'Delivery Expected',
               message: `${isTodayDelivery ? 'May deliver today' : 'Expected delivery on ' + formatDate(dueDate)} for cow ${record.cows?.cow_number || 'Unknown'}`,
               priority: 'high',
+              read: false,
+              created_at: new Date().toISOString(),
+              entity_id: record.id,
+              entity_type: 'ai_record'
+            });
+          }
+
+          // Check for group change due (1 month before expected delivery)
+          const groupChangeDate = new Date(dueDate.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 days before delivery
+          const groupChangeEndDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Check within next 7 days
+          
+          if (groupChangeDate <= groupChangeEndDate && groupChangeDate >= todayDate) {
+            notifications.push({
+              id: `group_change_due_${record.id}`,
+              type: 'group_change_due',
+              title: 'Group Change Required',
+              message: `Cow ${record.cows?.cow_number || 'Unknown'} should be moved from dry group to milking group (delivery expected ${formatDate(dueDate)})`,
+              priority: 'medium',
               read: false,
               created_at: new Date().toISOString(),
               entity_id: record.id,
@@ -343,6 +361,7 @@ const getCategoryForType = (type: string): 'reminders' | 'alerts' | 'updates' =>
     case 'delivery_due':
     case 'ai_due':
     case 'payment_due':
+    case 'group_change_due':
       return 'reminders';
     case 'low_stock':
     case 'sync_failed':
@@ -376,6 +395,8 @@ const getGroupTitle = (type: string, count: number): string => {
       return `${count} Vaccinations Due`;
     case 'delivery_due':
       return `${count} Deliveries Expected`;
+    case 'group_change_due':
+      return `${count} Group Changes Due`;
     case 'low_stock':
       return `${count} Items Low in Stock`;
     default:
@@ -391,6 +412,8 @@ const getGroupMessage = (type: string, count: number): string => {
       return `${count} cows need vaccinations`;
     case 'delivery_due':
       return `${count} cows expected to deliver soon`;
+    case 'group_change_due':
+      return `${count} cows need to be moved from dry group to milking group`;
     case 'low_stock':
       return `${count} feed items are running low`;
     default:

@@ -17,6 +17,8 @@ const getNotificationIcon = (type: string) => {
       return <Syringe className="h-5 w-5" />;
     case 'delivery_due':
       return <AlertTriangle className="h-5 w-5" />;
+    case 'group_change_due':
+      return <Calendar className="h-5 w-5" />;
     default:
       return <Bell className="h-5 w-5" />;
   }
