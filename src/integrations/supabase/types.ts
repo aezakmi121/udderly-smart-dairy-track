@@ -309,6 +309,10 @@ export type Database = {
           lactation_number: number | null
           last_calving_date: string | null
           lifetime_yield: number | null
+          moved_to_milking: boolean | null
+          moved_to_milking_at: string | null
+          needs_milking_move: boolean | null
+          needs_milking_move_at: string | null
           notes: string | null
           original_mother_cow_id: string | null
           peak_yield: number | null
@@ -331,6 +335,10 @@ export type Database = {
           lactation_number?: number | null
           last_calving_date?: string | null
           lifetime_yield?: number | null
+          moved_to_milking?: boolean | null
+          moved_to_milking_at?: string | null
+          needs_milking_move?: boolean | null
+          needs_milking_move_at?: string | null
           notes?: string | null
           original_mother_cow_id?: string | null
           peak_yield?: number | null
@@ -353,6 +361,10 @@ export type Database = {
           lactation_number?: number | null
           last_calving_date?: string | null
           lifetime_yield?: number | null
+          moved_to_milking?: boolean | null
+          moved_to_milking_at?: string | null
+          needs_milking_move?: boolean | null
+          needs_milking_move_at?: string | null
           notes?: string | null
           original_mother_cow_id?: string | null
           peak_yield?: number | null

@@ -8,6 +8,7 @@ import { AITrackingFormModal } from './AITrackingFormModal';
 import { AITrackingTable } from './AITrackingTable';
 import { AITrackingFiltersModal } from './AITrackingFiltersModal';
 import { LatestAIUpdates } from './LatestAIUpdates';
+import { CowSummaryDashboard } from './CowSummaryDashboard';
 import { useAITracking } from '@/hooks/useAITracking';
 
 export const AITrackingManagement = () => {
@@ -115,11 +116,28 @@ export const AITrackingManagement = () => {
         isLoading={addAIRecordMutation.isPending}
       />
 
-      <Tabs defaultValue="latest" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="dashboard">Cow Dashboard</TabsTrigger>
           <TabsTrigger value="latest">Latest AI Updates</TabsTrigger>
           <TabsTrigger value="all">All Records</TabsTrigger>
         </TabsList>
+        
+        <TabsContent value="dashboard" className="space-y-4">
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-semibold">
+                Cow Summary Dashboard
+              </h2>
+              <p className="text-muted-foreground text-sm">
+                One card per cow with delivery tracking and milking group management
+              </p>
+            </div>
+            <div className="p-6">
+              <CowSummaryDashboard />
+            </div>
+          </div>
+        </TabsContent>
         
         <TabsContent value="latest" className="space-y-4">
           <div className="bg-white rounded-lg shadow">
