@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AITrackingFormModal } from './AITrackingFormModal';
 import { AITrackingTable } from './AITrackingTable';
 import { AITrackingFiltersModal } from './AITrackingFiltersModal';
-import { LatestAIUpdates } from './LatestAIUpdates';
 import { CowSummaryDashboard } from './CowSummaryDashboard';
 import { useAITracking } from '@/hooks/useAITracking';
 
@@ -117,9 +116,8 @@ export const AITrackingManagement = () => {
       />
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="dashboard">Cow Dashboard</TabsTrigger>
-          <TabsTrigger value="latest">Latest AI Updates</TabsTrigger>
           <TabsTrigger value="all">All Records</TabsTrigger>
         </TabsList>
         
@@ -135,25 +133,6 @@ export const AITrackingManagement = () => {
             </div>
             <div className="p-6">
               <CowSummaryDashboard />
-            </div>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="latest" className="space-y-4">
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-semibold">
-                Latest AI Updates per Cow
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Sorted by delivery due date, PD due date, and latest AI date
-              </p>
-            </div>
-            <div className="p-6">
-              <LatestAIUpdates 
-                onUpdateRecord={handleUpdateRecord}
-                onDeleteRecord={handleDeleteRecord}
-              />
             </div>
           </div>
         </TabsContent>
