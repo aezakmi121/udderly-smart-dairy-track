@@ -43,7 +43,7 @@ export const CowSummaryDashboard: React.FC = () => {
   const { aiRecords, isLoading } = useAITracking();
   const { updateCowMilkingStatus, isUpdating } = useCowMilkingStatus();
   const [filter, setFilter] = useState<FilterType>('all');
-  const [includeDelivered, setIncludeDelivered] = useState(false);
+  const [includeDelivered, setIncludeDelivered] = useState(true);
 
   const cowSummaries = useMemo(() => {
     if (!aiRecords) return [];
