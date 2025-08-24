@@ -1,51 +1,27 @@
 
 import React from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BaseManagement, TabConfig } from '@/components/common/BaseManagement';
 import { CowGroupsList } from './CowGroupsList';
 import { GroupAssignments } from './GroupAssignments';
 import { GroupingRecommendations } from './GroupingRecommendations';
 import { GroupingSettings } from './GroupingSettings';
 import { GroupBasedFeedManagement } from './GroupBasedFeedManagement';
 
+const tabs: TabConfig[] = [
+  { id: 'groups', label: 'Groups', component: CowGroupsList },
+  { id: 'assignments', label: 'Assignments', component: GroupAssignments },
+  { id: 'recommendations', label: 'Recommendations', mobileLabel: 'Recommendations', component: GroupingRecommendations },
+  { id: 'group-feeding', label: 'Group Feeding', mobileLabel: 'Feeding', component: GroupBasedFeedManagement },
+  { id: 'settings', label: 'Settings', component: GroupingSettings }
+];
+
 export const CowGroupingManagement = () => {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Cow Grouping Management</h1>
-        <p className="text-muted-foreground">Manage cow groups, assignments, and automated grouping based on production metrics.</p>
-      </div>
-
-      <Tabs defaultValue="groups" className="space-y-6">
-        <div className="overflow-x-auto">
-          <TabsList className="flex w-max min-w-full">
-            <TabsTrigger value="groups">Groups</TabsTrigger>
-            <TabsTrigger value="assignments">Assignments</TabsTrigger>
-            <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
-            <TabsTrigger value="group-feeding">Group Feeding</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
-        </div>
-        
-        <TabsContent value="groups">
-          <CowGroupsList />
-        </TabsContent>
-        
-        <TabsContent value="assignments">
-          <GroupAssignments />
-        </TabsContent>
-        
-        <TabsContent value="recommendations">
-          <GroupingRecommendations />
-        </TabsContent>
-        
-        <TabsContent value="group-feeding">
-          <GroupBasedFeedManagement />
-        </TabsContent>
-        
-        <TabsContent value="settings">
-          <GroupingSettings />
-        </TabsContent>
-      </Tabs>
-    </div>
+    <BaseManagement
+      title="Cow Grouping Management"
+      description="Manage cow groups, assignments, and automated grouping based on production metrics."
+      tabs={tabs}
+      defaultTab="groups"
+    />
   );
 };
