@@ -25,6 +25,7 @@ export const useCowMilkingStatus = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cows-list'] });
       queryClient.invalidateQueries({ queryKey: ['ai-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['ai-records'] });
       toast({
         title: "Success",
         description: "Cow status updated successfully",
