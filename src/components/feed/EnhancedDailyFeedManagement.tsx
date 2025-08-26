@@ -11,6 +11,7 @@ import { Plus, Utensils, Users, Package, TrendingDown, AlertCircle } from 'lucid
 import { useFeedManagement } from '@/hooks/useFeedManagement';
 import { useCowGrouping } from '@/hooks/useCowGrouping';
 import { useToast } from '@/hooks/use-toast';
+import { useAppSetting } from '@/hooks/useAppSettings';
 import { FeedAllocationHistory } from './FeedAllocationHistory';
 
 export const EnhancedDailyFeedManagement = () => {
@@ -18,6 +19,7 @@ export const EnhancedDailyFeedManagement = () => {
   const [selectedFeedItem, setSelectedFeedItem] = useState('');
   const [dailyQuantity, setDailyQuantity] = useState('');
   const [activeTab, setActiveTab] = useState('manual');
+  const [pendingAllocations, setPendingAllocations] = useState<{[key: string]: number}>({});
   
   // Group allocation states
   const [selectedGroup, setSelectedGroup] = useState('');
@@ -26,6 +28,7 @@ export const EnhancedDailyFeedManagement = () => {
   const { feedItems, isLoading, createTransactionMutation } = useFeedManagement();
   const { cowGroups, groupAssignments } = useCowGrouping();
   const { toast } = useToast();
+  const { value: feedDeductionMode, save: saveFeedDeductionMode } = useAppSetting<'auto' | 'manual'>('feed_deduction_mode');
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,16 +64,26 @@ export const EnhancedDailyFeedManagement = () => {
     }
 
     try {
-      await createTransactionMutation.mutateAsync({
-        feed_item_id: selectedFeedItem,
-        transaction_type: 'outgoing',
-        quantity: quantity,
-        transaction_date: new Date().toISOString().split('T')[0],
-        notes: 'Daily feed allocation',
-        supplier_name: 'Manual Daily Feed'
-      });
+      if (feedDeductionMode === 'manual') {
+        // In manual mode, just track the allocation without creating a transaction
+        setPendingAllocations(prev => ({
+          ...prev,
+          [selectedFeedItem]: (prev[selectedFeedItem] || 0) + quantity
+        }));
+        toast({ title: "Feed allocated - pending manual deduction" });
+      } else {
+        // Auto mode - create transaction immediately (triggers automatic stock deduction)
+        await createTransactionMutation.mutateAsync({
+          feed_item_id: selectedFeedItem,
+          transaction_type: 'outgoing',
+          quantity: quantity,
+          transaction_date: new Date().toISOString().split('T')[0],
+          notes: 'Daily feed allocation',
+          supplier_name: 'Manual Daily Feed'
+        });
+        toast({ title: "Daily feed allocated successfully!" });
+      }
 
-      toast({ title: "Daily feed allocated successfully!" });
       setIsDialogOpen(false);
       setSelectedFeedItem('');
       setDailyQuantity('');
@@ -149,14 +162,28 @@ export const EnhancedDailyFeedManagement = () => {
     }
 
     try {
-      for (const transaction of transactions) {
-        await createTransactionMutation.mutateAsync(transaction);
+      if (feedDeductionMode === 'manual') {
+        // In manual mode, track allocations without creating transactions
+        for (const transaction of transactions) {
+          setPendingAllocations(prev => ({
+            ...prev,
+            [transaction.feed_item_id]: (prev[transaction.feed_item_id] || 0) + transaction.quantity
+          }));
+        }
+        toast({
+          title: "Group feed allocated - pending manual deduction",
+          description: `Allocated feed for ${cowCount} cows in ${group.group_name}`
+        });
+      } else {
+        // Auto mode - create transactions immediately
+        for (const transaction of transactions) {
+          await createTransactionMutation.mutateAsync(transaction);
+        }
+        toast({
+          title: "Group feed allocated successfully!",
+          description: `Fed ${cowCount} cows in ${group.group_name}`
+        });
       }
-      
-      toast({
-        title: "Group feed allocated successfully!",
-        description: `Fed ${cowCount} cows in ${group.group_name}`
-      });
       
       setIsDialogOpen(false);
       setSelectedGroup('');
@@ -175,8 +202,74 @@ export const EnhancedDailyFeedManagement = () => {
     item.current_stock <= (item.minimum_stock_level || 0) && item.current_stock > 0
   ) || [];
 
+  const handleManualDeduction = async (feedItemId: string) => {
+    const pendingQuantity = pendingAllocations[feedItemId];
+    if (!pendingQuantity) return;
+
+    try {
+      await createTransactionMutation.mutateAsync({
+        feed_item_id: feedItemId,
+        transaction_type: 'outgoing',
+        quantity: pendingQuantity,
+        transaction_date: new Date().toISOString().split('T')[0],
+        notes: 'Manual deduction of allocated feed',
+        supplier_name: 'Manual Deduction'
+      });
+
+      setPendingAllocations(prev => {
+        const updated = { ...prev };
+        delete updated[feedItemId];
+        return updated;
+      });
+
+      toast({ title: "Feed deducted from stock successfully!" });
+    } catch (error: any) {
+      toast({ 
+        title: "Failed to deduct feed", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Deduction Mode Control */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Feed Deduction Mode</CardTitle>
+            <Badge variant={feedDeductionMode === 'auto' ? 'default' : 'secondary'}>
+              {feedDeductionMode === 'auto' ? 'Automatic' : 'Manual'}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant={feedDeductionMode === 'auto' ? 'default' : 'outline'}
+              onClick={() => saveFeedDeductionMode('auto')}
+              size="sm"
+            >
+              Auto Deduct
+            </Button>
+            <Button 
+              variant={feedDeductionMode === 'manual' ? 'default' : 'outline'}
+              onClick={() => saveFeedDeductionMode('manual')}
+              size="sm"
+            >
+              Manual Deduct
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            {feedDeductionMode === 'auto' 
+              ? 'Feed is automatically deducted from stock when allocated'
+              : 'Feed allocations are tracked and require manual deduction from stock'
+            }
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Stock Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -406,19 +499,40 @@ export const EnhancedDailyFeedManagement = () => {
                   <div key={item.id} className="p-4 border rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium">{item.name}</h4>
-                      {item.current_stock <= (item.minimum_stock_level || 0) && (
-                        <Badge variant="destructive" className="text-xs">
-                          Low Stock
-                        </Badge>
-                      )}
+                      <div className="flex gap-2">
+                        {item.current_stock <= (item.minimum_stock_level || 0) && (
+                          <Badge variant="destructive" className="text-xs">
+                            Low Stock
+                          </Badge>
+                        )}
+                        {pendingAllocations[item.id] && (
+                          <Badge variant="outline" className="text-xs">
+                            Pending: {pendingAllocations[item.id]} {item.unit}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">
-                        Available: {item.current_stock} {item.unit}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Min Level: {item.minimum_stock_level || 0} {item.unit}
-                      </p>
+                    <div className="space-y-2">
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">
+                          Available: {item.current_stock} {item.unit}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Min Level: {item.minimum_stock_level || 0} {item.unit}
+                        </p>
+                      </div>
+                      {feedDeductionMode === 'manual' && pendingAllocations[item.id] && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleManualDeduction(item.id)}
+                          disabled={createTransactionMutation.isPending}
+                          className="w-full"
+                        >
+                          <TrendingDown className="h-3 w-3 mr-1" />
+                          Deduct from Stock
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
