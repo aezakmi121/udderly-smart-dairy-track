@@ -5,11 +5,11 @@ import { FeedCategories } from './FeedCategories';
 import { FeedItems } from './FeedItems';
 import { FeedTransactions } from './FeedTransactions';
 import { FeedStock } from './FeedStock';
-import { DailyFeedManagement } from './DailyFeedManagement';
+import { EnhancedDailyFeedManagement } from './EnhancedDailyFeedManagement';
 
 const tabs: TabConfig[] = [
   { id: 'stock', label: 'Stock Overview', component: FeedStock },
-  { id: 'daily-feed', label: 'Daily Feed', component: DailyFeedManagement },
+  { id: 'daily-feed', label: 'Daily Feed', component: EnhancedDailyFeedManagement },
   { id: 'transactions', label: 'Transactions', component: FeedTransactions },
   { id: 'items', label: 'Feed Items', component: FeedItems },
   { id: 'categories', label: 'Categories', component: FeedCategories }
