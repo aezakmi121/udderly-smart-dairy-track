@@ -106,9 +106,9 @@ export const CowSummaryDashboard: React.FC = () => {
 
       switch (filter) {
         case 'about_to_deliver':
-          return daysToDelivery >= 0 && daysToDelivery <= 35;
+          return daysToDelivery >= 0 && daysToDelivery <= 35 && cow.aiRecord.pd_done && cow.aiRecord.pd_result === 'positive';
         case 'pd_due':
-          return daysAfterAI >= 45 && daysAfterAI <= 60 && !cow.aiRecord.pd_done;
+          return daysAfterAI >= 45 && daysAfterAI <= 75 && !cow.aiRecord.pd_done;
         case 'flagged':
           return cow.needsMilkingMove && !cow.movedToMilking;
         default:
@@ -206,13 +206,15 @@ export const CowSummaryDashboard: React.FC = () => {
       ? differenceInDays(today, parseISO(cow.latestAIDate)) 
       : 0;
     
-    if (daysAfterAI >= 45 && daysAfterAI <= 60) {
+    if (daysAfterAI >= 45) {
       const pdDueDate = new Date(parseISO(cow.latestAIDate));
       pdDueDate.setDate(pdDueDate.getDate() + 60);
       
-      return <Badge variant="secondary" className="flex items-center gap-1">
+      const isOverdue = today > pdDueDate;
+      
+      return <Badge variant={isOverdue ? "destructive" : "secondary"} className="flex items-center gap-1">
         <Clock className="h-3 w-3" />
-        PD Due ({format(pdDueDate, 'dd-MM')})
+        {isOverdue ? "PD Overdue" : `PD Due (${format(pdDueDate, 'dd-MM')})`}
       </Badge>;
     }
     
@@ -397,31 +399,54 @@ export const CowSummaryDashboard: React.FC = () => {
                     <div className="space-y-3">
                       <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Pregnancy & Delivery</h4>
                       <div className="space-y-2">
-                        {cow.expectedDeliveryDate && (
+                        {/* Show PD Due Date for pending PD cases */}
+                        {!cow.aiRecord.pd_done && (
                           <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <Clock className="h-4 w-4 text-amber-500 flex-shrink-0" />
                             <div className="min-w-0 flex-1">
-                              <span className="text-sm text-muted-foreground">Expected:</span>
-                              <div className="font-medium">{formatDate(cow.expectedDeliveryDate)}</div>
+                              <span className="text-sm text-muted-foreground">PD Due:</span>
+                              <div className="font-medium text-amber-600">
+                                {(() => {
+                                  const pdDueDate = new Date(parseISO(cow.latestAIDate));
+                                  pdDueDate.setDate(pdDueDate.getDate() + 60);
+                                  return formatDate(pdDueDate.toISOString());
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Show Expected Delivery only after successful PD */}
+                        {cow.aiRecord.pd_done && cow.aiRecord.pd_result === 'positive' && cow.expectedDeliveryDate && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <span className="text-sm text-muted-foreground">Expected Delivery:</span>
+                              <div className="font-medium text-blue-600">{formatDate(cow.expectedDeliveryDate)}</div>
                             </div>
                           </div>
                         )}
                         
                         {cow.pdDate ? (
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground w-16 flex-shrink-0">PD Done:</span>
-                            <span className="font-medium">{formatDate(cow.pdDate)}</span>
+                            <span className="text-sm text-muted-foreground w-20 flex-shrink-0">PD Result:</span>
+                            <span className={`font-medium ${
+                              cow.aiRecord.pd_result === 'positive' ? 'text-green-600' : 
+                              cow.aiRecord.pd_result === 'negative' ? 'text-red-600' : 'text-gray-600'
+                            }`}>
+                              {cow.aiRecord.pd_result || 'Unknown'} ({formatDate(cow.pdDate)})
+                            </span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground w-16 flex-shrink-0">PD Status:</span>
+                            <span className="text-sm text-muted-foreground w-20 flex-shrink-0">PD Status:</span>
                             <span className="font-medium text-amber-600">Pending</span>
                           </div>
                         )}
                         
                         {cow.deliveredDate && (
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground w-16 flex-shrink-0">Delivered:</span>
+                            <span className="text-sm text-muted-foreground w-20 flex-shrink-0">Delivered:</span>
                             <span className="font-medium text-green-600">{formatDate(cow.deliveredDate)}</span>
                           </div>
                         )}
