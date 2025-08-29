@@ -207,9 +207,12 @@ export const CowSummaryDashboard: React.FC = () => {
       : 0;
     
     if (daysAfterAI >= 45 && daysAfterAI <= 60) {
+      const pdDueDate = new Date(parseISO(cow.latestAIDate));
+      pdDueDate.setDate(pdDueDate.getDate() + 60);
+      
       return <Badge variant="secondary" className="flex items-center gap-1">
         <Clock className="h-3 w-3" />
-        PD Due
+        PD Due ({format(pdDueDate, 'dd-MM')})
       </Badge>;
     }
     
@@ -362,40 +365,40 @@ export const CowSummaryDashboard: React.FC = () => {
                       )}
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>AI: {formatDate(cow.latestAIDate)}</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="truncate">AI: {formatDate(cow.latestAIDate)}</span>
                       </div>
                       
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">Service #:</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-muted-foreground flex-shrink-0">Service #:</span>
                         <span>{cow.serviceNumber}</span>
                       </div>
                       
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">Status:</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-muted-foreground flex-shrink-0">Status:</span>
                         <span className={getStatusColor(cow.status)}>{cow.status}</span>
                       </div>
                       
                       {cow.expectedDeliveryDate && (
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span>Expected: {formatDate(cow.expectedDeliveryDate)}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate">Expected: {formatDate(cow.expectedDeliveryDate)}</span>
                         </div>
                       )}
                       
                       {cow.pdDate && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">PD:</span>
-                          <span>{formatDate(cow.pdDate)}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-muted-foreground flex-shrink-0">PD:</span>
+                          <span className="truncate">{formatDate(cow.pdDate)}</span>
                         </div>
                       )}
                       
                       {cow.deliveredDate && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">Delivered:</span>
-                          <span>{formatDate(cow.deliveredDate)}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-muted-foreground flex-shrink-0">Delivered:</span>
+                          <span className="truncate">{formatDate(cow.deliveredDate)}</span>
                         </div>
                       )}
                     </div>
@@ -408,7 +411,7 @@ export const CowSummaryDashboard: React.FC = () => {
                   </div>
                   
                   {/* Action Buttons */}
-                  <div className="flex gap-2 ml-4">
+                  <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
                     {!cow.movedToMilking && (
                       cow.needsMilkingMove ? (
                         <>
@@ -417,7 +420,7 @@ export const CowSummaryDashboard: React.FC = () => {
                             variant="outline"
                             onClick={() => handleUndoFlag(cow.cowId)}
                             disabled={isUpdating}
-                            className="flex items-center gap-1"
+                            className="flex items-center gap-1 whitespace-nowrap"
                           >
                             <Undo className="h-4 w-4" />
                             Undo Flag
@@ -426,7 +429,7 @@ export const CowSummaryDashboard: React.FC = () => {
                             size="sm"
                             onClick={() => handleMarkAsMoved(cow.cowId)}
                             disabled={isUpdating}
-                            className="flex items-center gap-1"
+                            className="flex items-center gap-1 whitespace-nowrap"
                           >
                             <CheckCircle className="h-4 w-4" />
                             Mark as Moved
@@ -438,7 +441,7 @@ export const CowSummaryDashboard: React.FC = () => {
                           variant="outline"
                           onClick={() => handleFlagForMove(cow.cowId)}
                           disabled={isUpdating}
-                          className="flex items-center gap-1"
+                          className="flex items-center gap-1 whitespace-nowrap"
                         >
                           <Flag className="h-4 w-4" />
                           Flag: Needs Move

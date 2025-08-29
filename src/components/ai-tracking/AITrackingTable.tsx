@@ -102,20 +102,21 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
 
   return (
     <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="whitespace-nowrap">Cow Number</TableHead>
-            <TableHead className="whitespace-nowrap">AI Date</TableHead>
-            <TableHead className="whitespace-nowrap">Service #</TableHead>
-            <TableHead className="whitespace-nowrap">Status</TableHead>
-            <TableHead className="whitespace-nowrap">Expected Delivery</TableHead>
-            <TableHead className="whitespace-nowrap">PD Due</TableHead>
-            <TableHead className="whitespace-nowrap">PD Status</TableHead>
-            <TableHead className="whitespace-nowrap">Delivery Status</TableHead>
-            <TableHead className="whitespace-nowrap">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
+      <div className="relative overflow-auto max-h-[70vh]">
+        <Table>
+          <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
+            <TableRow>
+              <TableHead className="whitespace-nowrap">Cow Number</TableHead>
+              <TableHead className="whitespace-nowrap">AI Date</TableHead>
+              <TableHead className="whitespace-nowrap">Service #</TableHead>
+              <TableHead className="whitespace-nowrap">Status</TableHead>
+              <TableHead className="whitespace-nowrap">Expected Delivery</TableHead>
+              <TableHead className="whitespace-nowrap">PD Due</TableHead>
+              <TableHead className="whitespace-nowrap">PD Status</TableHead>
+              <TableHead className="whitespace-nowrap">Delivery Status</TableHead>
+              <TableHead className="whitespace-nowrap">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
         <TableBody>
           {aiRecords.map((record) => (
             <TableRow key={record.id}>
@@ -302,7 +303,8 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
             </TableRow>
           ))}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
       
       {/* Delivery with Calf Modal */}
       <DeliveryWithCalfModal

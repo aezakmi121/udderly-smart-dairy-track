@@ -139,6 +139,30 @@ export const useCowGrouping = () => {
     }
   });
 
+  // Unassign cow from group mutation
+  const unassignCowMutation = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      const { error } = await supabase
+        .from('cow_group_assignments')
+        .update({ is_active: false })
+        .eq('id', assignmentId);
+      
+      if (error) throw error;
+      return assignmentId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cow-group-assignments'] });
+      toast({ title: "Cow unassigned from group successfully!" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to unassign cow from group", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
   // Update grouping settings mutation
   const updateSettingMutation = useMutation({
     mutationFn: async ({ settingName, settingValue }: { settingName: string; settingValue: any }) => {
@@ -200,6 +224,7 @@ export const useCowGrouping = () => {
     isLoading: groupsLoading || assignmentsLoading || settingsLoading || cowsLoading,
     createGroupMutation,
     assignCowToGroupMutation,
+    unassignCowMutation,
     updateSettingMutation
   };
 };

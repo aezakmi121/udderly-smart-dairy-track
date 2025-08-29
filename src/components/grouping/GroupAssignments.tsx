@@ -4,14 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, X } from 'lucide-react';
 import { useCowGrouping } from '@/hooks/useCowGrouping';
 import { useCows } from '@/hooks/useCows';
 
 export const GroupAssignments = () => {
   const [selectedCow, setSelectedCow] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
-  const { cowGroups, groupAssignments, assignCowToGroupMutation, isLoading } = useCowGrouping();
+  const { cowGroups, groupAssignments, assignCowToGroupMutation, unassignCowMutation, isLoading } = useCowGrouping();
   const { cows } = useCows();
 
   const handleAssignCow = async () => {
@@ -102,12 +102,23 @@ export const GroupAssignments = () => {
                   {assignedCows.length > 0 ? (
                     assignedCows.map((assignment) => (
                       <div key={assignment.id} className="flex justify-between items-center p-2 bg-muted rounded">
-                        <span className="font-medium">
-                          {assignment.cows?.cow_number}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(assignment.assigned_date).toLocaleDateString('en-GB')}
-                        </span>
+                        <div className="flex-1">
+                          <span className="font-medium">
+                            {assignment.cows?.cow_number}
+                          </span>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(assignment.assigned_date).toLocaleDateString('en-GB')}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => unassignCowMutation.mutate(assignment.id)}
+                          disabled={unassignCowMutation.isPending}
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
                       </div>
                     ))
                   ) : (
