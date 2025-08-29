@@ -345,10 +345,11 @@ export const CowSummaryDashboard: React.FC = () => {
           {cowSummaries.map((cow) => (
             <Card key={cow.cowId} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h3 className="font-semibold text-lg">Cow #{cow.cowNumber}</h3>
+                <div className="space-y-4">
+                  {/* Header with Cow Number and Primary Badges */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <h3 className="font-semibold text-lg">Cow #{cow.cowNumber}</h3>
+                    <div className="flex flex-wrap gap-2">
                       {getDeliveryBadge(cow)}
                       {getPDBadge(cow)}
                       {cow.needsMilkingMove && !cow.movedToMilking && (
@@ -364,91 +365,119 @@ export const CowSummaryDashboard: React.FC = () => {
                         </Badge>
                       )}
                     </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span className="truncate">AI: {formatDate(cow.latestAIDate)}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-muted-foreground flex-shrink-0">Service #:</span>
-                        <span>{cow.serviceNumber}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-muted-foreground flex-shrink-0">Status:</span>
-                        <span className={getStatusColor(cow.status)}>{cow.status}</span>
-                      </div>
-                      
-                      {cow.expectedDeliveryDate && (
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate">Expected: {formatDate(cow.expectedDeliveryDate)}</span>
-                        </div>
-                      )}
-                      
-                      {cow.pdDate && (
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-muted-foreground flex-shrink-0">PD:</span>
-                          <span className="truncate">{formatDate(cow.pdDate)}</span>
-                        </div>
-                      )}
-                      
-                      {cow.deliveredDate && (
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-muted-foreground flex-shrink-0">Delivered:</span>
-                          <span className="truncate">{formatDate(cow.deliveredDate)}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {cow.notes && (
-                      <div className="text-sm text-muted-foreground">
-                        <strong>Notes:</strong> {cow.notes}
-                      </div>
-                    )}
                   </div>
                   
+                  {/* Main Data Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* AI Information */}
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">AI Information</h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <span className="text-sm text-muted-foreground">AI Date:</span>
+                            <div className="font-medium">{formatDate(cow.latestAIDate)}</div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground w-16 flex-shrink-0">Service:</span>
+                          <span className="font-medium">#{cow.serviceNumber}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground w-16 flex-shrink-0">Status:</span>
+                          <span className={`font-medium ${getStatusColor(cow.status)}`}>{cow.status}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Pregnancy & Delivery Information */}
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Pregnancy & Delivery</h4>
+                      <div className="space-y-2">
+                        {cow.expectedDeliveryDate && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <span className="text-sm text-muted-foreground">Expected:</span>
+                              <div className="font-medium">{formatDate(cow.expectedDeliveryDate)}</div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {cow.pdDate ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground w-16 flex-shrink-0">PD Done:</span>
+                            <span className="font-medium">{formatDate(cow.pdDate)}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground w-16 flex-shrink-0">PD Status:</span>
+                            <span className="font-medium text-amber-600">Pending</span>
+                          </div>
+                        )}
+                        
+                        {cow.deliveredDate && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground w-16 flex-shrink-0">Delivered:</span>
+                            <span className="font-medium text-green-600">{formatDate(cow.deliveredDate)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Notes Section */}
+                  {cow.notes && (
+                    <div className="border-t pt-3">
+                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide mb-2">Notes</h4>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{cow.notes}</p>
+                    </div>
+                  )}
+                  
                   {/* Action Buttons */}
-                  <div className="flex flex-col gap-2 ml-4 flex-shrink-0">
-                    {!cow.movedToMilking && (
-                      cow.needsMilkingMove ? (
-                        <>
+                  {!cow.movedToMilking && (
+                    <div className="border-t pt-3">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        {cow.needsMilkingMove ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleUndoFlag(cow.cowId)}
+                              disabled={isUpdating}
+                              className="flex items-center justify-center gap-2"
+                            >
+                              <Undo className="h-4 w-4" />
+                              Undo Flag
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleMarkAsMoved(cow.cowId)}
+                              disabled={isUpdating}
+                              className="flex items-center justify-center gap-2"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                              Mark as Moved
+                            </Button>
+                          </>
+                        ) : (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleUndoFlag(cow.cowId)}
+                            onClick={() => handleFlagForMove(cow.cowId)}
                             disabled={isUpdating}
-                            className="flex items-center gap-1 whitespace-nowrap"
+                            className="flex items-center justify-center gap-2"
                           >
-                            <Undo className="h-4 w-4" />
-                            Undo Flag
+                            <Flag className="h-4 w-4" />
+                            Flag: Needs Move
                           </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleMarkAsMoved(cow.cowId)}
-                            disabled={isUpdating}
-                            className="flex items-center gap-1 whitespace-nowrap"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                            Mark as Moved
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleFlagForMove(cow.cowId)}
-                          disabled={isUpdating}
-                          className="flex items-center gap-1 whitespace-nowrap"
-                        >
-                          <Flag className="h-4 w-4" />
-                          Flag: Needs Move
-                        </Button>
-                      )
-                    )}
-                  </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
