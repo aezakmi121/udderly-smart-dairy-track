@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Filter, RotateCcw } from 'lucide-react';
-import { useCows } from '@/hooks/useCows';
+import { useVaccinationCows } from '@/hooks/useCows';
 import { useVaccination } from '@/hooks/useVaccination';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 
@@ -27,7 +27,7 @@ export const VaccinationFilters: React.FC<VaccinationFiltersProps> = ({
   onFiltersChange,
   onReset
 }) => {
-  const { cows } = useCows();
+  const { cows } = useVaccinationCows();
   const { schedules } = useVaccination();
 
   const updateFilter = (key: string, value: string) => {

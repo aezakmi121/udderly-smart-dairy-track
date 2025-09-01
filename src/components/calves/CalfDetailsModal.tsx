@@ -52,7 +52,7 @@ export const CalfDetailsModal: React.FC<CalfDetailsModalProps> = ({
       // Update calf status to indicate it's been promoted
       const { error: calfError } = await supabase
         .from('calves')
-        .update({ status: 'sold' as const, notes: `${calfData.notes || ''}\nPromoted to cow on ${format(new Date(), 'MMM dd, yyyy')}` })
+        .update({ status: 'promoted' as const, notes: `${calfData.notes || ''}\nPromoted to cow on ${format(new Date(), 'MMM dd, yyyy')}` })
         .eq('id', calfData.id);
 
       if (calfError) throw calfError;

@@ -1077,7 +1077,7 @@ export type Database = {
     Enums: {
       ai_status: "pending" | "done" | "failed"
       app_role: "admin" | "farmer" | "worker" | "store_manager" | "delivery_boy"
-      calf_status: "alive" | "dead" | "sold"
+      calf_status: "alive" | "dead" | "sold" | "promoted"
       cow_status: "active" | "dry" | "pregnant" | "sick" | "sold" | "dead"
       gender: "male" | "female"
       pd_result: "positive" | "negative" | "inconclusive"
@@ -1212,7 +1212,7 @@ export const Constants = {
     Enums: {
       ai_status: ["pending", "done", "failed"],
       app_role: ["admin", "farmer", "worker", "store_manager", "delivery_boy"],
-      calf_status: ["alive", "dead", "sold"],
+      calf_status: ["alive", "dead", "sold", "promoted"],
       cow_status: ["active", "dry", "pregnant", "sick", "sold", "dead"],
       gender: ["male", "female"],
       pd_result: ["positive", "negative", "inconclusive"],

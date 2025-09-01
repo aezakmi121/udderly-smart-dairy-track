@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Filter, RotateCcw } from 'lucide-react';
-import { useCows } from '@/hooks/useCows';
+import { useAICows } from '@/hooks/useCows';
 import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 
 interface AITrackingFiltersModalProps {
@@ -30,7 +30,7 @@ export const AITrackingFiltersModal: React.FC<AITrackingFiltersModalProps> = ({
   onFiltersChange,
   onReset
 }) => {
-  const { cows } = useCows();
+  const { cows } = useAICows();
 
   const updateFilter = (key: string, value: string) => {
     onFiltersChange({ ...filters, [key]: value });

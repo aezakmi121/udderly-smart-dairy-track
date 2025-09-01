@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
-import { useCows } from '@/hooks/useCows';
+import { useVaccinationCows } from '@/hooks/useCows';
 import { useVaccination } from '@/hooks/useVaccination';
 
 interface VaccinationFormProps {
@@ -38,7 +38,7 @@ export const VaccinationForm: React.FC<VaccinationFormProps> = ({ onSubmit, isLo
     setValue('vaccination_date', new Date().toISOString().split('T')[0]);
   }, [setValue]);
 
-  const { cows } = useCows();
+  const { cows } = useVaccinationCows();
   const { schedules } = useVaccination();
 
   const selectedSchedule = watch('vaccination_schedule_id');

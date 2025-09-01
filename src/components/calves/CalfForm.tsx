@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useCows } from '@/hooks/useCows';
+import { useActiveCows } from '@/hooks/useCows';
 import { useBreeds } from '@/hooks/useBreeds';
 
 interface Calf {
@@ -18,7 +18,7 @@ interface Calf {
   mother_cow_id?: string;
   breed?: string;
   birth_weight?: number;
-  status?: 'alive' | 'dead' | 'sold';
+  status?: 'alive' | 'dead' | 'sold' | 'promoted';
   image_url?: string;
   notes?: string;
 }
@@ -41,7 +41,7 @@ export const CalfForm: React.FC<CalfFormProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [selectedGender, setSelectedGender] = useState<'male' | 'female'>(selectedCalf?.gender || 'male');
   const { toast } = useToast();
-  const { cows } = useCows();
+  const { cows } = useActiveCows();
   const { breeds } = useBreeds();
 
   // Update selectedGender when selectedCalf changes (for editing)
@@ -86,7 +86,7 @@ export const CalfForm: React.FC<CalfFormProps> = ({
       mother_cow_id: formData.get('mother_cow_id') as string === 'none' ? null : formData.get('mother_cow_id') as string,
       breed: formData.get('breed') as string,
       birth_weight: parseFloat(formData.get('birth_weight') as string) || null,
-      status: formData.get('status') as 'alive' | 'dead' | 'sold',
+      status: formData.get('status') as 'alive' | 'dead' | 'sold' | 'promoted',
       notes: formData.get('notes') as string,
       image_url: selectedCalf?.image_url || null
     };

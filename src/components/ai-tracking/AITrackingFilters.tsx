@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { X, Filter } from 'lucide-react';
-import { useCows } from '@/hooks/useCows';
+import { useAICows } from '@/hooks/useCows';
 
 interface AITrackingFiltersProps {
   filters: {
@@ -24,7 +24,7 @@ export const AITrackingFilters: React.FC<AITrackingFiltersProps> = ({
   onFiltersChange,
   onReset
 }) => {
-  const { cows } = useCows();
+  const { cows } = useAICows();
 
   const handleFilterChange = (key: string, value: string) => {
     onFiltersChange({ ...filters, [key]: value });

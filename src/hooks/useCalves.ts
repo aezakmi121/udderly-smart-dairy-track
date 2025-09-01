@@ -11,7 +11,7 @@ interface Calf {
   mother_cow_id?: string;
   breed?: string;
   birth_weight?: number;
-  status?: 'alive' | 'dead' | 'sold';
+  status?: 'alive' | 'dead' | 'sold' | 'promoted';
   image_url?: string;
   notes?: string;
 }

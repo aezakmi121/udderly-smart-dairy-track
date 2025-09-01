@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useCows } from '@/hooks/useCows';
+import { useWeightLogCows } from '@/hooks/useCows';
 
 interface WeightLogFormProps {
   onSubmit: (data: any) => void;
@@ -25,7 +25,7 @@ export const WeightLogForm: React.FC<WeightLogFormProps> = ({ onSubmit, isLoadin
     }
   });
 
-  const { cows } = useCows();
+  const { cows } = useWeightLogCows();
   const heartGirth = watch('heart_girth');
   const bodyLength = watch('body_length');
 

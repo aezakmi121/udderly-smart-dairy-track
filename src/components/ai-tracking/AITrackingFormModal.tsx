@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useCows } from '@/hooks/useCows';
+import { useAICows } from '@/hooks/useCows';
 import { useAITracking } from '@/hooks/useAITracking';
 
 interface AITrackingFormModalProps {
@@ -34,7 +34,7 @@ export const AITrackingFormModal: React.FC<AITrackingFormModalProps> = ({
     }
   });
 
-  const { cows } = useCows();
+  const { cows } = useAICows();
   const { getNextServiceNumber } = useAITracking();
   const selectedCowId = watch('cow_id');
 

@@ -6,13 +6,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { UserPlus, X } from 'lucide-react';
 import { useCowGrouping } from '@/hooks/useCowGrouping';
-import { useCows } from '@/hooks/useCows';
+import { useGroupAssignmentCows } from '@/hooks/useCows';
 
 export const GroupAssignments = () => {
   const [selectedCow, setSelectedCow] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
   const { cowGroups, groupAssignments, assignCowToGroupMutation, unassignCowMutation, isLoading } = useCowGrouping();
-  const { cows } = useCows();
+  const { cows } = useGroupAssignmentCows();
 
   const handleAssignCow = async () => {
     if (!selectedCow || !selectedGroup) return;
@@ -32,7 +32,7 @@ export const GroupAssignments = () => {
 
   const getUnassignedCows = () => {
     const assignedCowIds = groupAssignments?.map(assignment => assignment.cow_id) || [];
-    return cows?.filter(cow => !assignedCowIds.includes(cow.id) && cow.status === 'active') || [];
+    return cows?.filter(cow => !assignedCowIds.includes(cow.id)) || [];
   };
 
   if (isLoading) {

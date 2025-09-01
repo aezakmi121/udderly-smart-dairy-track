@@ -11,7 +11,7 @@ interface Calf {
   mother_cow_id?: string;
   breed?: string;
   birth_weight?: number;
-  status?: 'alive' | 'dead' | 'sold';
+  status?: 'alive' | 'dead' | 'sold' | 'promoted';
   image_url?: string;
   notes?: string;
 }
@@ -33,6 +33,7 @@ export const CalfDetailsDialog: React.FC<CalfDetailsDialogProps> = ({
     switch (status) {
       case 'alive': return 'bg-green-100 text-green-800';
       case 'sold': return 'bg-blue-100 text-blue-800';
+      case 'promoted': return 'bg-purple-100 text-purple-800';
       case 'dead': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
