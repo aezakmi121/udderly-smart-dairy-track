@@ -26,26 +26,28 @@ export const useUserPermissions = () => {
   const isAdmin = roles?.includes('admin') ?? false;
   const isFarmWorker = roles?.includes('worker') ?? false;
   const isCollectionCentre = roles?.includes('farmer') ?? false;
+  const hasNoRole = !roles || roles.length === 0;
 
-  const primaryRole = isAdmin ? 'admin' : isFarmWorker ? 'worker' : isCollectionCentre ? 'farmer' : 'worker';
+  const primaryRole = isAdmin ? 'admin' : isFarmWorker ? 'worker' : isCollectionCentre ? 'farmer' : hasNoRole ? 'none' : 'worker';
 
   return {
     userRole: primaryRole,
     isAdmin,
     isFarmWorker,
     isCollectionCentre,
+    hasNoRole,
     canEdit: {
-      cows: isAdmin || isFarmWorker,
-      calves: isAdmin || isFarmWorker,
-      farmers: isAdmin,
-      milkProduction: isAdmin || isFarmWorker,
-      milkCollection: isAdmin || isCollectionCentre,
-      weightLogs: isAdmin || isFarmWorker,
-      vaccination: isAdmin || isFarmWorker,
-      aiTracking: isAdmin || isFarmWorker,
-      feedManagement: isAdmin || isFarmWorker,
-      analytics: isAdmin || isFarmWorker,
-      settings: isAdmin,
+      cows: !hasNoRole && (isAdmin || isFarmWorker),
+      calves: !hasNoRole && (isAdmin || isFarmWorker),
+      farmers: !hasNoRole && isAdmin,
+      milkProduction: !hasNoRole && (isAdmin || isFarmWorker),
+      milkCollection: !hasNoRole && (isAdmin || isCollectionCentre),
+      weightLogs: !hasNoRole && (isAdmin || isFarmWorker),
+      vaccination: !hasNoRole && (isAdmin || isFarmWorker),
+      aiTracking: !hasNoRole && (isAdmin || isFarmWorker),
+      feedManagement: !hasNoRole && (isAdmin || isFarmWorker),
+      analytics: !hasNoRole && (isAdmin || isFarmWorker),
+      settings: !hasNoRole && isAdmin,
     }
   };
 };

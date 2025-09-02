@@ -4,6 +4,49 @@
 
 **URL**: https://lovable.dev/projects/2d32d2de-68e0-4e6c-a137-eb09985ceae9
 
+## Setup
+
+### Environment Variables
+
+1. Copy the environment template:
+   ```sh
+   cp .env.example .env
+   ```
+
+2. Get your Supabase credentials from the [Supabase Dashboard](https://supabase.com/dashboard):
+   - `VITE_SUPABASE_URL`: Your project URL (Settings → API)
+   - `VITE_SUPABASE_ANON_KEY`: Your anon/public key (Settings → API)
+
+3. Update `.env` with your actual values.
+
+### Database Setup
+
+1. Go to your [Supabase SQL Editor](https://supabase.com/dashboard/project/gjimccbtclynetngfrpw/sql/new)
+2. Open `db/seed.sql` from this repository
+3. Replace `<AUTH_UUID>` with your actual user UUID (found in Auth → Users after first login)
+4. Run the SQL script to create your admin role
+
+### First Login & RBAC
+
+- **First-time users** will see an "Access Pending" screen until an admin assigns them a role
+- **Admin users** can assign roles via the Settings page
+- **Role types**:
+  - `admin`: Full system access
+  - `worker`: Farm operations (cows, milk, feed management)
+  - `farmer`: Collection center operations
+
+### PWA Setup
+
+- Service Worker is configured for offline functionality
+- For production PWA features, consider upgrading to [Workbox](https://workboxjs.org/) or [vite-plugin-pwa](https://vite-pwa-org.netlify.app/)
+- Current caching strategy:
+  - Cache-first for built assets (`/assets/*`)
+  - Network-first for navigation and pages
+
+### Package Management
+
+We use **npm** as the package manager. Please delete any other lockfiles (`yarn.lock`, `bun.lockb`, etc.) if present.
+
 ## How can I edit this code?
 
 There are several ways of editing your application.
