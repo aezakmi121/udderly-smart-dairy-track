@@ -4,6 +4,42 @@
 
 **URL**: https://lovable.dev/projects/2d32d2de-68e0-4e6c-a137-eb09985ceae9
 
+## Monthly Rate Upload (Excel, two tabs)
+
+This application supports Excel-based Fat-SNF rate charts with versioned effective dates.
+
+### Excel Template Format
+
+Your Excel file must contain exactly two tabs named "Buffalo" and "Cow". Each tab should follow this layout:
+
+- **Row 2**: SNF values starting from column B (e.g., B2=8.0, C2=8.5, D2=9.0...)
+- **Column A from row 3**: Fat values (e.g., A3=3.0, A4=3.5, A5=4.0...)  
+- **Rate grid**: Starts from B3 (intersection of Fat and SNF values)
+
+### Dynamic Bounds
+
+The parser automatically detects axis lengths, so you can:
+- Extend SNF to the right (e.g., up to 12.0)
+- Add more Fat rows downward
+- No layout shifts needed - just add data at the edges
+
+### Upload Process
+
+1. Navigate to Settings > Milk Rates
+2. Click "Upload Excel Rate Matrix"
+3. Select your .xlsx file and set the effective date
+4. Review the upload summary showing species, axis counts, and rows processed
+
+### Rate Calculation
+
+During milk collection:
+- Select Species (Buffalo/Cow), enter Fat %, SNF %, and date
+- The system finds the appropriate rate using floor logic (largest value ≤ input)
+- Shows a badge indicating the rate version used
+- Fallback to legacy rates if no matrix data available
+
+---
+
 ## Setup
 
 ### Environment Variables

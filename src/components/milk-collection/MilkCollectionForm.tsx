@@ -9,7 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMilkCollection } from '@/hooks/useMilkCollection';
 import { useMilkRateSettings } from '@/hooks/useMilkRateSettings';
+import { useRateMatrix } from '@/hooks/useRateMatrix';
 import { useAppSetting } from '@/hooks/useAppSettings';
+import { Badge } from '@/components/ui/badge';
 
 interface MilkCollectionFormProps {
   onSubmit: (data: any) => void;
@@ -25,6 +27,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   const { register, handleSubmit, setValue, watch, reset } = useForm({
     defaultValues: initialData ? {
       farmer_id: initialData.farmer_id || '',
+      species: initialData.species || 'Cow',
       collection_date: initialData.collection_date || selectedDate,
       session: initialData.session || selectedSession,
       quantity: initialData.quantity?.toString() || '',
@@ -35,6 +38,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
       remarks: initialData.remarks || ''
     } : {
       farmer_id: '',
+      species: 'Cow',
       collection_date: selectedDate,
       session: selectedSession,
       quantity: '',
@@ -48,13 +52,31 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
 
   const { farmers } = useMilkCollection();
   const { calculateRate } = useMilkRateSettings();
+  const { getRateQuery } = useRateMatrix();
   
   const quantity = watch('quantity');
   const fatPercentage = watch('fat_percentage');
   const snfPercentage = watch('snf_percentage');
   const manualAmount = watch('total_amount');
+  const collectionDate = watch('collection_date');
+  const species = watch('species');
 
-  const calculatedRate = calculateRate(Number(fatPercentage) || 0, Number(snfPercentage) || 0);
+  // Try matrix-based rate calculation first, fallback to legacy
+  const matrixRateQuery = getRateQuery(
+    species || 'Cow',
+    Number(fatPercentage) || 0,
+    Number(snfPercentage) || 0,
+    collectionDate
+  );
+
+  const legacyRate = calculateRate(Number(fatPercentage) || 0, Number(snfPercentage) || 0);
+  const matrixRate = matrixRateQuery.data?.rate || 0;
+  const effectiveFrom = matrixRateQuery.data?.effective_from;
+  
+  // Use matrix rate if available, otherwise fallback to legacy
+  const calculatedRate = matrixRate > 0 ? matrixRate : legacyRate;
+  const hasMatrixRate = matrixRate > 0;
+
   const { value: modeSetting } = useAppSetting<{ mode: 'auto' | 'manual' }>('milk_rate_mode');
   const isAuto = (modeSetting?.mode ?? 'auto') === 'auto';
   const totalAmount = isAuto 
@@ -112,6 +134,19 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
                     {farmer.name} ({farmer.farmer_code})
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="species">Species</Label>
+            <Select value={watch('species')} onValueChange={(value) => setValue('species', value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select species" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Cow">Cow</SelectItem>
+                <SelectItem value="Buffalo">Buffalo</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -175,7 +210,23 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
                 <div className="text-lg font-medium text-blue-600">
                   ₹{calculatedRate.toFixed(2)}
                 </div>
-                <p className="text-xs text-muted-foreground">Based on current rate setting</p>
+                <div className="flex flex-wrap items-center gap-1 mt-1">
+                  {hasMatrixRate && effectiveFrom && (
+                    <Badge variant="secondary" className="text-xs">
+                      Matrix rate ≤ {effectiveFrom}
+                    </Badge>
+                  )}
+                  {!hasMatrixRate && calculatedRate > 0 && (
+                    <Badge variant="outline" className="text-xs">
+                      Legacy rate
+                    </Badge>
+                  )}
+                  {!hasMatrixRate && calculatedRate === 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      No rates available
+                    </Badge>
+                  )}
+                </div>
               </div>
 
               <div>

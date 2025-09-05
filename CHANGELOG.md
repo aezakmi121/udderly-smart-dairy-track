@@ -1,5 +1,39 @@
 # Changelog
 
+## [2024-12-XX] - Excel Rate Matrix System
+
+### Added
+- **Excel-based Rate Matrix**: Support for monthly Excel uploads with Buffalo/Cow tabs containing Fat-SNF rate charts
+- **Dynamic Axis Detection**: Auto-detects SNF and Fat axis lengths from Excel headers  
+- **Rate Matrix Upload Modal**: Complete UI for uploading .xlsx files with progress tracking and results summary
+- **Species Selection**: Added species dropdown (Buffalo/Cow) in milk collection form
+- **Matrix Rate Calculation**: New `fn_get_rate` RPC function with floor logic for rate lookup
+- **Rate Version Badges**: Visual indicators showing matrix rate vs legacy rate usage
+- **Versioned Effective Dates**: Support for historical rate lookups by date
+
+### Changed  
+- **MilkCollectionForm**: Now uses matrix-based rates with fallback to legacy rates
+- **MilkRateSettings**: Added Excel upload section alongside existing single rate form
+- **Rate Display**: Enhanced with badges showing rate source and effective date
+
+### Technical
+- New `rate_matrix` table with species, fat, snf, rate, and effective_from columns
+- New `upload-rate-matrix` edge function for Excel processing using XLSX library
+- New `useRateMatrix` hook for debounced rate queries
+- Backward compatibility maintained with existing `milk_rates` table
+
+### Files Modified
+- `src/components/settings/MilkRateSettings.tsx` - Added Excel upload functionality
+- `src/components/milk-collection/MilkCollectionForm.tsx` - Matrix rate integration with species selection
+- `README.md` - Added Excel rate matrix documentation
+
+### Files Added
+- `supabase/functions/upload-rate-matrix/index.ts` - Excel processing edge function
+- `src/components/settings/RateMatrixUploadModal.tsx` - Upload UI component
+- `src/hooks/useRateMatrix.ts` - Rate calculation hook
+
+---
+
 ## Configuration & Infrastructure Improvements
 
 ### Fixed

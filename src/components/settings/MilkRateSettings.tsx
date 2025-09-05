@@ -1,15 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MilkRateForm } from './MilkRateForm';
 import { MilkRateTable } from './MilkRateTable';
+import { RateMatrixUploadModal } from './RateMatrixUploadModal';
 import { useMilkRateSettings } from '@/hooks/useMilkRateSettings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { FileSpreadsheet } from 'lucide-react';
 import { useAppSetting } from '@/hooks/useAppSettings';
 
 export const MilkRateSettings = () => {
   const { rateSettings, isLoading, addRateSettingMutation } = useMilkRateSettings();
   const { value: modeSetting, save } = useAppSetting<{ mode: 'auto' | 'manual' }>('milk_rate_mode');
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
   const handleAddRateSetting = (data: any) => {
     addRateSettingMutation.mutate(data);
@@ -51,6 +55,28 @@ export const MilkRateSettings = () => {
         </CardContent>
       </Card>
 
+      {/* Excel Upload Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            Rate Matrix Upload
+            <Button 
+              onClick={() => setUploadModalOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Upload Excel Rate Matrix
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-muted-foreground">
+            Upload monthly Excel files with Buffalo and Cow rate charts. Each tab should contain Fat-SNF matrix with dynamic bounds.
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Legacy Single Rate Form */}
       <MilkRateForm onSubmit={handleAddRateSetting} isLoading={addRateSettingMutation.isPending} />
 
       <Card>
@@ -61,6 +87,11 @@ export const MilkRateSettings = () => {
           <MilkRateTable rateSettings={rateSettings || []} isLoading={isLoading} />
         </CardContent>
       </Card>
+
+      <RateMatrixUploadModal 
+        open={uploadModalOpen} 
+        onOpenChange={setUploadModalOpen} 
+      />
     </div>
   );
 };
