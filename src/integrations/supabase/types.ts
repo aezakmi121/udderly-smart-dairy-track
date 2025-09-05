@@ -885,6 +885,33 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_matrix: {
+        Row: {
+          effective_from: string
+          fat: number
+          inserted_at: string | null
+          rate: number
+          snf: number
+          species: string
+        }
+        Insert: {
+          effective_from: string
+          fat: number
+          inserted_at?: string | null
+          rate: number
+          snf: number
+          species: string
+        }
+        Update: {
+          effective_from?: string
+          fat?: number
+          inserted_at?: string | null
+          rate?: number
+          snf?: number
+          species?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           assigned_at: string | null
@@ -1061,6 +1088,18 @@ export type Database = {
       create_daily_deliveries_for_date: {
         Args: { target_date?: string }
         Returns: number
+      }
+      fn_get_rate: {
+        Args: {
+          p_date?: string
+          p_fat: number
+          p_snf: number
+          p_species: string
+        }
+        Returns: {
+          effective_from: string
+          rate: number
+        }[]
       }
       get_user_role: {
         Args: { _user_id: string }
