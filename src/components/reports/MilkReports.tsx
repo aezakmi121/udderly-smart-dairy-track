@@ -95,7 +95,8 @@ export const MilkReports = () => {
     }
 
     try {
-      const { data: reportData, error } = await supabase
+      // Fetch production data
+      const { data: productionData, error: prodError } = await supabase
         .from('milk_production')
         .select(`
           *,
@@ -105,21 +106,60 @@ export const MilkReports = () => {
         .lte('production_date', toDate)
         .order('production_date', { ascending: false });
 
-      if (error) throw error;
+      // Fetch collection data
+      const { data: collectionData, error: collError } = await supabase
+        .from('milk_collections')
+        .select(`
+          *,
+          farmers!milk_collections_farmer_id_fkey (name, farmer_code)
+        `)
+        .gte('collection_date', fromDate)
+        .lte('collection_date', toDate)
+        .order('collection_date', { ascending: false });
 
-      const headers = ['production_date', 'cow_number', 'session', 'quantity', 'fat_percentage', 'snf_percentage'];
-      const exportData = reportData.map(record => ({
-        production_date: record.production_date,
-        cow_number: record.cows?.cow_number || 'N/A',
-        session: record.session,
-        quantity: record.quantity,
-        fat_percentage: record.fat_percentage || 0,
-        snf_percentage: record.snf_percentage || 0
-      }));
+      if (prodError || collError) {
+        console.error('Error fetching data:', prodError || collError);
+        alert('Error fetching report data. Please try again.');
+        return;
+      }
 
-      exportToCSV(exportData, 'custom_milk_report', headers);
+      // Export production data
+      if (productionData && productionData.length > 0) {
+        const prodHeaders = ['production_date', 'cow_number', 'session', 'quantity', 'fat_percentage', 'snf_percentage'];
+        const prodExportData = productionData.map(record => ({
+          production_date: record.production_date,
+          cow_number: record.cows?.cow_number || 'N/A',
+          session: record.session,
+          quantity: record.quantity,
+          fat_percentage: record.fat_percentage || 0,
+          snf_percentage: record.snf_percentage || 0
+        }));
+        exportToCSV(prodExportData, 'custom_production_report', prodHeaders);
+      }
+
+      // Export collection data
+      if (collectionData && collectionData.length > 0) {
+        const collHeaders = ['collection_date', 'farmer_name', 'farmer_code', 'session', 'quantity', 'fat_percentage', 'snf_percentage', 'rate_per_liter', 'total_amount'];
+        const collExportData = collectionData.map(record => ({
+          collection_date: record.collection_date,
+          farmer_name: record.farmers?.name || 'N/A',
+          farmer_code: record.farmers?.farmer_code || 'N/A',
+          session: record.session,
+          quantity: record.quantity,
+          fat_percentage: record.fat_percentage,
+          snf_percentage: record.snf_percentage,
+          rate_per_liter: record.rate_per_liter,
+          total_amount: record.total_amount
+        }));
+        exportToCSV(collExportData, 'custom_collection_report', collHeaders);
+      }
+
+      if ((!productionData || productionData.length === 0) && (!collectionData || collectionData.length === 0)) {
+        alert('No data found for the selected date range.');
+      }
     } catch (error) {
       console.error('Error generating report:', error);
+      alert('Error generating report. Please try again.');
     }
   };
 
@@ -134,7 +174,11 @@ export const MilkReports = () => {
         .order('production_date', { ascending: false })
         .limit(1000);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error exporting production data:', error);
+        alert('Error exporting production data. Please try again.');
+        return;
+      }
 
       const headers = ['production_date', 'cow_number', 'session', 'quantity', 'fat_percentage', 'snf_percentage'];
       const exportData = data.map(record => ({
@@ -149,6 +193,7 @@ export const MilkReports = () => {
       exportToCSV(exportData, 'milk_production_report', headers);
     } catch (error) {
       console.error('Error exporting production data:', error);
+      alert('Error exporting production data. Please try again.');
     }
   };
 
@@ -158,12 +203,16 @@ export const MilkReports = () => {
         .from('milk_collections')
         .select(`
           *,
-          farmers!farmer_id (name, farmer_code)
+          farmers!milk_collections_farmer_id_fkey (name, farmer_code)
         `)
         .order('collection_date', { ascending: false })
         .limit(1000);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error exporting collection data:', error);
+        alert('Error exporting collection data. Please try again.');
+        return;
+      }
 
       const headers = ['collection_date', 'farmer_name', 'farmer_code', 'session', 'quantity', 'fat_percentage', 'snf_percentage', 'rate_per_liter', 'total_amount'];
       const exportData = data.map(record => ({
@@ -181,6 +230,7 @@ export const MilkReports = () => {
       exportToCSV(exportData, 'milk_collection_report', headers);
     } catch (error) {
       console.error('Error exporting collection data:', error);
+      alert('Error exporting collection data. Please try again.');
     }
   };
 
