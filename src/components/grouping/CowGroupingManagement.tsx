@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BaseManagement, TabConfig } from '@/components/common/BaseManagement';
+import { ManagementLayout, TabConfig } from '@/components/common/ManagementLayout';
 import { CowGroupsList } from './CowGroupsList';
 import { GroupAssignments } from './GroupAssignments';
 import { GroupingRecommendations } from './GroupingRecommendations';
@@ -17,7 +17,7 @@ const tabs: TabConfig[] = [
 
 export const CowGroupingManagement = () => {
   return (
-    <BaseManagement
+    <ManagementLayout
       title="Cow Grouping Management"
       description="Manage cow groups, assignments, and automated grouping based on production metrics."
       tabs={tabs}

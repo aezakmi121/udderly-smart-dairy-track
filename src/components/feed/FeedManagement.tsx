@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BaseManagement, TabConfig } from '@/components/common/BaseManagement';
+import { ManagementLayout, TabConfig } from '@/components/common/ManagementLayout';
 import { FeedCategories } from './FeedCategories';
 import { FeedItems } from './FeedItems';
 import { FeedTransactions } from './FeedTransactions';
@@ -17,7 +17,7 @@ const tabs: TabConfig[] = [
 
 export const FeedManagement = () => {
   return (
-    <BaseManagement
+    <ManagementLayout
       title="Feed & Stock Management"
       description="Manage feed categories, items, and stock transactions."
       tabs={tabs}

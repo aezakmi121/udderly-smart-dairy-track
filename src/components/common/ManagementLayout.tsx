@@ -8,15 +8,15 @@ export interface TabConfig {
   mobileLabel?: string;
 }
 
-interface BaseManagementProps {
+interface ManagementLayoutProps {
   title: string;
-  description: string;
+  description?: string;
   tabs: TabConfig[];
   defaultTab?: string;
   className?: string;
 }
 
-export const BaseManagement: React.FC<BaseManagementProps> = ({
+export const ManagementLayout: React.FC<ManagementLayoutProps> = ({
   title,
   description,
   tabs,
@@ -27,7 +27,7 @@ export const BaseManagement: React.FC<BaseManagementProps> = ({
     <div className={`space-y-6 ${className}`}>
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h1>
-        <p className="text-muted-foreground">{description}</p>
+        {description && <p className="text-muted-foreground">{description}</p>}
       </div>
 
       <Tabs defaultValue={defaultTab || tabs[0]?.id} className="space-y-6">

@@ -184,7 +184,7 @@ export const useNotifications = () => {
         });
 
       } catch (error) {
-        console.error('Error fetching notifications:', error);
+        throw error;
       }
 
       // Sort by priority and created_at
@@ -224,6 +224,7 @@ export const useNotifications = () => {
 
   // Sync read state across components and tabs
   useEffect(() => {
+    const sync = () => {
       try {
         const stored = JSON.parse(localStorage.getItem('notification_read_ids') || '[]');
         const current = Array.from(readIds);
@@ -235,6 +236,8 @@ export const useNotifications = () => {
       } catch {
         // Ignore storage errors
       }
+    };
+
     window.addEventListener('notifications:read-changed', sync as EventListener);
     window.addEventListener('storage', sync);
     return () => {

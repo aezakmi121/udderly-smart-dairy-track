@@ -158,11 +158,7 @@ export const usePushNotifications = () => {
   };
 
   const testNotification = async () => {
-    console.log('Test notification called, isSupported:', isSupported, 'isEnabled:', isEnabled, 'token:', token);
-    console.log('Notification permission:', Notification.permission);
-    
     if (!isSupported) {
-      console.log('Browser not supported');
       toast({
         title: 'Not Supported',
         description: 'Push notifications are not supported in this browser.',
@@ -172,7 +168,6 @@ export const usePushNotifications = () => {
     }
 
     if (!isEnabled || !token) {
-      console.log('Notifications not enabled or no token');
       toast({
         title: 'Notifications Not Enabled',
         description: 'Please enable notifications first.',
@@ -184,7 +179,6 @@ export const usePushNotifications = () => {
     try {
       // Check if permission is still granted
       if (Notification.permission !== 'granted') {
-        console.log('Permission not granted:', Notification.permission);
         toast({
           title: 'Permission Required',
           description: 'Please grant notification permission to send test notifications.',
@@ -193,12 +187,9 @@ export const usePushNotifications = () => {
         return;
       }
 
-      console.log('Attempting to show notification via service worker...');
-
       // Use service worker registration to show notification
       if ('serviceWorker' in navigator) {
         const registration = await navigator.serviceWorker.ready;
-        console.log('Service worker registration:', registration);
         
         await registration.showNotification('Test Notification', {
           body: 'This is a test notification from Dairy Farm Manager! 🥛',
@@ -209,8 +200,6 @@ export const usePushNotifications = () => {
           silent: false
         });
 
-        console.log('Notification sent via service worker');
-
         toast({
           title: 'Test Sent',
           description: 'Test notification sent successfully!',
@@ -220,7 +209,6 @@ export const usePushNotifications = () => {
       }
 
     } catch (error) {
-      console.error('Error sending test notification:', error);
       toast({
         title: 'Send Error',
         description: `Failed to send test notification: ${error instanceof Error ? error.message : 'Unknown error'}`,

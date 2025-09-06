@@ -20,8 +20,7 @@ export const useRateMatrix = () => {
           });
 
         if (error) {
-          console.error('Error getting rate:', error);
-          // Don't throw error, return null to fallback to legacy rate
+          // Ignore error, return null to fallback to legacy rate
           return null;
         }
 
