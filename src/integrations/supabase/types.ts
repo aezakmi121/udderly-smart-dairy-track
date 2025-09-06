@@ -608,6 +608,7 @@ export type Database = {
           remarks: string | null
           session: Database["public"]["Enums"]["session_type"]
           snf_percentage: number
+          species: string
           total_amount: number
         }
         Insert: {
@@ -622,6 +623,7 @@ export type Database = {
           remarks?: string | null
           session: Database["public"]["Enums"]["session_type"]
           snf_percentage: number
+          species?: string
           total_amount: number
         }
         Update: {
@@ -636,6 +638,7 @@ export type Database = {
           remarks?: string | null
           session?: Database["public"]["Enums"]["session_type"]
           snf_percentage?: number
+          species?: string
           total_amount?: number
         }
         Relationships: [
