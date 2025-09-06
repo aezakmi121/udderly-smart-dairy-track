@@ -143,8 +143,11 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   }, [initialData, selectedDate, selectedSession, setValue]);
 
   const handleFormSubmit = (data: any) => {
+    // Exclude farmer_code since it's not a database column - only farmer_id is stored
+    const { farmer_code, ...dbData } = data;
+    
     const submitData = {
-      ...data,
+      ...dbData,
       quantity: Number(data.quantity),
       fat_percentage: Number(data.fat_percentage),
       snf_percentage: Number(data.snf_percentage),
