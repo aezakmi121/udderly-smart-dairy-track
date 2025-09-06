@@ -26,6 +26,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   
   const { register, handleSubmit, setValue, watch, reset } = useForm({
     defaultValues: initialData ? {
+      farmer_code: initialData.farmers?.farmer_code || '',
       farmer_id: initialData.farmer_id || '',
       species: initialData.species || 'Cow',
       collection_date: initialData.collection_date || selectedDate,
@@ -37,6 +38,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
       is_accepted: initialData.is_accepted ?? true,
       remarks: initialData.remarks || ''
     } : {
+      farmer_code: '',
       farmer_id: '',
       species: 'Cow',
       collection_date: selectedDate,
@@ -60,6 +62,18 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   const manualAmount = watch('total_amount');
   const collectionDate = watch('collection_date');
   const species = watch('species');
+  const farmerCode = watch('farmer_code');
+
+  // Find farmer by code and set farmer_id
+  const selectedFarmer = farmers?.find(farmer => farmer.farmer_code === farmerCode);
+  
+  React.useEffect(() => {
+    if (selectedFarmer) {
+      setValue('farmer_id', selectedFarmer.id);
+    } else {
+      setValue('farmer_id', '');
+    }
+  }, [selectedFarmer, setValue]);
 
   // Get species detection thresholds from settings
   const { value: thresholds } = useAppSetting<{
@@ -156,19 +170,24 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
       <CardContent>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="farmer_id">Farmer</Label>
-            <Select onValueChange={(value) => setValue('farmer_id', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a farmer" />
-              </SelectTrigger>
-              <SelectContent>
-                {farmers?.map((farmer) => (
-                  <SelectItem key={farmer.id} value={farmer.id}>
-                    {farmer.name} ({farmer.farmer_code})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="farmer_code">Farmer Code</Label>
+            <Input
+              type="text"
+              {...register('farmer_code', { required: true })}
+              placeholder="Enter farmer code"
+            />
+            {selectedFarmer && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {selectedFarmer.name}
+              </p>
+            )}
+            {farmerCode && !selectedFarmer && (
+              <p className="text-sm text-destructive mt-1">
+                Farmer code not found
+              </p>
+            )}
+            {/* Hidden input to submit farmer_id */}
+            <input type="hidden" {...register('farmer_id')} />
           </div>
 
           {isAuto && (
