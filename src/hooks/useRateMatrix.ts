@@ -32,7 +32,7 @@ export const useRateMatrix = () => {
         return data[0] as RateResult;
       },
       enabled: !!(species && fat > 0 && snf > 0),
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 0, // Always fresh data after cache invalidation
     });
   };
 

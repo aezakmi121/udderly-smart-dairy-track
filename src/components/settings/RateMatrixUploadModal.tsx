@@ -79,10 +79,11 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
       setUploadStatus('success');
       setResults(data.results);
       
-      // Invalidate rate matrix cache so new rates take effect immediately
-      queryClient.invalidateQueries({ queryKey: ['rate-matrix'] });
-      queryClient.invalidateQueries({ queryKey: ['rate-matrix-dates'] });
-      queryClient.invalidateQueries({ queryKey: ['rate-matrix-viewer'] });
+      // Invalidate all rate matrix related cache so new rates take effect immediately
+      await queryClient.invalidateQueries({ queryKey: ['rate-matrix'] });
+      await queryClient.invalidateQueries({ queryKey: ['rate-matrix-dates'] });
+      await queryClient.invalidateQueries({ queryKey: ['rate-matrix-viewer'] });
+      await queryClient.refetchQueries({ queryKey: ['rate-matrix'] });
       
       toast({
         title: "Rate matrix uploaded successfully!",
@@ -249,21 +250,21 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
 
           {/* Actions */}
           <div className="flex justify-between">
-            <Button variant="outline" onClick={handleClose}>
-              {uploadStatus === 'success' ? 'Close' : 'Cancel'}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleClose}>
+                {uploadStatus === 'success' ? 'Close' : 'Cancel'}
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => setShowViewer(true)}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                View Current Rates
+              </Button>
+            </div>
             
             <div className="flex gap-2">
-              {uploadStatus === 'success' && (
-                <Button
-                  variant="outline"
-                  onClick={() => setShowViewer(true)}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Latest Rates
-                </Button>
-              )}
-              
               {uploadStatus === 'idle' && (
                 <Button 
                   onClick={handleUpload} 

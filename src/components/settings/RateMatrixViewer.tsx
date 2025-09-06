@@ -44,7 +44,8 @@ export const RateMatrixViewer: React.FC<RateMatrixViewerProps> = ({
       const uniqueDates = [...new Set(data.map(item => item.effective_from))];
       return uniqueDates;
     },
-    enabled: open
+    enabled: open,
+    staleTime: 0 // Always fresh data
   });
 
   // Get rate matrix data
@@ -68,7 +69,8 @@ export const RateMatrixViewer: React.FC<RateMatrixViewerProps> = ({
       if (error) throw error;
       return data as RateMatrixEntry[];
     },
-    enabled: open && !!effectiveDates
+    enabled: open && !!effectiveDates,
+    staleTime: 0 // Always fresh data
   });
 
   // Process data into grid format
