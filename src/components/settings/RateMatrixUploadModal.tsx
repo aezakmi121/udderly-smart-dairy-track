@@ -79,11 +79,19 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
       setUploadStatus('success');
       setResults(data.results);
       
-      // Invalidate all rate matrix related cache so new rates take effect immediately
-      await queryClient.invalidateQueries({ queryKey: ['rate-matrix'] });
-      await queryClient.invalidateQueries({ queryKey: ['rate-matrix-dates'] });
-      await queryClient.invalidateQueries({ queryKey: ['rate-matrix-viewer'] });
-      await queryClient.refetchQueries({ queryKey: ['rate-matrix'] });
+      // Force complete cache refresh for all rate-related queries
+      await queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && key.includes('rate');
+        }
+      });
+      
+      // Clear all cached data and force refetch
+      await queryClient.clear();
+      
+      // Wait a moment for cache to clear
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       toast({
         title: "Rate matrix uploaded successfully!",
