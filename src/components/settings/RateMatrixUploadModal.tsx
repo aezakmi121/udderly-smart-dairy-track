@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { RateMatrixViewer } from './RateMatrixViewer';
 
 interface RateMatrixUploadModalProps {
   open: boolean;
@@ -32,7 +34,9 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'parsing' | 'upserting' | 'success' | 'error'>('idle');
   const [results, setResults] = useState<UploadResult[]>([]);
   const [error, setError] = useState<string>('');
+  const [showViewer, setShowViewer] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -74,6 +78,11 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
 
       setUploadStatus('success');
       setResults(data.results);
+      
+      // Invalidate rate matrix cache so new rates take effect immediately
+      queryClient.invalidateQueries({ queryKey: ['rate-matrix'] });
+      queryClient.invalidateQueries({ queryKey: ['rate-matrix-dates'] });
+      queryClient.invalidateQueries({ queryKey: ['rate-matrix-viewer'] });
       
       toast({
         title: "Rate matrix uploaded successfully!",
@@ -248,10 +257,7 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
               {uploadStatus === 'success' && (
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    // Navigate to rate viewer - placeholder for now
-                    toast({ title: "Rate viewer feature coming soon!" });
-                  }}
+                  onClick={() => setShowViewer(true)}
                 >
                   <Eye className="h-4 w-4 mr-2" />
                   View Latest Rates
@@ -277,6 +283,11 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
           </div>
         </div>
       </DialogContent>
+      
+      <RateMatrixViewer 
+        open={showViewer} 
+        onOpenChange={setShowViewer} 
+      />
     </Dialog>
   );
 };
