@@ -30,7 +30,7 @@ export const MilkCollectionModal: React.FC<MilkCollectionModalProps> = ({
   const setOpen = externalOnOpenChange || setInternalOpen;
 
   const handleSubmit = (data: any) => {
-    console.log('Submitting milk collection:', data);
+    
     onSubmit(data);
     // Don't close modal here - let the mutation success handler close it
   };

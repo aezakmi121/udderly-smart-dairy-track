@@ -118,7 +118,7 @@ export const VaccinationManagement = () => {
   };
 
   const handleAddRecord = (data: any) => {
-    console.log('VaccinationManagement - submitting:', data);
+    
     addRecordMutation.mutate(data);
   };
 

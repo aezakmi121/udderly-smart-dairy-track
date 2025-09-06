@@ -36,7 +36,7 @@ export const WeightLogsManagement = () => {
   };
 
   const handleAddLog = (data: any) => {
-    console.log('WeightLogsManagement - submitting:', data);
+    
     addWeightLogMutation.mutate(data);
   };
 

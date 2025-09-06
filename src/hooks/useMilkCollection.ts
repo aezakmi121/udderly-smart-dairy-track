@@ -24,7 +24,7 @@ export const useMilkCollection = (selectedDate?: string, selectedSession?: 'morn
   const { data: collections, isLoading, error } = useQuery({
     queryKey: ['milk-collections', selectedDate ?? 'all', selectedSession ?? 'all'],
     queryFn: async () => {
-      console.log('Fetching milk collections...');
+      
       let query = supabase
         .from('milk_collections')
         .select(`
@@ -42,10 +42,10 @@ export const useMilkCollection = (selectedDate?: string, selectedSession?: 'morn
       const { data, error } = await query.order('collection_date', { ascending: false });
       
       if (error) {
-        console.error('Error fetching milk collections:', error);
+        
         throw error;
       }
-      console.log('Milk collections fetched:', data);
+      
       return data;
     }
   });
@@ -110,12 +110,12 @@ export const useMilkCollection = (selectedDate?: string, selectedSession?: 'morn
       return data;
     },
     onSuccess: (data) => {
-      console.log('Milk collection added successfully:', data);
+      
       queryClient.invalidateQueries({ queryKey: ['milk-collections'] });
       toast({ title: "Milk collection recorded successfully!" });
     },
     onError: (error) => {
-      console.error('Error adding milk collection:', error);
+      
       toast({ 
         title: "Failed to record milk collection", 
         description: error.message,

@@ -20,7 +20,7 @@ export const useWeightLogs = () => {
   const { data: weightLogs, isLoading, error } = useQuery({
     queryKey: ['weight-logs'],
     queryFn: async () => {
-      console.log('Fetching weight logs...');
+      
       const { data, error } = await supabase
         .from('weight_logs')
         .select(`
@@ -30,10 +30,10 @@ export const useWeightLogs = () => {
         .order('log_date', { ascending: false });
       
       if (error) {
-        console.error('Error fetching weight logs:', error);
+        
         throw error;
       }
-      console.log('Weight logs fetched:', data);
+      
       return data;
     }
   });
@@ -54,12 +54,12 @@ export const useWeightLogs = () => {
       return data;
     },
     onSuccess: (data) => {
-      console.log('Weight log added successfully:', data);
+      
       queryClient.invalidateQueries({ queryKey: ['weight-logs'] });
       toast({ title: "Weight log added successfully!" });
     },
     onError: (error) => {
-      console.error('Error adding weight log:', error);
+      
       toast({ 
         title: "Failed to add weight log", 
         description: error.message,

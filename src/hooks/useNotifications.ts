@@ -33,7 +33,7 @@ export const useNotifications = () => {
       const notifications: Notification[] = [];
 
       try {
-        // Check for low stock feed items - Fixed query
+        // Check for low stock feed items
         const { data: lowStockItems } = await supabase
           .from('feed_items')
           .select('*')
@@ -224,7 +224,6 @@ export const useNotifications = () => {
 
   // Sync read state across components and tabs
   useEffect(() => {
-    const sync = () => {
       try {
         const stored = JSON.parse(localStorage.getItem('notification_read_ids') || '[]');
         const current = Array.from(readIds);
@@ -233,8 +232,9 @@ export const useNotifications = () => {
         if (storedStr !== currentStr) {
           setReadIds(new Set<string>(stored));
         }
-      } catch {}
-    };
+      } catch {
+        // Ignore storage errors
+      }
     window.addEventListener('notifications:read-changed', sync as EventListener);
     window.addEventListener('storage', sync);
     return () => {
@@ -298,7 +298,15 @@ export const useNotifications = () => {
   };
 
   const dismissNotification = (id: string) => {
-    markAsRead(id);
+    setReadIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      try {
+        localStorage.setItem('notification_read_ids', JSON.stringify(Array.from(next)));
+        window.dispatchEvent(new CustomEvent('notifications:read-changed'));
+      } catch {}
+      return next;
+    });
   };
 
   // Group similar notifications

@@ -22,7 +22,7 @@ export const WeightLogModal: React.FC<WeightLogModalProps> = ({
   const setOpen = externalOnOpenChange || setInternalOpen;
 
   const handleSubmit = (data: any) => {
-    console.log('Submitting weight log:', data);
+    
     onSubmit(data);
     // Don't close modal here - let the mutation success handler close it
   };
