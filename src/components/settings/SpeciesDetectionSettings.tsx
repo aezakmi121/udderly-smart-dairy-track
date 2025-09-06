@@ -19,10 +19,10 @@ export const SpeciesDetectionSettings = () => {
   
   // Default thresholds if not set
   const defaultThresholds: SpeciesThresholds = {
-    cow_max_fat: 5.0,
-    cow_max_snf: 9.0,
-    buffalo_min_fat: 5.5,
-    buffalo_min_snf: 9.5
+    cow_max_fat: 5.9,
+    cow_max_snf: 11.0,
+    buffalo_min_fat: 6.0,
+    buffalo_min_snf: 8.7
   };
   
   const currentThresholds = thresholds || defaultThresholds;
@@ -74,12 +74,12 @@ export const SpeciesDetectionSettings = () => {
               <Input
                 id="cow_max_fat"
                 type="number"
-                step="0.1"
+                step="0.01"
                 min="0"
-                max="10"
+                max="20"
                 value={formData.cow_max_fat}
                 onChange={(e) => handleInputChange('cow_max_fat', e.target.value)}
-                placeholder="5.0"
+                placeholder="5.9"
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Milk above this fat % will be detected as buffalo
@@ -91,12 +91,12 @@ export const SpeciesDetectionSettings = () => {
               <Input
                 id="cow_max_snf"
                 type="number"
-                step="0.1"
+                step="0.01"
                 min="0"
-                max="15"
+                max="20"
                 value={formData.cow_max_snf}
                 onChange={(e) => handleInputChange('cow_max_snf', e.target.value)}
-                placeholder="9.0"
+                placeholder="11.0"
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Milk above this SNF % will be detected as buffalo
@@ -111,12 +111,12 @@ export const SpeciesDetectionSettings = () => {
               <Input
                 id="buffalo_min_fat"
                 type="number"
-                step="0.1"
+                step="0.01"
                 min="0"
-                max="10"
+                max="20"
                 value={formData.buffalo_min_fat}
                 onChange={(e) => handleInputChange('buffalo_min_fat', e.target.value)}
-                placeholder="5.5"
+                placeholder="6.0"
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Milk at or above this fat % will be detected as buffalo
@@ -128,12 +128,12 @@ export const SpeciesDetectionSettings = () => {
               <Input
                 id="buffalo_min_snf"
                 type="number"
-                step="0.1"
+                step="0.01"
                 min="0"
-                max="15"
+                max="20"
                 value={formData.buffalo_min_snf}
                 onChange={(e) => handleInputChange('buffalo_min_snf', e.target.value)}
-                placeholder="9.5"
+                placeholder="8.7"
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Milk at or above this SNF % will be detected as buffalo
