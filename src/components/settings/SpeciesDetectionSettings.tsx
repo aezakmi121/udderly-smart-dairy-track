@@ -50,9 +50,14 @@ export const SpeciesDetectionSettings = () => {
   };
   
   const handleInputChange = (field: keyof SpeciesThresholds, value: string) => {
-    const numValue = parseFloat(value);
-    if (!isNaN(numValue) && numValue >= 0) {
-      setFormData(prev => ({ ...prev, [field]: numValue }));
+    if (value === '') {
+      // Allow empty values for editing
+      setFormData(prev => ({ ...prev, [field]: 0 }));
+    } else {
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        setFormData(prev => ({ ...prev, [field]: numValue }));
+      }
     }
   };
   
