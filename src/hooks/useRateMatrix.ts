@@ -21,7 +21,8 @@ export const useRateMatrix = () => {
 
         if (error) {
           console.error('Error getting rate:', error);
-          throw error;
+          // Don't throw error, return null to fallback to legacy rate
+          return null;
         }
 
         // Handle case where no rate is found

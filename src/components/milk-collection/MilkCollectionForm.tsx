@@ -76,6 +76,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   // Use matrix rate if available, otherwise fallback to legacy
   const calculatedRate = matrixRate > 0 ? matrixRate : legacyRate;
   const hasMatrixRate = matrixRate > 0;
+  const isRateLoading = matrixRateQuery.isLoading;
 
   const { value: modeSetting } = useAppSetting<{ mode: 'auto' | 'manual' }>('milk_rate_mode');
   const isAuto = (modeSetting?.mode ?? 'auto') === 'auto';
@@ -205,21 +206,27 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
             <>
               <div>
                 <Label>Rate per Liter</Label>
-                <div className="text-lg font-medium text-blue-600">
-                  ₹{calculatedRate.toFixed(2)}
-                </div>
+                {isRateLoading ? (
+                  <div className="text-lg font-medium text-muted-foreground">
+                    Loading rate...
+                  </div>
+                ) : (
+                  <div className="text-lg font-medium text-blue-600">
+                    ₹{calculatedRate.toFixed(2)}
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-1 mt-1">
                   {hasMatrixRate && effectiveFrom && (
                     <Badge variant="secondary" className="text-xs">
                       Matrix rate ≤ {effectiveFrom}
                     </Badge>
                   )}
-                  {!hasMatrixRate && calculatedRate > 0 && (
+                  {!hasMatrixRate && calculatedRate > 0 && !isRateLoading && (
                     <Badge variant="outline" className="text-xs">
                       Legacy rate
                     </Badge>
                   )}
-                  {!hasMatrixRate && calculatedRate === 0 && (
+                  {!hasMatrixRate && calculatedRate === 0 && !isRateLoading && (
                     <Badge variant="destructive" className="text-xs">
                       No rates available
                     </Badge>
