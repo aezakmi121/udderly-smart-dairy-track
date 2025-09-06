@@ -85,8 +85,8 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
     const snf = Number(snfPercentage) || 0;
     
     if (fat > 0 && snf > 0) {
-      // Check if fat or SNF meets buffalo criteria
-      const detectedSpecies = (fat >= currentThresholds.buffalo_min_fat || snf >= currentThresholds.buffalo_min_snf) 
+      // Check if both fat AND SNF meet buffalo criteria
+      const detectedSpecies = (fat >= currentThresholds.buffalo_min_fat && snf >= currentThresholds.buffalo_min_snf) 
         ? 'Buffalo' 
         : 'Cow';
       setValue('species', detectedSpecies);

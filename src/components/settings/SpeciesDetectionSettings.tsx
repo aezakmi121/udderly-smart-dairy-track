@@ -159,7 +159,7 @@ export const SpeciesDetectionSettings = () => {
         
         <div className="bg-muted/50 p-3 rounded-lg text-sm">
           <p className="font-medium mb-1">Detection Logic:</p>
-          <p>If Fat % ≥ {formData.buffalo_min_fat} OR SNF % ≥ {formData.buffalo_min_snf} → <span className="font-medium">Buffalo</span></p>
+          <p>If Fat % ≥ {formData.buffalo_min_fat} AND SNF % ≥ {formData.buffalo_min_snf} → <span className="font-medium">Buffalo</span></p>
           <p>Otherwise → <span className="font-medium">Cow</span></p>
         </div>
       </CardContent>
