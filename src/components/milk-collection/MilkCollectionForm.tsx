@@ -138,18 +138,16 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
             </Select>
           </div>
 
-          <div>
-            <Label htmlFor="species">Species</Label>
-            <Select value={watch('species')} onValueChange={(value) => setValue('species', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select species" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Cow">Cow</SelectItem>
-                <SelectItem value="Buffalo">Buffalo</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {isAuto && (
+            <div>
+              <Label htmlFor="species">Species</Label>
+              <div className="mt-2 text-sm font-medium">
+                {watch('species')}
+              </div>
+              {/* Hidden input to submit value */}
+              <input type="hidden" {...register('species')} />
+            </div>
+          )}
 
           <div>
             <Label htmlFor="collection_date">Collection Date</Label>
