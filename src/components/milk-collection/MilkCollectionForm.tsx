@@ -61,6 +61,19 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   const collectionDate = watch('collection_date');
   const species = watch('species');
 
+  // Auto-detect species based on fat and SNF values
+  React.useEffect(() => {
+    const fat = Number(fatPercentage) || 0;
+    const snf = Number(snfPercentage) || 0;
+    
+    if (fat > 0 && snf > 0) {
+      // Buffalo milk typically has higher fat (6-8%) and SNF (9-11%)
+      // Cow milk typically has lower fat (3-5%) and SNF (8-9%)
+      const detectedSpecies = (fat >= 5.5 || snf >= 9.5) ? 'Buffalo' : 'Cow';
+      setValue('species', detectedSpecies);
+    }
+  }, [fatPercentage, snfPercentage, setValue]);
+
   // Try matrix-based rate calculation first, fallback to legacy
   const matrixRateQuery = getRateQuery(
     species || 'Cow',
