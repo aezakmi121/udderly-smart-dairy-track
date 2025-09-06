@@ -61,18 +61,37 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   const collectionDate = watch('collection_date');
   const species = watch('species');
 
-  // Auto-detect species based on fat and SNF values
+  // Get species detection thresholds from settings
+  const { value: thresholds } = useAppSetting<{
+    cow_max_fat: number;
+    cow_max_snf: number;
+    buffalo_min_fat: number;
+    buffalo_min_snf: number;
+  }>('species_detection_thresholds');
+
+  // Default thresholds if not configured
+  const defaultThresholds = {
+    cow_max_fat: 5.0,
+    cow_max_snf: 9.0,
+    buffalo_min_fat: 5.5,
+    buffalo_min_snf: 9.5
+  };
+  
+  const currentThresholds = thresholds || defaultThresholds;
+
+  // Auto-detect species based on configurable fat and SNF thresholds
   React.useEffect(() => {
     const fat = Number(fatPercentage) || 0;
     const snf = Number(snfPercentage) || 0;
     
     if (fat > 0 && snf > 0) {
-      // Buffalo milk typically has higher fat (6-8%) and SNF (9-11%)
-      // Cow milk typically has lower fat (3-5%) and SNF (8-9%)
-      const detectedSpecies = (fat >= 5.5 || snf >= 9.5) ? 'Buffalo' : 'Cow';
+      // Check if fat or SNF meets buffalo criteria
+      const detectedSpecies = (fat >= currentThresholds.buffalo_min_fat || snf >= currentThresholds.buffalo_min_snf) 
+        ? 'Buffalo' 
+        : 'Cow';
       setValue('species', detectedSpecies);
     }
-  }, [fatPercentage, snfPercentage, setValue]);
+  }, [fatPercentage, snfPercentage, setValue, currentThresholds]);
 
   // Try matrix-based rate calculation first, fallback to legacy
   const matrixRateQuery = getRateQuery(
