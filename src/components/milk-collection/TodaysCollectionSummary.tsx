@@ -28,6 +28,20 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
   onEdit,
   onDelete
 }) => {
+  // Add safety check for collections
+  if (!collections) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Collection Summary - {formatDate(selectedDate)}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4">No collection data available...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const selectedCollections = collections.filter(
     collection => collection.collection_date === selectedDate
   );
@@ -35,38 +49,22 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
   const morningCollections = selectedCollections.filter(c => c.session === 'morning');
   const eveningCollections = selectedCollections.filter(c => c.session === 'evening');
 
-  // Debug logging
-  console.log('Debug - Evening Collections:', eveningCollections);
-  console.log('Debug - Evening Collections Length:', eveningCollections.length);
-  if (eveningCollections.length > 0) {
-    console.log('Debug - Sample Evening Collection:', eveningCollections[0]);
-    console.log('Debug - Rate per liter values:', eveningCollections.map(c => ({ 
-      id: c.id, 
-      rate: c.rate_per_liter, 
-      typeof: typeof c.rate_per_liter 
-    })));
-  }
-
   // Calculate averages safely
   const getMorningAvgRate = () => {
     if (morningCollections.length === 0) return 0;
-    const totalRate = morningCollections.reduce((sum, c) => {
-      const rate = Number(c.rate_per_liter || 0);
-      console.log('Morning rate:', rate, 'from:', c.rate_per_liter);
-      return sum + rate;
-    }, 0);
-    return totalRate / morningCollections.length;
+    return morningCollections.reduce((sum, c) => sum + Number(c.rate_per_liter || 0), 0) / morningCollections.length;
   };
   
   const getEveningAvgRate = () => {
     if (eveningCollections.length === 0) return 0;
-    const totalRate = eveningCollections.reduce((sum, c) => {
-      const rate = Number(c.rate_per_liter || 0);
-      console.log('Evening rate:', rate, 'from:', c.rate_per_liter);
-      return sum + rate;
-    }, 0);
-    console.log('Evening total rate:', totalRate, 'count:', eveningCollections.length, 'avg:', totalRate / eveningCollections.length);
-    return totalRate / eveningCollections.length;
+    // Temporary debug - check the evening collections structure
+    console.log('Evening collections for avg calc:', eveningCollections.map(c => ({
+      id: c.id,
+      session: c.session,
+      rate_per_liter: c.rate_per_liter,
+      rateParsed: Number(c.rate_per_liter || 0)
+    })));
+    return eveningCollections.reduce((sum, c) => sum + Number(c.rate_per_liter || 0), 0) / eveningCollections.length;
   };
   
   const getDayAvgRate = () => {
