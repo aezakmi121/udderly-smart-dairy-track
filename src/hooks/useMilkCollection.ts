@@ -17,12 +17,12 @@ interface MilkCollection {
   remarks?: string;
 }
 
-export const useMilkCollection = (selectedDate?: string, selectedSession?: 'morning' | 'evening') => {
+export const useMilkCollection = (selectedDate?: string) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: collections, isLoading, error } = useQuery({
-    queryKey: ['milk-collections', selectedDate ?? 'all', selectedSession ?? 'all'],
+    queryKey: ['milk-collections', selectedDate ?? 'all'],
     queryFn: async () => {
       
       let query = supabase
@@ -34,9 +34,6 @@ export const useMilkCollection = (selectedDate?: string, selectedSession?: 'morn
       
       if (selectedDate) {
         query = query.eq('collection_date', selectedDate);
-      }
-      if (selectedSession) {
-        query = query.eq('session', selectedSession);
       }
       
       const { data, error } = await query.order('collection_date', { ascending: false });

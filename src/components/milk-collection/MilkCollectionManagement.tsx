@@ -29,7 +29,7 @@ export const MilkCollectionManagement = () => {
     addCollectionMutation, 
     updateCollectionMutation,
     deleteCollectionMutation 
-  } = useMilkCollection(filterMode === 'date' ? selectedDate : undefined, selectedSession);
+  } = useMilkCollection(filterMode === 'date' ? selectedDate : undefined);
   
   const { canEdit, isAdmin } = useUserPermissions();
   const { log: milkingLog } = useMilkingLog(selectedDate, selectedSession);
@@ -40,18 +40,24 @@ export const MilkCollectionManagement = () => {
   const isUnlocked = !!(milkingLog && !milkingLog.milking_start_time && !milkingLog.milking_end_time);
   const canModify = isAdmin || isToday || isUnlocked;
 
-  // Filter collections by date range when in range mode
+  // Filter collections by date range and session when in range mode
   const filteredCollections = React.useMemo(() => {
+    let filtered = collections || [];
+    
     if (filterMode === 'range' && (dateRange.from || dateRange.to)) {
-      return collections?.filter(collection => {
+      filtered = filtered.filter(collection => {
         const collectionDate = collection.collection_date;
         if (dateRange.from && collectionDate < dateRange.from) return false;
         if (dateRange.to && collectionDate > dateRange.to) return false;
         return true;
-      }) || [];
+      });
     }
-    return collections || [];
-  }, [collections, dateRange, filterMode]);
+    
+    // Apply session filter only for the table display, not for summary cards
+    filtered = filtered.filter(collection => collection.session === selectedSession);
+    
+    return filtered;
+  }, [collections, dateRange, filterMode, selectedSession]);
 
   // Close modal when mutations succeed
   React.useEffect(() => {
@@ -178,7 +184,7 @@ export const MilkCollectionManagement = () => {
       {/* Date-specific Summary */}
       {filterMode === 'date' && (
         <TodaysCollectionSummary 
-          collections={filteredCollections}
+          collections={collections || []}
           dailyStats={dailyStats}
           selectedDate={selectedDate}
           isLoading={isLoading}
