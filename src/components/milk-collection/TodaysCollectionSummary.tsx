@@ -42,12 +42,14 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
     );
   }
 
-  const selectedCollections = collections.filter(
+  // ALWAYS filter by selected date and get ALL sessions - independent of any session filter
+  const allCollectionsForDate = collections.filter(
     collection => collection.collection_date === selectedDate
   );
 
-  const morningCollections = selectedCollections.filter(c => c.session === 'morning');
-  const eveningCollections = selectedCollections.filter(c => c.session === 'evening');
+  // Separate into sessions for summary cards (always show both regardless of any session filter)
+  const morningCollections = allCollectionsForDate.filter(c => c.session === 'morning');
+  const eveningCollections = allCollectionsForDate.filter(c => c.session === 'evening');
 
   // Calculate session totals first
   const morningTotals = {
@@ -65,9 +67,9 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
   };
   
   const dayTotals = {
-    quantity: selectedCollections.reduce((sum, c) => sum + Number(c.quantity || 0), 0),
-    amount: selectedCollections.reduce((sum, c) => sum + Number(c.total_amount || 0), 0),
-    count: selectedCollections.length,
+    quantity: allCollectionsForDate.reduce((sum, c) => sum + Number(c.quantity || 0), 0),
+    amount: allCollectionsForDate.reduce((sum, c) => sum + Number(c.total_amount || 0), 0),
+    count: allCollectionsForDate.length,
     get avgRate() { return this.quantity > 0 ? this.amount / this.quantity : 0; }
   };
 
@@ -157,7 +159,7 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
           </p>
         </CardHeader>
         <CardContent>
-          {selectedCollections.length === 0 ? (
+          {allCollectionsForDate.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No collections recorded for this date yet.
             </div>
