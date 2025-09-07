@@ -44,75 +44,77 @@ export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({
   };
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Farmer</TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead>Session</TableHead>
-          <TableHead>Quantity (L)</TableHead>
-          <TableHead>Fat %</TableHead>
-          <TableHead>SNF %</TableHead>
-          <TableHead>Rate</TableHead>
-          <TableHead>Total Amount</TableHead>
-          <TableHead>Status</TableHead>
-          {(canEdit || canDelete) && <TableHead>Actions</TableHead>}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {collections.map((collection) => (
-          <TableRow key={collection.id}>
-            <TableCell>
-              <div>
-                <div className="font-medium">{collection.farmers?.name || 'N/A'}</div>
-                <div className="text-sm text-muted-foreground">
-                  {collection.farmers?.farmer_code || 'N/A'}
-                </div>
-              </div>
-            </TableCell>
-            <TableCell>{formatDate(collection.collection_date)}</TableCell>
-            <TableCell className="capitalize">
-              <Badge variant={collection.session === 'morning' ? 'default' : 'secondary'}>
-                {collection.session}
-              </Badge>
-            </TableCell>
-            <TableCell>{collection.quantity}</TableCell>
-            <TableCell>{collection.fat_percentage}%</TableCell>
-            <TableCell>{collection.snf_percentage}%</TableCell>
-            <TableCell>₹{collection.rate_per_liter}</TableCell>
-            <TableCell className="font-semibold">₹{collection.total_amount}</TableCell>
-            <TableCell>
-              <Badge variant={collection.is_accepted ? "default" : "destructive"}>
-                {collection.is_accepted ? "Accepted" : "Rejected"}
-              </Badge>
-            </TableCell>
-            {(canEdit || canDelete) && (
-              <TableCell>
-                <div className="flex gap-2">
-                  {canEdit && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(collection)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {canDelete && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(collection.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="whitespace-nowrap">Farmer</TableHead>
+            <TableHead className="whitespace-nowrap">Date</TableHead>
+            <TableHead className="whitespace-nowrap">Session</TableHead>
+            <TableHead className="whitespace-nowrap">Quantity (L)</TableHead>
+            <TableHead className="whitespace-nowrap">Fat %</TableHead>
+            <TableHead className="whitespace-nowrap">SNF %</TableHead>
+            <TableHead className="whitespace-nowrap">Rate</TableHead>
+            <TableHead className="whitespace-nowrap">Total Amount</TableHead>
+            <TableHead className="whitespace-nowrap">Status</TableHead>
+            {(canEdit || canDelete) && <TableHead className="whitespace-nowrap">Actions</TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {collections.map((collection) => (
+            <TableRow key={collection.id}>
+              <TableCell className="whitespace-nowrap">
+                <div>
+                  <div className="font-medium">{collection.farmers?.name || 'N/A'}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {collection.farmers?.farmer_code || 'N/A'}
+                  </div>
                 </div>
               </TableCell>
-            )}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+              <TableCell className="whitespace-nowrap">{formatDate(collection.collection_date)}</TableCell>
+              <TableCell className="capitalize whitespace-nowrap">
+                <Badge variant={collection.session === 'morning' ? 'default' : 'secondary'}>
+                  {collection.session}
+                </Badge>
+              </TableCell>
+              <TableCell className="whitespace-nowrap">{collection.quantity}</TableCell>
+              <TableCell className="whitespace-nowrap">{collection.fat_percentage}%</TableCell>
+              <TableCell className="whitespace-nowrap">{collection.snf_percentage}%</TableCell>
+              <TableCell className="whitespace-nowrap">₹{collection.rate_per_liter}</TableCell>
+              <TableCell className="font-semibold whitespace-nowrap">₹{collection.total_amount}</TableCell>
+              <TableCell className="whitespace-nowrap">
+                <Badge variant={collection.is_accepted ? "default" : "destructive"}>
+                  {collection.is_accepted ? "Accepted" : "Rejected"}
+                </Badge>
+              </TableCell>
+              {(canEdit || canDelete) && (
+                <TableCell className="whitespace-nowrap">
+                  <div className="flex gap-1">
+                    {canEdit && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(collection)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(collection.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };

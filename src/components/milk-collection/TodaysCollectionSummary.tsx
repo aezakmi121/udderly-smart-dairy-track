@@ -39,19 +39,28 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
   const morningTotals = dailyStats?.morning || {
     quantity: morningCollections.reduce((sum, c) => sum + Number(c.quantity), 0),
     amount: morningCollections.reduce((sum, c) => sum + Number(c.total_amount), 0),
-    count: morningCollections.length
+    count: morningCollections.length,
+    avgRate: morningCollections.length > 0 
+      ? morningCollections.reduce((sum, c) => sum + Number(c.rate_per_liter), 0) / morningCollections.length 
+      : 0
   };
   
   const eveningTotals = dailyStats?.evening || {
     quantity: eveningCollections.reduce((sum, c) => sum + Number(c.quantity), 0),
     amount: eveningCollections.reduce((sum, c) => sum + Number(c.total_amount), 0),
-    count: eveningCollections.length
+    count: eveningCollections.length,
+    avgRate: eveningCollections.length > 0 
+      ? eveningCollections.reduce((sum, c) => sum + Number(c.rate_per_liter), 0) / eveningCollections.length 
+      : 0
   };
   
   const dayTotals = dailyStats?.total || {
     quantity: selectedCollections.reduce((sum, c) => sum + Number(c.quantity), 0),
     amount: selectedCollections.reduce((sum, c) => sum + Number(c.total_amount), 0),
-    count: selectedCollections.length
+    count: selectedCollections.length,
+    avgRate: selectedCollections.length > 0 
+      ? selectedCollections.reduce((sum, c) => sum + Number(c.rate_per_liter), 0) / selectedCollections.length 
+      : 0
   };
 
   const handleEdit = (collection: any) => {
@@ -93,6 +102,7 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
             <div className="space-y-1">
               <div className="text-2xl font-bold">{morningTotals.quantity.toFixed(1)}L</div>
               <div className="text-sm text-green-600 font-semibold">₹{morningTotals.amount.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground">Avg Rate: ₹{morningTotals.avgRate.toFixed(2)}/L</div>
             </div>
           </CardContent>
         </Card>
@@ -108,6 +118,7 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
             <div className="space-y-1">
               <div className="text-2xl font-bold">{eveningTotals.quantity.toFixed(1)}L</div>
               <div className="text-sm text-green-600 font-semibold">₹{eveningTotals.amount.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground">Avg Rate: ₹{eveningTotals.avgRate.toFixed(2)}/L</div>
             </div>
           </CardContent>
         </Card>
@@ -123,6 +134,7 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
             <div className="space-y-1">
               <div className="text-2xl font-bold">{dayTotals.quantity.toFixed(1)}L</div>
               <div className="text-sm text-green-600 font-semibold">₹{dayTotals.amount.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground">Avg Rate: ₹{dayTotals.avgRate.toFixed(2)}/L</div>
             </div>
           </CardContent>
         </Card>

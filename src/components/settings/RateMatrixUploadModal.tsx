@@ -251,35 +251,42 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
           )}
 
           {/* Actions */}
-          <div className="flex justify-between">
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleClose}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={handleClose} size="sm">
                 {uploadStatus === 'success' ? 'Close' : 'Cancel'}
               </Button>
               
               <Button
                 variant="outline"
                 onClick={() => setShowViewer(true)}
+                size="sm"
+                className="whitespace-nowrap"
               >
                 <Eye className="h-4 w-4 mr-2" />
-                View Current Rates
+                <span className="hidden sm:inline">View Current Rates</span>
+                <span className="sm:hidden">View Rates</span>
               </Button>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {uploadStatus === 'idle' && (
                 <Button 
                   onClick={handleUpload} 
                   disabled={!file || isUploading}
+                  size="sm"
+                  className="whitespace-nowrap"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload Rate Matrix
+                  <span className="hidden sm:inline">Upload Rate Matrix</span>
+                  <span className="sm:hidden">Upload</span>
                 </Button>
               )}
 
               {(uploadStatus === 'success' || uploadStatus === 'error') && (
-                <Button onClick={resetModal}>
-                  Upload Another File
+                <Button onClick={resetModal} size="sm" className="whitespace-nowrap">
+                  <span className="hidden sm:inline">Upload Another File</span>
+                  <span className="sm:hidden">Upload Another</span>
                 </Button>
               )}
             </div>

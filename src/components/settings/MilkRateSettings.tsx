@@ -50,14 +50,16 @@ export const MilkRateSettings = () => {
       {/* Rate Matrix Upload */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            Rate Matrix Upload
+          <CardTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <span>Rate Matrix Upload</span>
             <Button 
               onClick={() => setUploadModalOpen(true)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 shrink-0 text-sm"
+              size="sm"
             >
               <FileSpreadsheet className="h-4 w-4" />
-              Upload Excel Rate Matrix
+              <span className="hidden sm:inline">Upload Excel Rate Matrix</span>
+              <span className="sm:hidden">Upload Matrix</span>
             </Button>
           </CardTitle>
         </CardHeader>
