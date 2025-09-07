@@ -49,59 +49,28 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
   const morningCollections = selectedCollections.filter(c => c.session === 'morning');
   const eveningCollections = selectedCollections.filter(c => c.session === 'evening');
 
-  // Calculate averages safely
-  const getMorningAvgRate = () => {
-    if (morningCollections.length === 0) return 0;
-    return morningCollections.reduce((sum, c) => sum + Number(c.rate_per_liter || 0), 0) / morningCollections.length;
-  };
-  
-  const getEveningAvgRate = () => {
-    if (eveningCollections.length === 0) return 0;
-    // Temporary debug - check the evening collections structure
-    console.log('Evening collections for avg calc:', eveningCollections.map(c => ({
-      id: c.id,
-      session: c.session,
-      rate_per_liter: c.rate_per_liter,
-      rateParsed: Number(c.rate_per_liter || 0)
-    })));
-    return eveningCollections.reduce((sum, c) => sum + Number(c.rate_per_liter || 0), 0) / eveningCollections.length;
-  };
-  
-  const getDayAvgRate = () => {
-    if (selectedCollections.length === 0) return 0;
-    return selectedCollections.reduce((sum, c) => sum + Number(c.rate_per_liter || 0), 0) / selectedCollections.length;
-  };
-
-  // Use dailyStats if available, otherwise calculate from collections
-  const morningTotals = dailyStats?.morning ? {
-    ...dailyStats.morning,
-    avgRate: dailyStats.morning.avgRate ?? getMorningAvgRate()
-  } : {
+  // Calculate session totals first
+  const morningTotals = {
     quantity: morningCollections.reduce((sum, c) => sum + Number(c.quantity || 0), 0),
     amount: morningCollections.reduce((sum, c) => sum + Number(c.total_amount || 0), 0),
     count: morningCollections.length,
-    avgRate: getMorningAvgRate()
+    get avgRate() { return this.quantity > 0 ? this.amount / this.quantity : 0; }
   };
   
-  const eveningTotals = dailyStats?.evening ? {
-    ...dailyStats.evening,
-    avgRate: dailyStats.evening.avgRate ?? getEveningAvgRate()
-  } : {
+  const eveningTotals = {
     quantity: eveningCollections.reduce((sum, c) => sum + Number(c.quantity || 0), 0),
     amount: eveningCollections.reduce((sum, c) => sum + Number(c.total_amount || 0), 0),
     count: eveningCollections.length,
-    avgRate: getEveningAvgRate()
+    get avgRate() { return this.quantity > 0 ? this.amount / this.quantity : 0; }
   };
   
-  const dayTotals = dailyStats?.total ? {
-    ...dailyStats.total,
-    avgRate: dailyStats.total.avgRate ?? getDayAvgRate()
-  } : {
+  const dayTotals = {
     quantity: selectedCollections.reduce((sum, c) => sum + Number(c.quantity || 0), 0),
     amount: selectedCollections.reduce((sum, c) => sum + Number(c.total_amount || 0), 0),
     count: selectedCollections.length,
-    avgRate: getDayAvgRate()
+    get avgRate() { return this.quantity > 0 ? this.amount / this.quantity : 0; }
   };
+
 
   const handleEdit = (collection: any) => {
     if (onEdit) {
