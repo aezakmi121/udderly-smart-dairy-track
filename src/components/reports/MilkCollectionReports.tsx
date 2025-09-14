@@ -13,7 +13,7 @@ import { Droplets, TrendingUp, IndianRupee, Scale } from 'lucide-react';
 const COLORS = ['#3b82f6', '#10b981', '#f97316', '#8b5cf6'];
 
 export const MilkCollectionReports = () => {
-  const [fromDate, setFromDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
+  const [fromDate, setFromDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [toDate, setToDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const { exportToCSV } = useReportExports();
 

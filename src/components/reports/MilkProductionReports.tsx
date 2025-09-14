@@ -13,7 +13,7 @@ import { Droplets, TrendingUp, Target, Zap } from 'lucide-react';
 const COLORS = ['#3b82f6', '#10b981', '#f97316', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 export const MilkProductionReports = () => {
-  const [fromDate, setFromDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
+  const [fromDate, setFromDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [toDate, setToDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const { exportToCSV } = useReportExports();
 
@@ -25,13 +25,18 @@ export const MilkProductionReports = () => {
         .from('milk_production')
         .select(`
           *,
-          cows!cow_id (cow_number, lactation_number, days_in_milk: calculate_days_in_milk(id))
+          cows!cow_id (cow_number, lactation_number, last_calving_date)
         `)
         .gte('production_date', fromDate)
         .lte('production_date', toDate)
         .order('production_date', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Production query error:', error);
+        throw error;
+      }
+
+      console.log('Production data fetched:', data?.length || 0, 'records');
 
       // Calculate analytics
       const totalProduction = data.reduce((sum, record) => sum + Number(record.quantity), 0);
@@ -70,6 +75,11 @@ export const MilkProductionReports = () => {
         const cowId = record.cow_id;
         const cowNumber = record.cows?.cow_number || `Unknown-${cowId}`;
         
+        // Calculate days in milk from last calving date
+        const lastCalvingDate = record.cows?.last_calving_date;
+        const daysInMilk = lastCalvingDate ? 
+          Math.floor((new Date().getTime() - new Date(lastCalvingDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+        
         if (!acc[cowId]) {
           acc[cowId] = {
             cowNumber,
@@ -81,7 +91,7 @@ export const MilkProductionReports = () => {
             avgFat: 0,
             avgSNF: 0,
             lactationNumber: record.cows?.lactation_number || 1,
-            daysInMilk: record.cows?.days_in_milk || 0
+            daysInMilk
           };
         }
         
@@ -164,17 +174,23 @@ export const MilkProductionReports = () => {
       'remarks'
     ];
     
-    const exportData = productionAnalytics.rawData.map(record => ({
-      production_date: record.production_date,
-      cow_number: record.cows?.cow_number || 'N/A',
-      session: record.session,
-      quantity: Math.round(Number(record.quantity) * 100) / 100,
-      fat_percentage: record.fat_percentage ? Math.round(Number(record.fat_percentage) * 100) / 100 : '',
-      snf_percentage: record.snf_percentage ? Math.round(Number(record.snf_percentage) * 100) / 100 : '',
-      lactation_number: record.cows?.lactation_number || '',
-      days_in_milk: record.cows?.days_in_milk || '',
-      remarks: record.remarks || ''
-    }));
+    const exportData = productionAnalytics.rawData.map(record => {
+      const lastCalvingDate = record.cows?.last_calving_date;
+      const daysInMilk = lastCalvingDate ? 
+        Math.floor((new Date().getTime() - new Date(lastCalvingDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+        
+      return {
+        production_date: record.production_date,
+        cow_number: record.cows?.cow_number || 'N/A',
+        session: record.session,
+        quantity: Math.round(Number(record.quantity) * 100) / 100,
+        fat_percentage: record.fat_percentage ? Math.round(Number(record.fat_percentage) * 100) / 100 : '',
+        snf_percentage: record.snf_percentage ? Math.round(Number(record.snf_percentage) * 100) / 100 : '',
+        lactation_number: record.cows?.lactation_number || '',
+        days_in_milk: daysInMilk,
+        remarks: record.remarks || ''
+      };
+    });
 
     exportToCSV(exportData, 'milk_production_comprehensive_report', headers);
   };
@@ -206,7 +222,7 @@ export const MilkProductionReports = () => {
           <CardTitle>Milk Production Analytics</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="from_date">From Date</Label>
               <Input 
@@ -226,12 +242,12 @@ export const MilkProductionReports = () => {
               />
             </div>
             <div className="flex items-end">
-              <Button onClick={handleExportReport} disabled={!productionAnalytics?.rawData}>
+              <Button onClick={handleExportReport} disabled={!productionAnalytics?.rawData} className="w-full">
                 Export Production Report
               </Button>
             </div>
             <div className="flex items-end">
-              <Button variant="outline" onClick={handleExportCowPerformance} disabled={!productionAnalytics?.topPerformers}>
+              <Button variant="outline" onClick={handleExportCowPerformance} disabled={!productionAnalytics?.topPerformers} className="w-full">
                 Export Cow Performance
               </Button>
             </div>
