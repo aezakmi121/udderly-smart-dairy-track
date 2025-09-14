@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MilkCollectionReports } from './MilkCollectionReports';
 import { MilkReports } from './MilkReports';
 import { FeedReports } from './FeedReports';
 import { CattleReports } from './CattleReports';
@@ -13,14 +14,19 @@ export const ReportsManagement = () => {
         <p className="text-muted-foreground">Generate detailed reports and view analytics.</p>
       </div>
 
-      <Tabs defaultValue="milk" className="space-y-6">
+      <Tabs defaultValue="collection" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="milk">Milk Reports</TabsTrigger>
+          <TabsTrigger value="collection">Milk Collection</TabsTrigger>
+          <TabsTrigger value="production">Milk Production</TabsTrigger>
           <TabsTrigger value="feed">Feed Reports</TabsTrigger>
           <TabsTrigger value="cattle">Cattle Reports</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="milk">
+        <TabsContent value="collection">
+          <MilkCollectionReports />
+        </TabsContent>
+        
+        <TabsContent value="production">
           <MilkReports />
         </TabsContent>
         

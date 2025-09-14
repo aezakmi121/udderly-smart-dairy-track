@@ -139,12 +139,13 @@ export const MilkReports = () => {
 
       // Export collection data
       if (collectionData && collectionData.length > 0) {
-        const collHeaders = ['collection_date', 'farmer_name', 'farmer_code', 'session', 'quantity', 'fat_percentage', 'snf_percentage', 'rate_per_liter', 'total_amount'];
+        const collHeaders = ['collection_date', 'farmer_name', 'farmer_code', 'session', 'species', 'quantity', 'fat_percentage', 'snf_percentage', 'rate_per_liter', 'total_amount'];
         const collExportData = collectionData.map(record => ({
           collection_date: record.collection_date,
           farmer_name: record.farmers?.name || 'N/A',
           farmer_code: record.farmers?.farmer_code || 'N/A',
           session: record.session,
+          species: record.species,
           quantity: record.quantity,
           fat_percentage: record.fat_percentage,
           snf_percentage: record.snf_percentage,
@@ -214,12 +215,13 @@ export const MilkReports = () => {
         return;
       }
 
-      const headers = ['collection_date', 'farmer_name', 'farmer_code', 'session', 'quantity', 'fat_percentage', 'snf_percentage', 'rate_per_liter', 'total_amount'];
+      const headers = ['collection_date', 'farmer_name', 'farmer_code', 'session', 'species', 'quantity', 'fat_percentage', 'snf_percentage', 'rate_per_liter', 'total_amount'];
       const exportData = data.map(record => ({
         collection_date: record.collection_date,
         farmer_name: record.farmers?.name || 'N/A',
         farmer_code: record.farmers?.farmer_code || 'N/A',
         session: record.session,
+        species: record.species,
         quantity: record.quantity,
         fat_percentage: record.fat_percentage,
         snf_percentage: record.snf_percentage,
