@@ -74,10 +74,14 @@ export const MilkCollectionReports = () => {
           { name: 'Cow', quantity: Math.round(cowQuantity * 100) / 100, amount: Math.round(cowAmount * 100) / 100, percentage: totalQuantity > 0 ? Math.round((cowQuantity / totalQuantity) * 100) : 0 },
           { name: 'Buffalo', quantity: Math.round(buffaloQuantity * 100) / 100, amount: Math.round(buffaloAmount * 100) / 100, percentage: totalQuantity > 0 ? Math.round((buffaloQuantity / totalQuantity) * 100) : 0 }
         ],
-        dailyTrends: Object.values(dailyTrends).sort((a, b) => a.date.localeCompare(b.date)),
+        dailyTrends: Object.values(dailyTrends).map(trend => ({
+          ...trend,
+          quantity: Math.round(trend.quantity * 100) / 100,
+          amount: Math.round(trend.amount * 100) / 100
+        })).sort((a, b) => a.date.localeCompare(b.date)),
         sessionBreakdown: [
-          { name: 'Morning', quantity: morningData.reduce((sum, record) => sum + Number(record.quantity), 0), records: morningData.length },
-          { name: 'Evening', quantity: eveningData.reduce((sum, record) => sum + Number(record.quantity), 0), records: eveningData.length }
+          { name: 'Morning', quantity: Math.round(morningData.reduce((sum, record) => sum + Number(record.quantity), 0) * 100) / 100, records: morningData.length },
+          { name: 'Evening', quantity: Math.round(eveningData.reduce((sum, record) => sum + Number(record.quantity), 0) * 100) / 100, records: eveningData.length }
         ],
         rawData: data
       };
@@ -242,7 +246,7 @@ export const MilkCollectionReports = () => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`${value} L`, 'Quantity']} />
+                  <Tooltip formatter={(value) => [`${Math.round(Number(value) * 100) / 100} L`, 'Quantity']} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -316,7 +320,7 @@ export const MilkCollectionReports = () => {
                 <Tooltip 
                   labelFormatter={(value) => format(new Date(value), 'MMM dd, yyyy')}
                   formatter={(value, name) => [
-                    name === 'Quantity (L)' ? `${value} L` : `₹${value}`,
+                    name === 'Quantity (L)' ? `${Math.round(Number(value) * 100) / 100} L` : `₹${Math.round(Number(value) * 100) / 100}`,
                     name
                   ]}
                 />

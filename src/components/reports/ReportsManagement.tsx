@@ -2,7 +2,7 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MilkCollectionReports } from './MilkCollectionReports';
-import { MilkReports } from './MilkReports';
+import { MilkProductionReports } from './MilkProductionReports';
 import { FeedReports } from './FeedReports';
 import { CattleReports } from './CattleReports';
 
@@ -27,7 +27,7 @@ export const ReportsManagement = () => {
         </TabsContent>
         
         <TabsContent value="production">
-          <MilkReports />
+          <MilkProductionReports />
         </TabsContent>
         
         <TabsContent value="feed">
