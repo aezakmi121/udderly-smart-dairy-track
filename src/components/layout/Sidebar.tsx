@@ -26,15 +26,15 @@ const Sidebar: React.FC<SidebarProps> = ({ routes, currentPath, onNavigate, isCo
                 key={route.path}
                 onClick={() => onNavigate(route.path)}
                 className={cn(
-                  'flex items-center px-3 py-3 text-sm font-medium rounded-md transition-colors w-full text-left group touch-manipulation',
+                  'flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors w-full text-left group touch-manipulation min-h-[44px]',
                   isActive
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                     : 'text-sidebar-foreground hover:bg-sidebar-accent/50 active:bg-sidebar-accent'
                 )}
                 title={isCollapsed ? route.label : ''}
               >
-                <Icon className={cn("h-5 w-5 flex-shrink-0", isCollapsed ? "" : "mr-3")} />
-                {!isCollapsed && <span className="truncate">{route.label}</span>}
+                <Icon className={cn("h-4 w-4 flex-shrink-0", isCollapsed ? "" : "mr-2")} />
+                {!isCollapsed && <span className="truncate text-sm">{route.label}</span>}
               </button>
             );
           })}

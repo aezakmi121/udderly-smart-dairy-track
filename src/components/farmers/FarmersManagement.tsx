@@ -229,10 +229,11 @@ export const FarmersManagement = () => {
           <p className="text-muted-foreground">Manage milk suppliers and their information</p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button 
             variant="outline"
             onClick={() => setBulkUploadOpen(true)}
+            className="text-sm"
           >
             <Upload className="h-4 w-4 mr-2" />
             Bulk Upload
@@ -242,7 +243,7 @@ export const FarmersManagement = () => {
             <DialogTrigger asChild>
               <Button 
                 onClick={() => setSelectedFarmer(null)}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 text-sm"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Farmer
@@ -342,10 +343,10 @@ export const FarmersManagement = () => {
                 {farmers?.length || 0} farmers registered in the system
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor="sort-select" className="text-sm">Sort by:</Label>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Label htmlFor="sort-select" className="text-sm whitespace-nowrap">Sort by:</Label>
               <Select value={sortBy} onValueChange={(value) => setSortBy(value as keyof Farmer)}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-28 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -358,6 +359,7 @@ export const FarmersManagement = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="px-2"
               >
                 <ArrowUpDown className="h-4 w-4" />
               </Button>
@@ -410,12 +412,13 @@ export const FarmersManagement = () => {
                       {farmer.created_at ? new Date(farmer.created_at).toLocaleDateString('en-GB') : 'N/A'}
                     </TableCell>
                     <TableCell>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-1 flex-wrap gap-1">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => openAnalyticsModal(farmer)}
                           title="View Analytics"
+                          className="px-2"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -426,6 +429,7 @@ export const FarmersManagement = () => {
                             setSelectedFarmer(farmer);
                             setIsDialogOpen(true);
                           }}
+                          className="px-2"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -437,6 +441,7 @@ export const FarmersManagement = () => {
                               deleteFarmerMutation.mutate(farmer.id);
                             }
                           }}
+                          className="px-2"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

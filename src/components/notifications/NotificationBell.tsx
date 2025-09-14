@@ -99,15 +99,15 @@ export const NotificationBell = () => {
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {notifications.length > 0 && (
-                  <Button variant="outline" size="sm" onClick={() => markAllAsRead()}>
+                  <Button variant="outline" size="sm" onClick={() => markAllAsRead()} className="text-xs px-2">
                     Mark all as read
                   </Button>
                 )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" className="px-2">
                       <Settings className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -172,10 +172,10 @@ export const NotificationBell = () => {
                               {new Date(notification.created_at).toLocaleString()}
                             </p>
                           </div>
-                          <div className="flex items-start gap-1">
+                          <div className="flex items-start gap-1 flex-wrap">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6">
+                                <Button variant="ghost" size="icon" className="h-6 w-6 touch-manipulation">
                                   <Clock className="h-3 w-3" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -194,7 +194,7 @@ export const NotificationBell = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6"
+                              className="h-6 w-6 touch-manipulation"
                               aria-label="Dismiss notification"
                               onClick={(e) => { 
                                 e.stopPropagation(); 

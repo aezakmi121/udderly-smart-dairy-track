@@ -174,6 +174,7 @@ export const MilkCollectionReports = () => {
                 id="from_date" 
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
+                className="w-full"
               />
             </div>
             <div>
@@ -183,16 +184,22 @@ export const MilkCollectionReports = () => {
                 id="to_date" 
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
+                className="w-full"
               />
             </div>
-            <div className="flex items-end gap-2">
-              <Button onClick={handleExportReport} disabled={!collectionAnalytics?.rawData}>
+            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2">
+              <Button 
+                onClick={handleExportReport} 
+                disabled={!collectionAnalytics?.rawData}
+                className="w-full sm:w-auto text-sm"
+              >
                 Export Detailed Report
               </Button>
               <Button 
                 onClick={handleExportPayouts} 
                 disabled={!collectionAnalytics?.rawData}
                 variant="secondary"
+                className="w-full sm:w-auto text-sm"
               >
                 Export Milk Payouts
               </Button>

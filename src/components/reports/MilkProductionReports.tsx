@@ -230,6 +230,7 @@ export const MilkProductionReports = () => {
                 id="from_date" 
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
+                className="w-full"
               />
             </div>
             <div>
@@ -239,15 +240,23 @@ export const MilkProductionReports = () => {
                 id="to_date" 
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
+                className="w-full"
               />
             </div>
-            <div className="flex items-end">
-              <Button onClick={handleExportReport} disabled={!productionAnalytics?.rawData} className="w-full">
+            <div className="lg:col-span-2 flex flex-col sm:flex-row items-start sm:items-end gap-2">
+              <Button 
+                onClick={handleExportReport} 
+                disabled={!productionAnalytics?.rawData} 
+                className="w-full sm:w-auto text-sm"
+              >
                 Export Production Report
               </Button>
-            </div>
-            <div className="flex items-end">
-              <Button variant="outline" onClick={handleExportCowPerformance} disabled={!productionAnalytics?.topPerformers} className="w-full">
+              <Button 
+                variant="outline" 
+                onClick={handleExportCowPerformance} 
+                disabled={!productionAnalytics?.topPerformers} 
+                className="w-full sm:w-auto text-sm"
+              >
                 Export Cow Performance
               </Button>
             </div>
