@@ -123,6 +123,41 @@ export const MilkCollectionReports = () => {
     exportToCSV(exportData, 'milk_collection_comprehensive_report', headers);
   };
 
+  const handleExportPayouts = async () => {
+    if (!collectionAnalytics?.rawData) return;
+
+    // Group by farmer and calculate totals
+    const farmerPayouts = collectionAnalytics.rawData.reduce((acc, record) => {
+      const farmerId = record.farmer_id;
+      if (!acc[farmerId]) {
+        acc[farmerId] = {
+          farmer_name: record.farmers?.name || 'N/A',
+          farmer_code: record.farmers?.farmer_code || 'N/A',
+          total_quantity: 0,
+          total_amount: 0,
+          collection_count: 0
+        };
+      }
+      acc[farmerId].total_quantity += Number(record.quantity);
+      acc[farmerId].total_amount += Number(record.total_amount);
+      acc[farmerId].collection_count += 1;
+      return acc;
+    }, {} as Record<string, any>);
+
+    const headers = ['farmer_code', 'farmer_name', 'total_quantity', 'total_amount', 'collection_count', 'avg_rate'];
+    
+    const exportData = Object.values(farmerPayouts).map((farmer: any) => ({
+      farmer_code: farmer.farmer_code,
+      farmer_name: farmer.farmer_name,
+      total_quantity: Math.round(farmer.total_quantity * 100) / 100,
+      total_amount: Math.round(farmer.total_amount * 100) / 100,
+      collection_count: farmer.collection_count,
+      avg_rate: Math.round((farmer.total_amount / farmer.total_quantity) * 100) / 100
+    }));
+
+    exportToCSV(exportData, `milk_payouts_${fromDate}_to_${toDate}`, headers);
+  };
+
   return (
     <div className="space-y-6">
       {/* Date Range Selector */}
@@ -150,9 +185,16 @@ export const MilkCollectionReports = () => {
                 onChange={(e) => setToDate(e.target.value)}
               />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
               <Button onClick={handleExportReport} disabled={!collectionAnalytics?.rawData}>
                 Export Detailed Report
+              </Button>
+              <Button 
+                onClick={handleExportPayouts} 
+                disabled={!collectionAnalytics?.rawData}
+                variant="secondary"
+              >
+                Export Milk Payouts
               </Button>
             </div>
           </div>

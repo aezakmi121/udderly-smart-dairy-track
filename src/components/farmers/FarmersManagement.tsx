@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,9 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Edit, Trash2, Phone, MapPin, Upload } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Edit, Trash2, Phone, MapPin, Upload, Eye, ArrowUpDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { BulkFarmerUpload } from './BulkFarmerUpload';
+import { FarmerAnalyticsModal } from './FarmerAnalyticsModal';
 
 interface Farmer {
   id: string;
@@ -28,10 +30,14 @@ export const FarmersManagement = () => {
   const [selectedFarmer, setSelectedFarmer] = useState<Farmer | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+  const [analyticsModalOpen, setAnalyticsModalOpen] = useState(false);
+  const [analyticsModalFarmer, setAnalyticsModalFarmer] = useState<Farmer | null>(null);
+  const [sortBy, setSortBy] = useState<keyof Farmer>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: farmers, isLoading } = useQuery({
+  const { data: farmersData, isLoading } = useQuery({
     queryKey: ['farmers'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -43,6 +49,45 @@ export const FarmersManagement = () => {
       return data as Farmer[];
     }
   });
+
+  const farmers = useMemo(() => {
+    if (!farmersData) return [];
+    
+    const sorted = [...farmersData].sort((a, b) => {
+      let aValue = a[sortBy];
+      let bValue = b[sortBy];
+      
+      // Handle null/undefined values
+      if (aValue == null) aValue = '';
+      if (bValue == null) bValue = '';
+      
+      // Convert to string for comparison
+      aValue = String(aValue);
+      bValue = String(bValue);
+      
+      if (sortOrder === 'asc') {
+        return aValue.localeCompare(bValue);
+      } else {
+        return bValue.localeCompare(aValue);
+      }
+    });
+    
+    return sorted;
+  }, [farmersData, sortBy, sortOrder]);
+
+  const handleSort = (field: keyof Farmer) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const openAnalyticsModal = (farmer: Farmer) => {
+    setAnalyticsModalFarmer(farmer);
+    setAnalyticsModalOpen(true);
+  };
 
   const addFarmerMutation = useMutation({
     mutationFn: async (newFarmer: Omit<Farmer, 'id' | 'created_at'>) => {
@@ -136,7 +181,7 @@ export const FarmersManagement = () => {
 
 
     // Check for duplicates
-    const isDuplicate = farmers?.some(farmer => 
+    const isDuplicate = farmersData?.some(farmer => 
       farmer.id !== selectedFarmer?.id && (
         farmer.farmer_code === farmerData.farmer_code || 
         farmer.phone_number === farmerData.phone_number
@@ -277,10 +322,34 @@ export const FarmersManagement = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Farmers Directory</CardTitle>
-          <CardDescription>
-            {farmers?.length || 0} farmers registered in the system
-          </CardDescription>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Farmers Directory</CardTitle>
+              <CardDescription>
+                {farmers?.length || 0} farmers registered in the system
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="sort-select" className="text-sm">Sort by:</Label>
+              <Select value={sortBy} onValueChange={(value) => setSortBy(value as keyof Farmer)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="farmer_code">Code</SelectItem>
+                  <SelectItem value="name">Name</SelectItem>
+                  <SelectItem value="created_at">Date</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              >
+                <ArrowUpDown className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -332,6 +401,14 @@ export const FarmersManagement = () => {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => openAnalyticsModal(farmer)}
+                          title="View Analytics"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => {
                             setSelectedFarmer(farmer);
                             setIsDialogOpen(true);
@@ -359,6 +436,12 @@ export const FarmersManagement = () => {
           </div>
         </CardContent>
       </Card>
+
+      <FarmerAnalyticsModal
+        open={analyticsModalOpen}
+        onOpenChange={setAnalyticsModalOpen}
+        farmer={analyticsModalFarmer}
+      />
     </div>
   );
 };
