@@ -61,6 +61,19 @@ export const FarmersManagement = () => {
       if (aValue == null) aValue = '';
       if (bValue == null) bValue = '';
       
+      // Special handling for farmer_code to sort numerically
+      if (sortBy === 'farmer_code') {
+        // Extract numeric parts for natural sorting
+        const aNum = parseInt(String(aValue).replace(/\D/g, '')) || 0;
+        const bNum = parseInt(String(bValue).replace(/\D/g, '')) || 0;
+        
+        if (sortOrder === 'asc') {
+          return aNum - bNum;
+        } else {
+          return bNum - aNum;
+        }
+      }
+      
       // Convert to string for comparison
       aValue = String(aValue);
       bValue = String(bValue);
