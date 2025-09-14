@@ -176,6 +176,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
             <Label htmlFor="farmer_code">Farmer Code</Label>
             <Input
               type="text"
+              inputMode="numeric"
               {...register('farmer_code', { required: true })}
               placeholder="Enter farmer code"
             />
@@ -229,6 +230,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
             <Input
               type="number"
               step="0.001"
+              inputMode="decimal"
               {...register('quantity', { required: true })}
               placeholder="Milk quantity"
             />
@@ -239,6 +241,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
             <Input
               type="number"
               step="0.1"
+              inputMode="decimal"
               {...register('fat_percentage', { required: true })}
               placeholder="Fat percentage"
             />
@@ -250,6 +253,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
             <Input
               type="number"
               step="0.1"
+              inputMode="decimal"
               {...register('snf_percentage', { required: true })}
               placeholder="SNF percentage"
             />
@@ -302,6 +306,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
                 <Input
                   type="number"
                   step="0.01"
+                  inputMode="decimal"
                   {...register('total_amount', { required: true })}
                   placeholder="Enter total amount"
                 />
