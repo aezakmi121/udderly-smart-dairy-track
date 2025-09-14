@@ -15,11 +15,11 @@ export const ReportsManagement = () => {
       </div>
 
       <Tabs defaultValue="collection" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="collection">Milk Collection</TabsTrigger>
-          <TabsTrigger value="production">Milk Production</TabsTrigger>
-          <TabsTrigger value="feed">Feed Reports</TabsTrigger>
-          <TabsTrigger value="cattle">Cattle Reports</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto gap-1 p-1">
+          <TabsTrigger value="collection" className="text-xs sm:text-sm">Milk Collection</TabsTrigger>
+          <TabsTrigger value="production" className="text-xs sm:text-sm">Milk Production</TabsTrigger>
+          <TabsTrigger value="feed" className="text-xs sm:text-sm">Feed Reports</TabsTrigger>
+          <TabsTrigger value="cattle" className="text-xs sm:text-sm">Cattle Reports</TabsTrigger>
         </TabsList>
         
         <TabsContent value="collection">
