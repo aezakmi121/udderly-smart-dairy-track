@@ -1,6 +1,9 @@
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import { applyPlugin } from 'jspdf-autotable';
 import { formatDate } from '@/lib/dateUtils';
+
+// Apply the autoTable plugin to jsPDF
+applyPlugin(jsPDF);
 
 // Extend jsPDF prototype with autoTable
 declare module 'jspdf' {
