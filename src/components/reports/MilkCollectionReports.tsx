@@ -11,12 +11,14 @@ import { format, subDays } from 'date-fns';
 import { Droplets, TrendingUp, IndianRupee, Scale } from 'lucide-react';
 import { generateMilkCollectionPDF, generatePayoutPDF, generateWhatsAppMessage } from '@/utils/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
+import { FarmerSelectionModal } from './FarmerSelectionModal';
 
 const COLORS = ['#3b82f6', '#10b981', '#f97316', '#8b5cf6'];
 
 export const MilkCollectionReports = () => {
   const [fromDate, setFromDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [toDate, setToDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [showFarmerModal, setShowFarmerModal] = useState(false);
   const { exportToCSV } = useReportExports();
   const { toast } = useToast();
 
@@ -194,6 +196,28 @@ export const MilkCollectionReports = () => {
 
   const handlePayoutPDF = () => {
     if (!collectionAnalytics?.rawData) return;
+    setShowFarmerModal(true);
+  };
+
+  const generatePayoutPDFWithFarmers = (selectedFarmers: any[]) => {
+    if (selectedFarmers.length === 0) return;
+
+    const grandTotal = selectedFarmers.reduce((sum: number, farmer: any) => sum + farmer.total_amount, 0);
+
+    const pdfData = {
+      fromDate,
+      toDate,
+      farmers: selectedFarmers,
+      grandTotal
+    };
+
+    const doc = generatePayoutPDF(pdfData);
+    doc.save(`farmer_payouts_${fromDate}_to_${toDate}.pdf`);
+    toast({ title: "Payout PDF downloaded successfully!" });
+  };
+
+  const getFarmersForSelection = () => {
+    if (!collectionAnalytics?.rawData) return [];
 
     // Group by farmer and calculate totals (only non-zero amounts)
     const farmerPayouts = collectionAnalytics.rawData.reduce((acc: any, record) => {
@@ -203,6 +227,7 @@ export const MilkCollectionReports = () => {
       
       if (!acc[farmerId]) {
         acc[farmerId] = {
+          farmer_id: farmerId,
           farmer_code: farmerCode,
           farmer_name: farmerName,
           total_quantity: 0,
@@ -217,27 +242,15 @@ export const MilkCollectionReports = () => {
     }, {});
 
     // Filter non-zero amounts
-    const nonZeroFarmers = Object.values(farmerPayouts)
+    return Object.values(farmerPayouts)
       .filter((farmer: any) => farmer.total_amount > 0)
       .map((farmer: any) => ({
+        farmer_id: farmer.farmer_id,
         farmer_code: farmer.farmer_code,
         farmer_name: farmer.farmer_name,
         total_quantity: farmer.total_quantity,
         total_amount: farmer.total_amount
       }));
-
-    const grandTotal = nonZeroFarmers.reduce((sum: number, farmer: any) => sum + farmer.total_amount, 0);
-
-    const pdfData = {
-      fromDate,
-      toDate,
-      farmers: nonZeroFarmers,
-      grandTotal
-    };
-
-    const doc = generatePayoutPDF(pdfData);
-    doc.save(`farmer_payouts_${fromDate}_to_${toDate}.pdf`);
-    toast({ title: "Payout PDF downloaded successfully!" });
   };
 
   return (
@@ -264,20 +277,20 @@ export const MilkCollectionReports = () => {
               className="flex-1"
             />
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-            <Button onClick={handleExportReport} variant="outline" size="sm" className="text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <Button onClick={handleExportReport} variant="outline" size="sm" className="text-xs whitespace-nowrap">
               CSV Report
             </Button>
-            <Button onClick={handleDownloadPDF} variant="outline" size="sm" className="text-xs">
+            <Button onClick={handleDownloadPDF} variant="outline" size="sm" className="text-xs whitespace-nowrap">
               PDF Report
             </Button>
-            <Button onClick={handleWhatsAppShare} variant="outline" size="sm" className="text-xs">
+            <Button onClick={handleWhatsAppShare} variant="outline" size="sm" className="text-xs whitespace-nowrap">
               WhatsApp
             </Button>
-            <Button onClick={handleExportPayouts} variant="outline" size="sm" className="text-xs">
+            <Button onClick={handleExportPayouts} variant="outline" size="sm" className="text-xs whitespace-nowrap">
               CSV Payouts
             </Button>
-            <Button onClick={handlePayoutPDF} variant="outline" size="sm" className="text-xs">
+            <Button onClick={handlePayoutPDF} variant="outline" size="sm" className="text-xs whitespace-nowrap">
               PDF Payouts
             </Button>
           </div>
@@ -419,6 +432,13 @@ export const MilkCollectionReports = () => {
           </CardContent>
         </Card>
       )}
+
+      <FarmerSelectionModal
+        isOpen={showFarmerModal}
+        onClose={() => setShowFarmerModal(false)}
+        farmers={getFarmersForSelection()}
+        onDownload={generatePayoutPDFWithFarmers}
+      />
     </div>
   );
 };

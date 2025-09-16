@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { formatDate } from '@/lib/dateUtils';
 
 declare module 'jspdf' {
   interface jsPDF {
@@ -23,7 +24,7 @@ export const generateMilkCollectionPDF = (data: {
   
   // Date range
   doc.setFontSize(12);
-  doc.text(`Period: ${data.fromDate} to ${data.toDate}`, 20, 35);
+  doc.text(`Period: ${formatDate(data.fromDate)} to ${formatDate(data.toDate)}`, 20, 35);
   
   // Summary stats
   doc.text(`Total Quantity: ${data.totalQuantity.toFixed(2)} L`, 20, 50);
@@ -32,7 +33,7 @@ export const generateMilkCollectionPDF = (data: {
   
   // Daily breakdown table
   const tableData = data.dailyData.map(item => [
-    item.date,
+    formatDate(item.date),
     item.quantity.toFixed(2),
     `₹${item.amount.toFixed(2)}`
   ]);
@@ -65,7 +66,7 @@ export const generateMilkProductionPDF = (data: {
   
   // Date range
   doc.setFontSize(12);
-  doc.text(`Period: ${data.fromDate} to ${data.toDate}`, 20, 35);
+  doc.text(`Period: ${formatDate(data.fromDate)} to ${formatDate(data.toDate)}`, 20, 35);
   
   // Summary stats
   doc.text(`Total Production: ${data.totalProduction.toFixed(2)} L`, 20, 50);
@@ -75,7 +76,7 @@ export const generateMilkProductionPDF = (data: {
   
   // Daily breakdown table
   const tableData = data.dailyData.map(item => [
-    item.date,
+    formatDate(item.date),
     item.quantity.toFixed(2),
     item.avgFat.toFixed(2) + '%',
     item.avgSNF.toFixed(2) + '%'
@@ -111,7 +112,14 @@ export const generatePayoutPDF = (data: {
   
   // Date range
   doc.setFontSize(12);
-  doc.text(`Period: ${data.fromDate} to ${data.toDate}`, 20, 35);
+  doc.text(`Period: ${formatDate(data.fromDate)} to ${formatDate(data.toDate)}`, 20, 35);
+  
+  // Summary stats
+  const totalQuantity = data.farmers.reduce((sum, f) => sum + f.total_quantity, 0);
+  const avgRate = totalQuantity > 0 ? data.grandTotal / totalQuantity : 0;
+  doc.text(`Total Quantity: ${totalQuantity.toFixed(2)} L`, 20, 50);
+  doc.text(`Total Amount: ₹${data.grandTotal.toFixed(2)}`, 20, 60);
+  doc.text(`Average Rate: ₹${avgRate.toFixed(2)}/L`, 20, 70);
   
   // Farmers table
   const tableData = data.farmers.map(farmer => [
@@ -130,7 +138,7 @@ export const generatePayoutPDF = (data: {
   ]);
   
   doc.autoTable({
-    startY: 50,
+    startY: 85,
     head: [['Farmer Code', 'Name', 'Quantity (L)', 'Amount (₹)']],
     body: tableData,
     theme: 'grid',

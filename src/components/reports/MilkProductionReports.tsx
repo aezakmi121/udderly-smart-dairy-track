@@ -291,17 +291,17 @@ export const MilkProductionReports = () => {
               className="flex-1"
             />
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            <Button onClick={handleExportReport} variant="outline" size="sm" className="text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <Button onClick={handleExportReport} variant="outline" size="sm" className="text-xs whitespace-nowrap">
               CSV Report
             </Button>
-            <Button onClick={handleDownloadPDF} variant="outline" size="sm" className="text-xs">
+            <Button onClick={handleDownloadPDF} variant="outline" size="sm" className="text-xs whitespace-nowrap">
               PDF Report
             </Button>
-            <Button onClick={handleWhatsAppShare} variant="outline" size="sm" className="text-xs">
+            <Button onClick={handleWhatsAppShare} variant="outline" size="sm" className="text-xs whitespace-nowrap">
               WhatsApp
             </Button>
-            <Button onClick={handleExportCowPerformance} variant="outline" size="sm" className="text-xs">
+            <Button onClick={handleExportCowPerformance} variant="outline" size="sm" className="text-xs whitespace-nowrap">
               CSV Performance
             </Button>
           </div>
