@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -25,9 +25,12 @@ export const FarmerSelectionModal: React.FC<FarmerSelectionModalProps> = ({
   farmers,
   onDownload
 }) => {
-  const [selectedFarmers, setSelectedFarmers] = useState<Set<string>>(
-    new Set(farmers.map(f => f.farmer_id))
-  );
+  const [selectedFarmers, setSelectedFarmers] = useState<Set<string>>(new Set());
+
+  // Update selectedFarmers when farmers prop changes (select all by default)
+  useEffect(() => {
+    setSelectedFarmers(new Set(farmers.map(f => f.farmer_id)));
+  }, [farmers]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -101,7 +104,7 @@ export const FarmerSelectionModal: React.FC<FarmerSelectionModalProps> = ({
             Selected: {selectedCount} farmers
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 pt-4">
             <Button variant="outline" onClick={onClose} className="flex-1">
               Cancel
             </Button>
