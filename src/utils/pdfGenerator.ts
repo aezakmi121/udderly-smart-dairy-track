@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { formatDate } from '@/lib/dateUtils';
 
+// Extend jsPDF prototype with autoTable
 declare module 'jspdf' {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;

@@ -211,20 +211,28 @@ export const MilkCollectionReports = () => {
   };
 
   const generatePayoutPDFWithFarmers = (selectedFarmers: any[]) => {
-    if (selectedFarmers.length === 0) return;
+    if (selectedFarmers.length === 0) {
+      toast({ title: "No farmers selected", description: "Please select at least one farmer", variant: "destructive" });
+      return;
+    }
 
-    const grandTotal = selectedFarmers.reduce((sum: number, farmer: any) => sum + farmer.total_amount, 0);
+    try {
+      const grandTotal = selectedFarmers.reduce((sum: number, farmer: any) => sum + farmer.total_amount, 0);
 
-    const pdfData = {
-      fromDate,
-      toDate,
-      farmers: selectedFarmers,
-      grandTotal
-    };
+      const pdfData = {
+        fromDate,
+        toDate,
+        farmers: selectedFarmers,
+        grandTotal
+      };
 
-    const doc = generatePayoutPDF(pdfData);
-    doc.save(`farmer_payouts_${fromDate}_to_${toDate}.pdf`);
-    toast({ title: "Payout PDF downloaded successfully!" });
+      const doc = generatePayoutPDF(pdfData);
+      doc.save(`farmer_payouts_${fromDate}_to_${toDate}.pdf`);
+      toast({ title: "Payout PDF downloaded successfully!" });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({ title: "PDF generation failed", description: "Please try again", variant: "destructive" });
+    }
   };
 
   const getFarmersForSelection = () => {
