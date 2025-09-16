@@ -412,13 +412,13 @@ export const FarmersManagement = () => {
                       {farmer.created_at ? new Date(farmer.created_at).toLocaleDateString('en-GB') : 'N/A'}
                     </TableCell>
                     <TableCell>
-                      <div className="flex space-x-1 flex-wrap gap-1">
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => openAnalyticsModal(farmer)}
                           title="View Analytics"
-                          className="px-2"
+                          className="px-2 py-1 h-8 w-8"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -429,7 +429,7 @@ export const FarmersManagement = () => {
                             setSelectedFarmer(farmer);
                             setIsDialogOpen(true);
                           }}
-                          className="px-2"
+                          className="px-2 py-1 h-8 w-8"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -441,7 +441,7 @@ export const FarmersManagement = () => {
                               deleteFarmerMutation.mutate(farmer.id);
                             }
                           }}
-                          className="px-2"
+                          className="px-2 py-1 h-8 w-8"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
