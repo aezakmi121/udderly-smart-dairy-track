@@ -163,20 +163,28 @@ export const MilkCollectionReports = () => {
   };
 
   const handleDownloadPDF = () => {
-    if (!collectionAnalytics) return;
+    if (!collectionAnalytics) {
+      toast({ title: "No data available", description: "Cannot generate PDF without data", variant: "destructive" });
+      return;
+    }
     
     const pdfData = {
       fromDate,
       toDate,
-      totalQuantity: collectionAnalytics.totalQuantity,
-      totalAmount: collectionAnalytics.totalAmount,
-      avgRate: collectionAnalytics.avgRate,
-      dailyData: collectionAnalytics.dailyTrends
+      totalQuantity: collectionAnalytics.totalQuantity || 0,
+      totalAmount: collectionAnalytics.totalAmount || 0,
+      avgRate: collectionAnalytics.avgRate || 0,
+      dailyData: collectionAnalytics.dailyTrends || []
     };
     
-    const doc = generateMilkCollectionPDF(pdfData);
-    doc.save(`milk_collection_report_${fromDate}_to_${toDate}.pdf`);
-    toast({ title: "PDF downloaded successfully!" });
+    try {
+      const doc = generateMilkCollectionPDF(pdfData);
+      doc.save(`milk_collection_report_${fromDate}_to_${toDate}.pdf`);
+      toast({ title: "PDF downloaded successfully!" });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({ title: "PDF generation failed", description: "Please try again", variant: "destructive" });
+    }
   };
 
   const handleWhatsAppShare = () => {
@@ -195,7 +203,10 @@ export const MilkCollectionReports = () => {
   };
 
   const handlePayoutPDF = () => {
-    if (!collectionAnalytics?.rawData) return;
+    if (!collectionAnalytics?.rawData || collectionAnalytics.rawData.length === 0) {
+      toast({ title: "No data available", description: "Cannot generate payout PDF without collection data", variant: "destructive" });
+      return;
+    }
     setShowFarmerModal(true);
   };
 

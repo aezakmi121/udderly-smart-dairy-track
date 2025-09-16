@@ -32,11 +32,13 @@ export const generateMilkCollectionPDF = (data: {
   doc.text(`Average Rate: ₹${data.avgRate.toFixed(2)}/L`, 20, 70);
   
   // Daily breakdown table
-  const tableData = data.dailyData.map(item => [
-    formatDate(item.date),
-    item.quantity.toFixed(2),
-    `₹${item.amount.toFixed(2)}`
-  ]);
+  const tableData = data.dailyData.length > 0 
+    ? data.dailyData.map(item => [
+        formatDate(item.date),
+        item.quantity.toFixed(2),
+        `₹${item.amount.toFixed(2)}`
+      ])
+    : [['No data available', '-', '-']];
   
   doc.autoTable({
     startY: 85,
@@ -75,12 +77,14 @@ export const generateMilkProductionPDF = (data: {
   doc.text(`Average SNF: ${data.avgSNF.toFixed(2)}%`, 20, 80);
   
   // Daily breakdown table
-  const tableData = data.dailyData.map(item => [
-    formatDate(item.date),
-    item.quantity.toFixed(2),
-    item.avgFat.toFixed(2) + '%',
-    item.avgSNF.toFixed(2) + '%'
-  ]);
+  const tableData = data.dailyData.length > 0 
+    ? data.dailyData.map(item => [
+        formatDate(item.date),
+        item.quantity.toFixed(2),
+        item.avgFat.toFixed(2) + '%',
+        item.avgSNF.toFixed(2) + '%'
+      ])
+    : [['No data available', '-', '-', '-']];
   
   doc.autoTable({
     startY: 95,

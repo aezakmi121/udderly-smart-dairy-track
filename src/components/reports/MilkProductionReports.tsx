@@ -234,7 +234,10 @@ export const MilkProductionReports = () => {
   };
 
   const handleDownloadPDF = () => {
-    if (!productionAnalytics) return;
+    if (!productionAnalytics) {
+      toast({ title: "No data available", description: "Cannot generate PDF without data", variant: "destructive" });
+      return;
+    }
     
     const pdfData = {
       fromDate,
