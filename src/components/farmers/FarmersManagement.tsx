@@ -32,8 +32,8 @@ export const FarmersManagement = () => {
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [analyticsModalOpen, setAnalyticsModalOpen] = useState(false);
   const [analyticsModalFarmer, setAnalyticsModalFarmer] = useState<Farmer | null>(null);
-  const [sortBy, setSortBy] = useState<keyof Farmer>('created_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortBy, setSortBy] = useState<keyof Farmer>('farmer_code');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
