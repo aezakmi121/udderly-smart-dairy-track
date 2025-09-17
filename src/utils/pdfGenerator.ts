@@ -32,21 +32,21 @@ export const generateMilkCollectionPDF = (data: {
   
   // Summary stats
   doc.text(`Total Quantity: ${data.totalQuantity.toFixed(2)} L`, 20, 50);
-  doc.text(`Total Amount: ₹${data.totalAmount.toFixed(2)}`, 20, 60);
-  doc.text(`Average Rate: ₹${data.avgRate.toFixed(2)}/L`, 20, 70);
+  doc.text(`Total Amount: Rs.${data.totalAmount.toFixed(2)}`, 20, 60);
+  doc.text(`Average Rate: Rs.${data.avgRate.toFixed(2)}/L`, 20, 70);
   
   // Daily breakdown table
   const tableData = data.dailyData.length > 0 
     ? data.dailyData.map(item => [
         formatDate(item.date),
         item.quantity.toFixed(2),
-        `₹${item.amount.toFixed(2)}`
+        `Rs.${item.amount.toFixed(2)}`
       ])
     : [['No data available', '-', '-']];
   
   doc.autoTable({
     startY: 85,
-    head: [['Date', 'Quantity (L)', 'Amount (₹)']],
+    head: [['Date', 'Quantity (L)', 'Amount (Rs.)']],
     body: tableData,
     theme: 'grid',
     headStyles: { fillColor: [41, 128, 185] }
@@ -126,15 +126,15 @@ export const generatePayoutPDF = (data: {
   const totalQuantity = data.farmers.reduce((sum, f) => sum + f.total_quantity, 0);
   const avgRate = totalQuantity > 0 ? data.grandTotal / totalQuantity : 0;
   doc.text(`Total Quantity: ${totalQuantity.toFixed(2)} L`, 20, 50);
-  doc.text(`Total Amount: ₹${data.grandTotal.toFixed(2)}`, 20, 60);
-  doc.text(`Average Rate: ₹${avgRate.toFixed(2)}/L`, 20, 70);
+  doc.text(`Total Amount: Rs.${data.grandTotal.toFixed(2)}`, 20, 60);
+  doc.text(`Average Rate: Rs.${avgRate.toFixed(2)}/L`, 20, 70);
   
   // Farmers table
   const tableData = data.farmers.map(farmer => [
     farmer.farmer_code,
     farmer.farmer_name,
     farmer.total_quantity.toFixed(2),
-    `₹${farmer.total_amount.toFixed(2)}`
+    `Rs.${farmer.total_amount.toFixed(2)}`
   ]);
   
   // Add total row
@@ -142,12 +142,12 @@ export const generatePayoutPDF = (data: {
     'TOTAL',
     '',
     data.farmers.reduce((sum, f) => sum + f.total_quantity, 0).toFixed(2),
-    `₹${data.grandTotal.toFixed(2)}`
+    `Rs.${data.grandTotal.toFixed(2)}`
   ]);
   
   doc.autoTable({
     startY: 85,
-    head: [['Farmer Code', 'Name', 'Quantity (L)', 'Amount (₹)']],
+    head: [['Farmer Code', 'Name', 'Quantity (L)', 'Amount (Rs.)']],
     body: tableData,
     theme: 'grid',
     headStyles: { fillColor: [41, 128, 185] },
@@ -164,8 +164,8 @@ export const generateWhatsAppMessage = (type: 'collection' | 'production', data:
 
 📊 *Summary:*
 🥛 Total Quantity: ${data.totalQuantity.toFixed(2)} L
-💰 Total Amount: ₹${data.totalAmount.toFixed(2)}
-📈 Average Rate: ₹${data.avgRate.toFixed(2)}/L
+💰 Total Amount: Rs.${data.totalAmount.toFixed(2)}
+📈 Average Rate: Rs.${data.avgRate.toFixed(2)}/L
 
 Generated on ${new Date().toLocaleDateString()}`;
   } else {
