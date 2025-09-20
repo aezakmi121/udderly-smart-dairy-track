@@ -181,3 +181,79 @@ Generated on ${new Date().toLocaleDateString()}`;
 Generated on ${new Date().toLocaleDateString()}`;
   }
 };
+
+export const generateIndividualFarmerPDF = (data: {
+  fromDate: string;
+  toDate: string;
+  farmer: any;
+  transactions: any[];
+  totals: {
+    quantity: number;
+    amount: number;
+    avgRate: number;
+    avgFat: number;
+    avgSNF: number;
+    sessions: number;
+  };
+}) => {
+  const doc = new jsPDF();
+  
+  // Header
+  doc.setFontSize(20);
+  doc.text('Individual Farmer Payout Report', 105, 20, { align: 'center' });
+  
+  // Farmer Details
+  doc.setFontSize(12);
+  doc.text(`Farmer: ${data.farmer?.farmer_code} - ${data.farmer?.name}`, 20, 35);
+  doc.text(`Period: ${formatDate(data.fromDate)} to ${formatDate(data.toDate)}`, 20, 45);
+  
+  // Summary Statistics
+  doc.setFontSize(14);
+  doc.text('Summary', 20, 60);
+  doc.setFontSize(10);
+  doc.text(`Total Quantity: ${data.totals.quantity} L`, 20, 70);
+  doc.text(`Total Amount: Rs.${data.totals.amount}`, 20, 80);
+  doc.text(`Average Rate: Rs.${data.totals.avgRate}/L`, 20, 90);
+  doc.text(`Average Fat: ${data.totals.avgFat}%`, 100, 70);
+  doc.text(`Average SNF: ${data.totals.avgSNF}%`, 100, 80);
+  doc.text(`Total Sessions: ${data.totals.sessions}`, 100, 90);
+  
+  // Transaction Details Table
+  const tableData = data.transactions.map(transaction => [
+    formatDate(transaction.collection_date),
+    transaction.session,
+    transaction.species || 'Cow',
+    transaction.quantity.toString(),
+    transaction.fat_percentage.toString() + '%',
+    transaction.snf_percentage.toString() + '%',
+    'Rs.' + transaction.rate_per_liter.toString(),
+    'Rs.' + transaction.total_amount.toString()
+  ]);
+  
+  doc.autoTable({
+    head: [['Date', 'Session', 'Species', 'Qty (L)', 'Fat %', 'SNF %', 'Rate/L', 'Amount']],
+    body: tableData,
+    startY: 105,
+    styles: { fontSize: 8 },
+    theme: 'grid',
+    headStyles: { fillColor: [41, 128, 185] },
+    columnStyles: {
+      0: { cellWidth: 25 },
+      1: { cellWidth: 20 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 20 },
+      4: { cellWidth: 15 },
+      5: { cellWidth: 15 },
+      6: { cellWidth: 25 },
+      7: { cellWidth: 25 }
+    }
+  });
+  
+  // Footer with totals
+  const finalY = (doc as any).lastAutoTable.finalY + 10;
+  doc.setFontSize(12);
+  doc.text(`Grand Total: Rs.${data.totals.amount}`, 20, finalY);
+  doc.text(`Total Quantity: ${data.totals.quantity} L`, 120, finalY);
+  
+  return doc;
+};

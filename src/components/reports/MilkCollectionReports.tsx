@@ -3,13 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useReportExports } from '@/hooks/useReportExports';
 import { format, subDays } from 'date-fns';
-import { Droplets, TrendingUp, IndianRupee, Scale } from 'lucide-react';
-import { generateMilkCollectionPDF, generatePayoutPDF, generateWhatsAppMessage } from '@/utils/pdfGenerator';
+import { Droplets, TrendingUp, IndianRupee, Scale, User } from 'lucide-react';
+import { generateMilkCollectionPDF, generatePayoutPDF, generateIndividualFarmerPDF, generateWhatsAppMessage } from '@/utils/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { FarmerSelectionModal } from './FarmerSelectionModal';
 
@@ -19,6 +20,7 @@ export const MilkCollectionReports = () => {
   const [fromDate, setFromDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [toDate, setToDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [showFarmerModal, setShowFarmerModal] = useState(false);
+  const [selectedFarmerId, setSelectedFarmerId] = useState<string>('');
   const { exportToCSV } = useReportExports();
   const { toast } = useToast();
 
@@ -88,6 +90,64 @@ export const MilkCollectionReports = () => {
       };
     },
     enabled: !!fromDate && !!toDate
+  });
+
+  // Fetch all farmers for dropdown
+  const { data: farmers } = useQuery({
+    queryKey: ['farmers-for-reports'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('farmers')
+        .select('id, name, farmer_code')
+        .eq('is_active', true)
+        .order('farmer_code', { ascending: true });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Fetch individual farmer data
+  const { data: individualFarmerData, isLoading: isLoadingIndividual } = useQuery({
+    queryKey: ['individual-farmer-data', selectedFarmerId, fromDate, toDate],
+    queryFn: async () => {
+      if (!selectedFarmerId) return null;
+      
+      const { data, error } = await supabase
+        .from('milk_collections')
+        .select(`
+          *,
+          farmers!milk_collections_farmer_id_fkey (name, farmer_code)
+        `)
+        .eq('farmer_id', selectedFarmerId)
+        .gte('collection_date', fromDate)
+        .lte('collection_date', toDate)
+        .order('collection_date', { ascending: true })
+        .order('session', { ascending: true });
+
+      if (error) throw error;
+
+      // Calculate totals
+      const totalQuantity = data.reduce((sum, record) => sum + Number(record.quantity), 0);
+      const totalAmount = data.reduce((sum, record) => sum + Number(record.total_amount), 0);
+      const avgRate = totalQuantity > 0 ? totalAmount / totalQuantity : 0;
+      const avgFat = data.length > 0 ? data.reduce((sum, record) => sum + Number(record.fat_percentage), 0) / data.length : 0;
+      const avgSNF = data.length > 0 ? data.reduce((sum, record) => sum + Number(record.snf_percentage), 0) / data.length : 0;
+
+      return {
+        farmer: data[0]?.farmers,
+        transactions: data,
+        totals: {
+          quantity: Math.round(totalQuantity * 100) / 100,
+          amount: Math.round(totalAmount * 100) / 100,
+          avgRate: Math.round(avgRate * 100) / 100,
+          avgFat: Math.round(avgFat * 100) / 100,
+          avgSNF: Math.round(avgSNF * 100) / 100,
+          sessions: data.length
+        }
+      };
+    },
+    enabled: !!selectedFarmerId && !!fromDate && !!toDate
   });
 
   const handleExportReport = async () => {
@@ -272,6 +332,30 @@ export const MilkCollectionReports = () => {
       }));
   };
 
+  const handleIndividualFarmerPDF = () => {
+    if (!individualFarmerData || !selectedFarmerId) {
+      toast({ title: "No farmer selected", description: "Please select a farmer to generate report", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const pdfData = {
+        fromDate,
+        toDate,
+        farmer: individualFarmerData.farmer,
+        transactions: individualFarmerData.transactions,
+        totals: individualFarmerData.totals
+      };
+
+      const doc = generateIndividualFarmerPDF(pdfData);
+      doc.save(`farmer_${individualFarmerData.farmer?.farmer_code}_${fromDate}_to_${toDate}.pdf`);
+      toast({ title: "Individual farmer PDF downloaded successfully!" });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({ title: "PDF generation failed", description: "Please try again", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Date Range Selector */}
@@ -314,6 +398,66 @@ export const MilkCollectionReports = () => {
             </Button>
           </div>
         </div>
+        </CardContent>
+      </Card>
+
+      {/* Individual Farmer Payout Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Individual Farmer Payout</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="farmer-select">Select Farmer</Label>
+              <Select value={selectedFarmerId} onValueChange={setSelectedFarmerId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a farmer..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {farmers?.map((farmer) => (
+                    <SelectItem key={farmer.id} value={farmer.id}>
+                      {farmer.farmer_code} - {farmer.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {individualFarmerData && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-muted rounded-lg">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Total Quantity</p>
+                  <p className="font-semibold">{individualFarmerData.totals.quantity} L</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Total Amount</p>
+                  <p className="font-semibold">₹{individualFarmerData.totals.amount}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Avg Rate</p>
+                  <p className="font-semibold">₹{individualFarmerData.totals.avgRate}/L</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Avg Fat</p>
+                  <p className="font-semibold">{individualFarmerData.totals.avgFat}%</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Sessions</p>
+                  <p className="font-semibold">{individualFarmerData.totals.sessions}</p>
+                </div>
+              </div>
+            )}
+            
+            <Button 
+              onClick={handleIndividualFarmerPDF} 
+              disabled={!selectedFarmerId || isLoadingIndividual}
+              className="w-full sm:w-auto"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Download Individual Farmer PDF
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
