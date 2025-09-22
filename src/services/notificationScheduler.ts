@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { sessionNotificationService } from './sessionNotificationService';
 
 interface NotificationSchedule {
   id: string;
@@ -125,15 +126,16 @@ class NotificationScheduler {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('fcm_token')
-      .eq('id', user.id)
-      .single();
+    // Use the new session notification service for better handling
+    if (schedule.type === 'milking_start' && schedule.session) {
+      await sessionNotificationService.sendSessionStartNotification(schedule.session);
+    } else if (schedule.type === 'milking_end' && schedule.session) {
+      await sessionNotificationService.sendSessionEndNotification(schedule.session);
+    } else if (schedule.type === 'collection_end') {
+      await sessionNotificationService.sendMilkCollectionSummary();
+    }
 
-    if (!profile?.fcm_token) return;
-
-    // Show browser notification if permission is granted
+    // Also show browser notification if permission is granted
     if (Notification.permission === 'granted') {
       new Notification(schedule.title, {
         body: schedule.message,

@@ -7,7 +7,7 @@ import { formatDate } from '@/lib/dateUtils';
 
 export interface Notification {
   id: string;
-  type: 'low_stock' | 'pd_due' | 'vaccination_due' | 'delivery_due' | 'ai_due' | 'system_alert' | 'info_update' | 'payment_due' | 'sync_failed' | 'delivery_delay' | 'group_change_due';
+  type: 'low_stock' | 'pd_due' | 'vaccination_due' | 'delivery_due' | 'ai_due' | 'system_alert' | 'info_update' | 'payment_due' | 'sync_failed' | 'delivery_delay' | 'group_change_due' | 'session_start' | 'session_end' | 'milk_collection_summary';
   title: string;
   message: string;
   priority: 'high' | 'medium' | 'low';
@@ -140,8 +140,8 @@ export const useNotifications = () => {
             });
           }
 
-          // Check for group change due (1 month before expected delivery)
-          const groupChangeDate = new Date(dueDate.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 days before delivery
+          // Check for group change due (2 months before expected delivery)
+          const groupChangeDate = new Date(dueDate.getTime() - 60 * 24 * 60 * 60 * 1000); // 60 days before delivery
           const groupChangeEndDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Check within next 7 days
           
           if (groupChangeDate <= groupChangeEndDate && groupChangeDate >= todayDate) {
@@ -373,12 +373,16 @@ const getCategoryForType = (type: string): 'reminders' | 'alerts' | 'updates' =>
     case 'ai_due':
     case 'payment_due':
     case 'group_change_due':
+    case 'session_start':
+    case 'session_end':
       return 'reminders';
     case 'low_stock':
     case 'sync_failed':
     case 'delivery_delay':
     case 'system_alert':
       return 'alerts';
+    case 'milk_collection_summary':
+    case 'info_update':
     default:
       return 'updates';
   }
@@ -410,6 +414,12 @@ const getGroupTitle = (type: string, count: number): string => {
       return `${count} Group Changes Due`;
     case 'low_stock':
       return `${count} Items Low in Stock`;
+    case 'session_start':
+      return `${count} Sessions Starting`;
+    case 'session_end':
+      return `${count} Sessions Ending`;
+    case 'milk_collection_summary':
+      return `${count} Collection Summaries`;
     default:
       return `${count} Notifications`;
   }
@@ -427,6 +437,12 @@ const getGroupMessage = (type: string, count: number): string => {
       return `${count} cows need to be moved from dry group to milking group`;
     case 'low_stock':
       return `${count} feed items are running low`;
+    case 'session_start':
+      return `${count} milking sessions are starting`;
+    case 'session_end':
+      return `${count} milking sessions should be completed`;
+    case 'milk_collection_summary':
+      return `${count} milk collection summaries available`;
     default:
       return `${count} notifications require attention`;
   }

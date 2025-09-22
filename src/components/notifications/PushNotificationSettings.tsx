@@ -151,11 +151,15 @@ export const PushNotificationSettings = () => {
             <div className="text-xs text-muted-foreground">
               <p><strong>You'll receive notifications for:</strong></p>
               <ul className="list-disc list-inside space-y-1 mt-1">
-                <li>Morning milking session start time</li>
-                <li>Evening milking session start time</li>
-                <li>Milking session end reminders</li>
-                <li>Milk collection start time</li>
-                <li>Milk collection end time</li>
+                <li>Morning & evening milking session start times</li>
+                <li>Milking session completion reminders</li>
+                <li>Daily milk collection summaries with totals</li>
+                <li>PD alerts (60 days after AI by default)</li>
+                <li>Delivery due notifications</li>
+                <li>Group change alerts (2 months before delivery)</li>
+                <li>Vaccination due reminders</li>
+                <li>Low feed stock alerts</li>
+                <li>AI schedule reminders</li>
               </ul>
               {isAdmin && (
                 <p className="mt-2 text-orange-600 dark:text-orange-400">
