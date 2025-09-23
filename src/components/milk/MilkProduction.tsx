@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MilkProductionModal } from './MilkProductionModal';
+import { EnhancedMilkProductionModal } from './EnhancedMilkProductionModal';
 import { Plus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMilkProduction } from '@/hooks/useMilkProduction';
@@ -300,7 +300,7 @@ export const MilkProduction = () => {
           />
           
           {canEdit.milkProduction && (
-            <MilkProductionModal
+            <EnhancedMilkProductionModal
               selectedRecord={selectedRecord}
               selectedDate={selectedDate}
               defaultSession={selectedSession}

@@ -14,28 +14,26 @@ import {
   Undo, 
   Info,
   AlertTriangle,
-  Target
+  Target,
+  ArrowRight
 } from 'lucide-react';
 import { useAITracking } from '@/hooks/useAITracking';
 import { useCowMilkingStatus } from '@/hooks/useCowMilkingStatus';
-import { format, parseISO, differenceInDays, isValid } from 'date-fns';
-
-interface CowSummary {
-  cowId: string;
-  cowNumber: string;
-  latestAIDate: string;
-  serviceNumber: number;
-  status: 'Pregnant' | 'Not Pregnant' | 'Failed' | 'Pending' | 'Delivered';
-  expectedDeliveryDate?: string;
-  pdDate?: string;
-  deliveredDate?: string;
-  notes?: string;
-  needsMilkingMove: boolean;
-  needsMilkingMoveAt?: string;
-  movedToMilking: boolean;
-  movedToMilkingAt?: string;
-  aiRecord: any;
-}
+import { 
+  AIRecord, 
+  CowSummary, 
+  formatCowDate, 
+  getDaysAfterAI, 
+  getDaysToDelivery,
+  isPDDue,
+  isPDOverdue,
+  pdTargetDate,
+  compareCows,
+  getCowSortGroup,
+  SortGroup,
+  PD_MIN_DAYS,
+  PD_MAX_DAYS
+} from '@/lib/pdUtils';
 
 type FilterType = 'all' | 'about_to_deliver' | 'pd_due' | 'flagged';
 
@@ -49,13 +47,13 @@ export const CowSummaryDashboard: React.FC = () => {
     if (!aiRecords) return [];
 
     // Group records by cow_id and get the latest AI record for each cow
-    const cowMap = new Map<string, any>();
+    const cowMap = new Map<string, AIRecord>();
     
     aiRecords.forEach(record => {
       if (record.cow_id && record.cows) {
         const existing = cowMap.get(record.cow_id);
         if (!existing || record.ai_date > existing.ai_date) {
-          cowMap.set(record.cow_id, record);
+          cowMap.set(record.cow_id, record as any);
         }
       }
     });
@@ -74,7 +72,7 @@ export const CowSummaryDashboard: React.FC = () => {
       }
 
       return {
-        cowId: record.cow_id,
+        cowId: record.cows!.id,
         cowNumber: record.cows?.cow_number || 'Unknown',
         latestAIDate: record.ai_date,
         serviceNumber: record.service_number || 1,
@@ -91,24 +89,20 @@ export const CowSummaryDashboard: React.FC = () => {
       };
     });
 
-    // Apply filters
+    const today = new Date();
+
+    // Apply filters using unified helpers
     let filtered = summaries.filter(cow => {
       if (!includeDelivered && cow.status === 'Delivered') return false;
       
-      const today = new Date();
-      const daysAfterAI = isValid(parseISO(cow.latestAIDate)) 
-        ? differenceInDays(today, parseISO(cow.latestAIDate)) 
-        : 999;
-      
-      const daysToDelivery = cow.expectedDeliveryDate && isValid(parseISO(cow.expectedDeliveryDate))
-        ? differenceInDays(parseISO(cow.expectedDeliveryDate), today)
-        : 999;
-
       switch (filter) {
-        case 'about_to_deliver':
-          return daysToDelivery >= 0 && daysToDelivery <= 35 && cow.aiRecord.pd_done && cow.aiRecord.pd_result === 'positive';
+        case 'about_to_deliver': {
+          const daysToDelivery = getDaysToDelivery(cow.expectedDeliveryDate, today);
+          return daysToDelivery !== null && daysToDelivery >= 0 && daysToDelivery <= 35 && 
+                 cow.aiRecord.pd_done && cow.aiRecord.pd_result === 'positive';
+        }
         case 'pd_due':
-          return daysAfterAI >= 45 && daysAfterAI <= 75 && !cow.aiRecord.pd_done;
+          return isPDDue(cow.latestAIDate, cow.aiRecord.pd_done, today);
         case 'flagged':
           return cow.needsMilkingMove && !cow.movedToMilking;
         default:
@@ -116,49 +110,13 @@ export const CowSummaryDashboard: React.FC = () => {
       }
     });
 
-    // Sort by priority
-    return filtered.sort((a, b) => {
-      const today = new Date();
-      
-      // Priority 1: About to deliver (earliest first)
-      const aDelivery = a.expectedDeliveryDate && isValid(parseISO(a.expectedDeliveryDate))
-        ? differenceInDays(parseISO(a.expectedDeliveryDate), today) : 999;
-      const bDelivery = b.expectedDeliveryDate && isValid(parseISO(b.expectedDeliveryDate))
-        ? differenceInDays(parseISO(b.expectedDeliveryDate), today) : 999;
-      
-      const aAboutToDeliver = aDelivery >= 0 && aDelivery <= 35;
-      const bAboutToDeliver = bDelivery >= 0 && bDelivery <= 35;
-      
-      if (aAboutToDeliver && !bAboutToDeliver) return -1;
-      if (!aAboutToDeliver && bAboutToDeliver) return 1;
-      if (aAboutToDeliver && bAboutToDeliver) return aDelivery - bDelivery;
-      
-      // Priority 2: PD due
-      const aDaysAfterAI = isValid(parseISO(a.latestAIDate)) 
-        ? differenceInDays(today, parseISO(a.latestAIDate)) : 0;
-      const bDaysAfterAI = isValid(parseISO(b.latestAIDate)) 
-        ? differenceInDays(today, parseISO(b.latestAIDate)) : 0;
-      
-      const aPDDue = aDaysAfterAI >= 45 && aDaysAfterAI <= 60 && !a.aiRecord.pd_done;
-      const bPDDue = bDaysAfterAI >= 45 && bDaysAfterAI <= 60 && !b.aiRecord.pd_done;
-      
-      if (aPDDue && !bPDDue) return -1;
-      if (!aPDDue && bPDDue) return 1;
-      
-      // Priority 3: Latest AI date (desc)
-      const aiDateCompare = b.latestAIDate.localeCompare(a.latestAIDate);
-      if (aiDateCompare !== 0) return aiDateCompare;
-      
-      // Priority 4: Cow number (asc)
-      return a.cowNumber.localeCompare(b.cowNumber, undefined, { numeric: true });
-    });
+    // Sort using unified comparator
+    return filtered.sort((a, b) => compareCows(a, b, today));
   }, [aiRecords, filter, includeDelivered]);
 
   const getDeliveryBadge = (cow: CowSummary) => {
-    if (!cow.expectedDeliveryDate || !isValid(parseISO(cow.expectedDeliveryDate))) return null;
-    
-    const today = new Date();
-    const daysToDelivery = differenceInDays(parseISO(cow.expectedDeliveryDate), today);
+    const daysToDelivery = getDaysToDelivery(cow.expectedDeliveryDate);
+    if (daysToDelivery === null) return null;
     
     if (daysToDelivery === 0) {
       return <Badge variant="destructive" className="flex items-center gap-1">
@@ -198,23 +156,30 @@ export const CowSummaryDashboard: React.FC = () => {
     return null;
   };
 
+  const getMoveToMilkingBadge = (cow: CowSummary) => {
+    const group = getCowSortGroup(cow);
+    if (group !== SortGroup.MOVE_TO_MILKING) return null;
+    
+    return <Badge variant="outline" className="flex items-center gap-1">
+      <ArrowRight className="h-3 w-3" />
+      Move to Milking Group
+    </Badge>;
+  };
+
   const getPDBadge = (cow: CowSummary) => {
     if (cow.aiRecord.pd_done) return null;
     
-    const today = new Date();
-    const daysAfterAI = isValid(parseISO(cow.latestAIDate)) 
-      ? differenceInDays(today, parseISO(cow.latestAIDate)) 
-      : 0;
-    
-    if (daysAfterAI >= 45) {
-      const pdDueDate = new Date(parseISO(cow.latestAIDate));
-      pdDueDate.setDate(pdDueDate.getDate() + 60);
-      
-      const isOverdue = today > pdDueDate;
-      
-      return <Badge variant={isOverdue ? "destructive" : "secondary"} className="flex items-center gap-1">
+    if (isPDOverdue(cow.latestAIDate, cow.aiRecord.pd_done)) {
+      return <Badge variant="destructive" className="flex items-center gap-1">
         <Clock className="h-3 w-3" />
-        {isOverdue ? "PD Overdue" : `PD Due (${format(pdDueDate, 'dd-MM')})`}
+        PD Overdue
+      </Badge>;
+    }
+    
+    if (isPDDue(cow.latestAIDate, cow.aiRecord.pd_done)) {
+      return <Badge variant="secondary" className="flex items-center gap-1">
+        <Clock className="h-3 w-3" />
+        PD Due ({pdTargetDate(cow.latestAIDate)})
       </Badge>;
     }
     
@@ -263,10 +228,6 @@ export const CowSummaryDashboard: React.FC = () => {
     });
   };
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr || !isValid(parseISO(dateStr))) return 'Invalid Date';
-    return format(parseISO(dateStr), 'dd-MM-yyyy');
-  };
 
   if (isLoading) {
     return <div className="flex justify-center p-8">Loading cow summaries...</div>;
@@ -323,10 +284,18 @@ export const CowSummaryDashboard: React.FC = () => {
                   <Badge variant="secondary">Move to Close-up Group</Badge>
                   <span>28-35 days before delivery</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">PD Due</Badge>
-                  <span>Pregnancy diagnosis needed (45-60 days post-AI)</span>
-                </div>
+                 <div className="flex items-center gap-2">
+                   <Badge variant="secondary">PD Due</Badge>
+                   <span>Pregnancy diagnosis needed (45–60 days post-AI)</span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                   <Badge variant="destructive">PD Overdue</Badge>
+                   <span>PD Overdue (&gt;60 days post-AI)</span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                   <Badge variant="outline">Move to Milking Group</Badge>
+                   <span>Ready for milking group transfer (2 months pre-delivery)</span>
+                 </div>
               </div>
             </div>
           </PopoverContent>
@@ -351,22 +320,23 @@ export const CowSummaryDashboard: React.FC = () => {
                   {/* Header with Cow Number and Primary Badges */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <h3 className="font-semibold text-lg">Cow #{cow.cowNumber}</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {getDeliveryBadge(cow)}
-                      {getPDBadge(cow)}
-                      {cow.needsMilkingMove && !cow.movedToMilking && (
-                        <Badge variant="outline" className="flex items-center gap-1">
-                          <Flag className="h-3 w-3" />
-                          Flagged for Move
-                        </Badge>
-                      )}
-                      {cow.movedToMilking && (
-                        <Badge variant="default" className="flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          Moved to Milking
-                        </Badge>
-                      )}
-                    </div>
+                     <div className="flex flex-wrap gap-2">
+                       {getMoveToMilkingBadge(cow)}
+                       {getDeliveryBadge(cow)}
+                       {getPDBadge(cow)}
+                       {cow.needsMilkingMove && !cow.movedToMilking && (
+                         <Badge variant="outline" className="flex items-center gap-1">
+                           <Flag className="h-3 w-3" />
+                           Flagged for Move
+                         </Badge>
+                       )}
+                       {cow.movedToMilking && (
+                         <Badge variant="default" className="flex items-center gap-1">
+                           <CheckCircle className="h-3 w-3" />
+                           Moved to Milking
+                         </Badge>
+                       )}
+                     </div>
                   </div>
                   
                   {/* Main Data Grid */}
@@ -377,10 +347,10 @@ export const CowSummaryDashboard: React.FC = () => {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <span className="text-sm text-muted-foreground">AI Date:</span>
-                            <div className="font-medium">{formatDate(cow.latestAIDate)}</div>
-                          </div>
+                           <div className="min-w-0 flex-1">
+                             <span className="text-sm text-muted-foreground">AI Date:</span>
+                             <div className="font-medium">{formatCowDate(cow.latestAIDate)}</div>
+                           </div>
                         </div>
                         
                         <div className="flex items-center gap-2">
@@ -405,13 +375,9 @@ export const CowSummaryDashboard: React.FC = () => {
                             <Clock className="h-4 w-4 text-amber-500 flex-shrink-0" />
                             <div className="min-w-0 flex-1">
                               <span className="text-sm text-muted-foreground">PD Due:</span>
-                              <div className="font-medium text-amber-600">
-                                {(() => {
-                                  const pdDueDate = new Date(parseISO(cow.latestAIDate));
-                                  pdDueDate.setDate(pdDueDate.getDate() + 60);
-                                  return formatDate(pdDueDate.toISOString());
-                                })()}
-                              </div>
+                               <div className="font-medium text-amber-600">
+                                 {pdTargetDate(cow.latestAIDate)}
+                               </div>
                             </div>
                           </div>
                         )}
@@ -420,10 +386,10 @@ export const CowSummaryDashboard: React.FC = () => {
                         {cow.aiRecord.pd_done && cow.aiRecord.pd_result === 'positive' && cow.expectedDeliveryDate && (
                           <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <span className="text-sm text-muted-foreground">Expected Delivery:</span>
-                              <div className="font-medium text-blue-600">{formatDate(cow.expectedDeliveryDate)}</div>
-                            </div>
+                             <div className="min-w-0 flex-1">
+                               <span className="text-sm text-muted-foreground">Expected Delivery:</span>
+                               <div className="font-medium text-blue-600">{formatCowDate(cow.expectedDeliveryDate)}</div>
+                             </div>
                           </div>
                         )}
                         
@@ -434,7 +400,7 @@ export const CowSummaryDashboard: React.FC = () => {
                               cow.aiRecord.pd_result === 'positive' ? 'text-green-600' : 
                               cow.aiRecord.pd_result === 'negative' ? 'text-red-600' : 'text-gray-600'
                             }`}>
-                              {cow.aiRecord.pd_result || 'Unknown'} ({formatDate(cow.pdDate)})
+                              {cow.aiRecord.pd_result || 'Unknown'} ({formatCowDate(cow.pdDate)})
                             </span>
                           </div>
                         ) : (
@@ -447,7 +413,7 @@ export const CowSummaryDashboard: React.FC = () => {
                         {cow.deliveredDate && (
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-muted-foreground w-20 flex-shrink-0">Delivered:</span>
-                            <span className="font-medium text-green-600">{formatDate(cow.deliveredDate)}</span>
+                            <span className="font-medium text-green-600">{formatCowDate(cow.deliveredDate)}</span>
                           </div>
                         )}
                       </div>

@@ -1,26 +1,34 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Edit, Trash2 } from 'lucide-react';
+import { MilkProductionTableSummary } from './MilkProductionTableSummary';
 
 interface MilkProductionTableProps {
   milkRecords: any[];
   onEdit: (record: any) => void;
   onDelete: (id: string) => void;
+  onAddSession?: (session: 'morning' | 'evening', cowId?: string) => void;
   canEdit?: boolean;
   canDelete?: boolean;
+  mode?: 'detailed' | 'summary';
 }
 
 export const MilkProductionTable: React.FC<MilkProductionTableProps> = ({
   milkRecords,
   onEdit,
   onDelete,
+  onAddSession,
   canEdit = false,
-  canDelete = false
+  canDelete = false,
+  mode = 'detailed'
 }) => {
-  return (
+  const [viewMode, setViewMode] = useState<'detailed' | 'summary'>(mode);
+
+  const DetailedTable = () => (
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
@@ -82,5 +90,29 @@ export const MilkProductionTable: React.FC<MilkProductionTableProps> = ({
         </TableBody>
       </Table>
     </div>
+  );
+
+  return (
+    <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'detailed' | 'summary')}>
+      <TabsList className="mb-4">
+        <TabsTrigger value="summary">Summary View</TabsTrigger>
+        <TabsTrigger value="detailed">Detailed View</TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="summary">
+        <MilkProductionTableSummary
+          milkRecords={milkRecords}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onAddSession={onAddSession}
+          canEdit={canEdit}
+          canDelete={canDelete}
+        />
+      </TabsContent>
+      
+      <TabsContent value="detailed">
+        <DetailedTable />
+      </TabsContent>
+    </Tabs>
   );
 };
