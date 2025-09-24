@@ -26,7 +26,7 @@ export const MilkProductionTable: React.FC<MilkProductionTableProps> = ({
   canDelete = false,
   mode = 'detailed'
 }) => {
-  const [viewMode, setViewMode] = useState<'detailed' | 'summary'>(mode);
+  const [viewMode, setViewMode] = useState<'detailed' | 'summary'>('summary');
 
   const DetailedTable = () => (
     <div className="overflow-x-auto">

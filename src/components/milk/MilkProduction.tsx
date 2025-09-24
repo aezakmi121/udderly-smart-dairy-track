@@ -249,37 +249,16 @@ export const MilkProduction = () => {
           <h2 className="text-3xl font-bold tracking-tight">Milk Production</h2>
           <p className="text-muted-foreground">Track daily milk production records</p>
           
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+          <div className="mt-4">
+            <div className="w-full sm:w-40">
               <Label htmlFor="date-filter">Select Date</Label>
               <Input
                 id="date-filter"
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full sm:w-40"
+                className="w-full"
               />
-            </div>
-            <div>
-              <Label htmlFor="session-selector">Session</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={selectedSession === 'morning' ? 'default' : 'outline'}
-                  onClick={() => setSelectedSession('morning')}
-                  className="w-28"
-                >
-                  Morning
-                </Button>
-                <Button
-                  type="button"
-                  variant={selectedSession === 'evening' ? 'default' : 'outline'}
-                  onClick={() => setSelectedSession('evening')}
-                  className="w-28"
-                >
-                  Evening
-                </Button>
-              </div>
             </div>
           </div>
         </div>
@@ -332,7 +311,7 @@ export const MilkProduction = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Production Records for {selectedDate} — {selectedSession === 'morning' ? 'Morning' : 'Evening'}</CardTitle>
+          <CardTitle>Production Records for {selectedDate}</CardTitle>
           <CardDescription>
             {filteredAndSortedRecords.length} of {milkRecords?.length || 0} records shown
           </CardDescription>

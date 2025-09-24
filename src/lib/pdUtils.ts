@@ -137,62 +137,44 @@ export const getCowSortGroup = (cow: CowSummary, today?: Date): SortGroup => {
 export const compareCows = (a: CowSummary, b: CowSummary, today?: Date): number => {
   const currentDate = today || new Date();
   
-  // Primary sort: by group priority
-  const groupA = getCowSortGroup(a, currentDate);
-  const groupB = getCowSortGroup(b, currentDate);
+  // First priority: Closest to delivery (soonest delivery date first)
+  const daysToDeliveryA = getDaysToDelivery(a.expectedDeliveryDate, currentDate);
+  const daysToDeliveryB = getDaysToDelivery(b.expectedDeliveryDate, currentDate);
   
-  if (groupA !== groupB) {
-    return groupA - groupB;
-  }
-  
-  // Secondary sort: within-group sorting
-  switch (groupA) {
-    case SortGroup.MOVE_TO_MILKING: {
-      // Sort by distance from 60 days, then by days to delivery
-      const daysToDeliveryA = getDaysToDelivery(a.expectedDeliveryDate, currentDate) || 999;
-      const daysToDeliveryB = getDaysToDelivery(b.expectedDeliveryDate, currentDate) || 999;
-      const distanceA = Math.abs(daysToDeliveryA - 60);
-      const distanceB = Math.abs(daysToDeliveryB - 60);
-      
-      if (distanceA !== distanceB) return distanceA - distanceB;
+  // If both have delivery dates, sort by soonest first
+  if (daysToDeliveryA !== null && daysToDeliveryB !== null) {
+    if (daysToDeliveryA !== daysToDeliveryB) {
       return daysToDeliveryA - daysToDeliveryB;
     }
-    
-    case SortGroup.ABOUT_TO_DELIVER: {
-      // Sort by days to delivery ascending (soonest first)
-      const daysToDeliveryA = getDaysToDelivery(a.expectedDeliveryDate, currentDate) || 999;
-      const daysToDeliveryB = getDaysToDelivery(b.expectedDeliveryDate, currentDate) || 999;
-      return daysToDeliveryA - daysToDeliveryB;
-    }
-    
-    case SortGroup.PD_DUE: {
-      // Sort by days after AI descending (closer to 60 first)
-      const daysAfterAIA = getDaysAfterAI(a.latestAIDate, currentDate) || 0;
-      const daysAfterAIB = getDaysAfterAI(b.latestAIDate, currentDate) || 0;
-      return daysAfterAIB - daysAfterAIA;
-    }
-    
-    case SortGroup.PD_OVERDUE: {
-      // Sort by days after AI descending (most overdue first)
-      const daysAfterAIA = getDaysAfterAI(a.latestAIDate, currentDate) || 0;
-      const daysAfterAIB = getDaysAfterAI(b.latestAIDate, currentDate) || 0;
-      return daysAfterAIB - daysAfterAIA;
-    }
-    
-    case SortGroup.FLAGGED: {
-      // Sort by flag date ascending (older flags first)
-      const flagDateA = safeParse(a.needsMilkingMoveAt)?.getTime() || 0;
-      const flagDateB = safeParse(b.needsMilkingMoveAt)?.getTime() || 0;
-      return flagDateA - flagDateB;
-    }
-    
-    default: {
-      // Everything else: latest AI date desc, then cow number asc
-      const aiDateCompare = b.latestAIDate.localeCompare(a.latestAIDate);
-      if (aiDateCompare !== 0) return aiDateCompare;
-      return a.cowNumber.localeCompare(b.cowNumber, undefined, { numeric: true });
-    }
   }
+  
+  // If only one has delivery date, prioritize it
+  if (daysToDeliveryA !== null && daysToDeliveryB === null) return -1;
+  if (daysToDeliveryA === null && daysToDeliveryB !== null) return 1;
+  
+  // Second priority: PD due dates (earliest PD due date first)
+  const daysAfterAIA = getDaysAfterAI(a.latestAIDate, currentDate) || 0;
+  const daysAfterAIB = getDaysAfterAI(b.latestAIDate, currentDate) || 0;
+  
+  // Calculate PD target dates (AI + 60 days)
+  const pdTargetA = new Date(safeParse(a.latestAIDate)?.getTime() + 60 * 24 * 60 * 60 * 1000);
+  const pdTargetB = new Date(safeParse(b.latestAIDate)?.getTime() + 60 * 24 * 60 * 60 * 1000);
+  
+  // If both need PD (not done yet), sort by earliest PD due date
+  if (!a.aiRecord.pd_done && !b.aiRecord.pd_done) {
+    const pdTargetCompare = pdTargetA.getTime() - pdTargetB.getTime();
+    if (pdTargetCompare !== 0) return pdTargetCompare;
+  }
+  
+  // If only one needs PD, prioritize it
+  if (!a.aiRecord.pd_done && b.aiRecord.pd_done) return -1;
+  if (a.aiRecord.pd_done && !b.aiRecord.pd_done) return 1;
+  
+  // Fallback: Latest AI date desc, then cow number asc
+  const aiDateCompare = b.latestAIDate.localeCompare(a.latestAIDate);
+  if (aiDateCompare !== 0) return aiDateCompare;
+  
+  return a.cowNumber.localeCompare(b.cowNumber, undefined, { numeric: true });
 };
 
 // Parse numeric cow number safely

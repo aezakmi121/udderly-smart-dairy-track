@@ -6,7 +6,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { MilkProductionForm } from './MilkProductionForm';
 import { formatCowDate } from '@/lib/pdUtils';
-import { Plus, Sun, Moon } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
+import { useAppSetting } from '@/hooks/useAppSettings';
+import { fromZonedTime } from 'date-fns-tz';
 
 interface EnhancedMilkProductionModalProps {
   selectedRecord?: any;
@@ -35,6 +37,9 @@ export const EnhancedMilkProductionModal: React.FC<EnhancedMilkProductionModalPr
   const [sessionOverride, setSessionOverride] = useState<'morning' | 'evening' | null>(null);
   const [keepOpen, setKeepOpen] = useState(false);
   
+  const { value: sessionSettings } = useAppSetting<any>('milking_session_settings');
+  const tz = sessionSettings?.timezone || 'Asia/Kolkata';
+  
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = externalOnOpenChange || setInternalOpen;
 
@@ -52,6 +57,17 @@ export const EnhancedMilkProductionModal: React.FC<EnhancedMilkProductionModalPr
 
   // Compute effective session
   const effectiveSession = selectedRecord?.session ?? sessionOverride ?? getSmartDefaultSession();
+
+  // Check if we're within session window for a given session
+  const isWithinSessionWindow = (session: 'morning' | 'evening'): boolean => {
+    if (!sessionSettings?.enforceWindow) return true;
+    
+    const sessionWindow = sessionSettings?.[session] ?? { start: '00:00', end: '23:59' };
+    const startTs = fromZonedTime(`${selectedDate}T${sessionWindow.start}:00`, tz).getTime();
+    const endTs = fromZonedTime(`${selectedDate}T${sessionWindow.end}:00`, tz).getTime();
+    
+    return Date.now() >= startTs && Date.now() <= endTs;
+  };
 
   // Handle quick session triggers
   const handleQuickSession = (session: 'morning' | 'evening') => {
@@ -117,8 +133,14 @@ export const EnhancedMilkProductionModal: React.FC<EnhancedMilkProductionModalPr
           size="sm"
           className="flex-1 sm:flex-initial"
           onClick={() => handleQuickSession('morning')}
-          disabled={disabledAdd}
-          title={disabledAdd ? 'Session ended — adding is locked' : 'Add morning record'}
+          disabled={disabledAdd || !isWithinSessionWindow('morning')}
+          title={
+            disabledAdd 
+              ? 'Session ended — adding is locked' 
+              : !isWithinSessionWindow('morning')
+              ? 'Morning session time window has passed'
+              : 'Add morning record'
+          }
         >
           <Sun className="h-4 w-4 mr-2" />
           Add Morning
@@ -129,31 +151,25 @@ export const EnhancedMilkProductionModal: React.FC<EnhancedMilkProductionModalPr
           size="sm"
           className="flex-1 sm:flex-initial"
           onClick={() => handleQuickSession('evening')}
-          disabled={disabledAdd}
-          title={disabledAdd ? 'Session ended — adding is locked' : 'Add evening record'}
+          disabled={disabledAdd || !isWithinSessionWindow('evening')}
+          title={
+            disabledAdd 
+              ? 'Session ended — adding is locked' 
+              : !isWithinSessionWindow('evening')
+              ? 'Evening session time window has passed'
+              : 'Add evening record'
+          }
         >
           <Moon className="h-4 w-4 mr-2" />
           Add Evening
         </Button>
       </div>
 
-      {/* Main Modal */}
-      <Dialog 
-        open={open} 
-        onOpenChange={handleOpenChange}
-      >
-        {!sessionOverride && (
-          <DialogTrigger asChild>
-            <Button 
-              className="w-full sm:w-auto"
-              disabled={!!disabledAdd && !selectedRecord}
-              title={disabledAdd ? 'Session ended — adding is locked' : undefined}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Record
-            </Button>
-          </DialogTrigger>
-        )}
+        {/* Main Modal */}
+        <Dialog 
+          open={open} 
+          onOpenChange={handleOpenChange}
+        >
 
         <DialogContent 
           className="max-w-lg"
