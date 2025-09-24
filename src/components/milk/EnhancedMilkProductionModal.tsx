@@ -8,6 +8,7 @@ import { MilkProductionForm } from './MilkProductionForm';
 import { formatCowDate } from '@/lib/pdUtils';
 import { Sun, Moon } from 'lucide-react';
 import { useAppSetting } from '@/hooks/useAppSettings';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { fromZonedTime } from 'date-fns-tz';
 
 interface EnhancedMilkProductionModalProps {
@@ -38,6 +39,7 @@ export const EnhancedMilkProductionModal: React.FC<EnhancedMilkProductionModalPr
   const [keepOpen, setKeepOpen] = useState(false);
   
   const { value: sessionSettings } = useAppSetting<any>('milking_session_settings');
+  const { isAdmin } = useUserPermissions();
   const tz = sessionSettings?.timezone || 'Asia/Kolkata';
   
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -60,6 +62,9 @@ export const EnhancedMilkProductionModal: React.FC<EnhancedMilkProductionModalPr
 
   // Check if we're within session window for a given session
   const isWithinSessionWindow = (session: 'morning' | 'evening'): boolean => {
+    // Admins can always access both sessions
+    if (isAdmin) return true;
+    
     if (!sessionSettings?.enforceWindow) return true;
     
     const sessionWindow = sessionSettings?.[session] ?? { start: '00:00', end: '23:59' };

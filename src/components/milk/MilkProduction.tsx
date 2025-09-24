@@ -64,6 +64,7 @@ export const MilkProduction = () => {
   const startTs = fromZonedTime(`${selectedDate}T${sessionWindow.start}:00`, tz).getTime();
   const endTs = fromZonedTime(`${selectedDate}T${sessionWindow.end}:00`, tz).getTime();
   const withinWindow = Date.now() >= startTs && Date.now() <= endTs;
+  // Admins can always modify, workers need session constraints
   const canModify = isAdmin ? true : isFarmWorker ? (!!milkingLog && !ended && (!sessionSettings?.enforceWindow || withinWindow)) : false;
 
   // Auto start/end based on settings and timezone

@@ -137,38 +137,51 @@ export const getCowSortGroup = (cow: CowSummary, today?: Date): SortGroup => {
 export const compareCows = (a: CowSummary, b: CowSummary, today?: Date): number => {
   const currentDate = today || new Date();
   
-  // First priority: Closest to delivery (soonest delivery date first)
-  const daysToDeliveryA = getDaysToDelivery(a.expectedDeliveryDate, currentDate);
-  const daysToDeliveryB = getDaysToDelivery(b.expectedDeliveryDate, currentDate);
-  
-  // If both have delivery dates, sort by soonest first
-  if (daysToDeliveryA !== null && daysToDeliveryB !== null) {
-    if (daysToDeliveryA !== daysToDeliveryB) {
-      return daysToDeliveryA - daysToDeliveryB;
-    }
+  // Exclude delivered cows from priority sorting - they should go to bottom
+  if (a.status === 'Delivered' && b.status !== 'Delivered') return 1;
+  if (a.status !== 'Delivered' && b.status === 'Delivered') return -1;
+  if (a.status === 'Delivered' && b.status === 'Delivered') {
+    // Both delivered, sort by delivery date desc
+    const deliveryDateA = safeParse(a.deliveredDate)?.getTime() || 0;
+    const deliveryDateB = safeParse(b.deliveredDate)?.getTime() || 0;
+    return deliveryDateB - deliveryDateA;
   }
   
-  // If only one has delivery date, prioritize it
-  if (daysToDeliveryA !== null && daysToDeliveryB === null) return -1;
-  if (daysToDeliveryA === null && daysToDeliveryB !== null) return 1;
+  // For non-delivered cows, prioritize positive PD results with closest delivery dates
+  const isPregnantA = a.aiRecord.pd_done && a.aiRecord.pd_result === 'positive';
+  const isPregnantB = b.aiRecord.pd_done && b.aiRecord.pd_result === 'positive';
   
-  // Second priority: PD due dates (earliest PD due date first)
-  const daysAfterAIA = getDaysAfterAI(a.latestAIDate, currentDate) || 0;
-  const daysAfterAIB = getDaysAfterAI(b.latestAIDate, currentDate) || 0;
-  
-  // Calculate PD target dates (AI + 60 days)
-  const pdTargetA = new Date(safeParse(a.latestAIDate)?.getTime() + 60 * 24 * 60 * 60 * 1000);
-  const pdTargetB = new Date(safeParse(b.latestAIDate)?.getTime() + 60 * 24 * 60 * 60 * 1000);
-  
-  // If both need PD (not done yet), sort by earliest PD due date
-  if (!a.aiRecord.pd_done && !b.aiRecord.pd_done) {
-    const pdTargetCompare = pdTargetA.getTime() - pdTargetB.getTime();
-    if (pdTargetCompare !== 0) return pdTargetCompare;
+  // If both are pregnant, sort by delivery date (soonest first)
+  if (isPregnantA && isPregnantB) {
+    const daysToDeliveryA = getDaysToDelivery(a.expectedDeliveryDate, currentDate) || 999;
+    const daysToDeliveryB = getDaysToDelivery(b.expectedDeliveryDate, currentDate) || 999;
+    return daysToDeliveryA - daysToDeliveryB;
   }
   
-  // If only one needs PD, prioritize it
-  if (!a.aiRecord.pd_done && b.aiRecord.pd_done) return -1;
-  if (a.aiRecord.pd_done && !b.aiRecord.pd_done) return 1;
+  // Pregnant cows get priority over non-pregnant
+  if (isPregnantA && !isPregnantB) return -1;
+  if (!isPregnantA && isPregnantB) return 1;
+  
+  // For non-pregnant cows, prioritize PD due/overdue
+  const pdDueA = isPDDue(a.latestAIDate, a.aiRecord.pd_done, currentDate);
+  const pdDueB = isPDDue(b.latestAIDate, b.aiRecord.pd_done, currentDate);
+  const pdOverdueA = isPDOverdue(a.latestAIDate, a.aiRecord.pd_done, currentDate);
+  const pdOverdueB = isPDOverdue(b.latestAIDate, b.aiRecord.pd_done, currentDate);
+  
+  // PD overdue gets highest priority
+  if (pdOverdueA && !pdOverdueB) return -1;
+  if (!pdOverdueA && pdOverdueB) return 1;
+  
+  // Then PD due
+  if (pdDueA && !pdDueB) return -1;
+  if (!pdDueA && pdDueB) return 1;
+  
+  // For same PD status, sort by AI date (earliest PD target date first)
+  if (pdDueA && pdDueB || pdOverdueA && pdOverdueB) {
+    const aiDateA = safeParse(a.latestAIDate)?.getTime() || 0;
+    const aiDateB = safeParse(b.latestAIDate)?.getTime() || 0;
+    return aiDateA - aiDateB; // Earlier AI date first (earlier PD target)
+  }
   
   // Fallback: Latest AI date desc, then cow number asc
   const aiDateCompare = b.latestAIDate.localeCompare(a.latestAIDate);
