@@ -176,11 +176,20 @@ export const compareCows = (a: CowSummary, b: CowSummary, today?: Date): number 
   if (pdDueA && !pdDueB) return -1;
   if (!pdDueA && pdDueB) return 1;
   
-  // For same PD status, sort by AI date (earliest PD target date first)
+  // For same PD status, sort by PD due date (earliest PD due date first)
   if (pdDueA && pdDueB || pdOverdueA && pdOverdueB) {
-    const aiDateA = safeParse(a.latestAIDate)?.getTime() || 0;
-    const aiDateB = safeParse(b.latestAIDate)?.getTime() || 0;
-    return aiDateA - aiDateB; // Earlier AI date first (earlier PD target)
+    const aiDateA = safeParse(a.latestAIDate);
+    const aiDateB = safeParse(b.latestAIDate);
+    if (aiDateA && aiDateB) {
+      // Calculate PD due dates (AI date + 60 days)
+      const pdDueDateA = new Date(aiDateA);
+      pdDueDateA.setDate(pdDueDateA.getDate() + PD_MAX_DAYS);
+      const pdDueDateB = new Date(aiDateB);
+      pdDueDateB.setDate(pdDueDateB.getDate() + PD_MAX_DAYS);
+      
+      return pdDueDateA.getTime() - pdDueDateB.getTime(); // Earliest PD due date first
+    }
+    return aiDateA ? -1 : aiDateB ? 1 : 0;
   }
   
   // Fallback: Latest AI date desc, then cow number asc
