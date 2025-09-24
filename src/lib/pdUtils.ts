@@ -101,7 +101,6 @@ export enum SortGroup {
 export const getCowSortGroup = (cow: CowSummary, today?: Date): SortGroup => {
   const currentDate = today || new Date();
   const daysToDelivery = getDaysToDelivery(cow.expectedDeliveryDate, currentDate);
-  const daysAfterAI = getDaysAfterAI(cow.latestAIDate, currentDate);
   
   // Group 1: 2 months before EDD (Move to Milking Group)
   if (cow.aiRecord.pd_done && cow.aiRecord.pd_result === 'positive' && 
@@ -134,69 +133,93 @@ export const getCowSortGroup = (cow: CowSummary, today?: Date): SortGroup => {
   return SortGroup.EVERYTHING_ELSE;
 };
 
+// --- New comparator helpers ---
+const getPDDueTimestamp = (cow: CowSummary): number => {
+  const ai = safeParse(cow.latestAIDate);
+  if (!ai) return Number.POSITIVE_INFINITY;
+  const due = new Date(ai);
+  due.setDate(due.getDate() + PD_MAX_DAYS);
+  return due.getTime();
+};
+
+const getEDDTimestamp = (cow: CowSummary): number => {
+  const edd = safeParse(cow.expectedDeliveryDate);
+  return edd ? edd.getTime() : Number.POSITIVE_INFINITY;
+};
+
+const getDTD = (cow: CowSummary, today?: Date): number => {
+  const d = getDaysToDelivery(cow.expectedDeliveryDate, today);
+  return d == null ? Number.POSITIVE_INFINITY : d;
+};
+
+// --- New compareCows ---
 export const compareCows = (a: CowSummary, b: CowSummary, today?: Date): number => {
   const currentDate = today || new Date();
-  
-  // Exclude delivered cows from priority sorting - they should go to bottom
-  if (a.status === 'Delivered' && b.status !== 'Delivered') return 1;
-  if (a.status !== 'Delivered' && b.status === 'Delivered') return -1;
-  if (a.status === 'Delivered' && b.status === 'Delivered') {
-    // Both delivered, sort by delivery date desc
-    const deliveryDateA = safeParse(a.deliveredDate)?.getTime() || 0;
-    const deliveryDateB = safeParse(b.deliveredDate)?.getTime() || 0;
-    return deliveryDateB - deliveryDateA;
+
+  // 0) Delivered always at bottom
+  const aDelivered = a.status === 'Delivered';
+  const bDelivered = b.status === 'Delivered';
+  if (aDelivered && !bDelivered) return 1;
+  if (!aDelivered && bDelivered) return -1;
+  if (aDelivered && bDelivered) {
+    const tA = safeParse(a.deliveredDate)?.getTime() ?? 0;
+    const tB = safeParse(b.deliveredDate)?.getTime() ?? 0;
+    return tB - tA; // newest delivered first
   }
-  
-  // For non-delivered cows, prioritize positive PD results with closest delivery dates
-  const isPregnantA = a.aiRecord.pd_done && a.aiRecord.pd_result === 'positive';
-  const isPregnantB = b.aiRecord.pd_done && b.aiRecord.pd_result === 'positive';
-  
-  // If both are pregnant, sort by delivery date (soonest first)
-  if (isPregnantA && isPregnantB) {
-    const daysToDeliveryA = getDaysToDelivery(a.expectedDeliveryDate, currentDate) || 999;
-    const daysToDeliveryB = getDaysToDelivery(b.expectedDeliveryDate, currentDate) || 999;
-    return daysToDeliveryA - daysToDeliveryB;
-  }
-  
-  // Pregnant cows get priority over non-pregnant
-  if (isPregnantA && !isPregnantB) return -1;
-  if (!isPregnantA && isPregnantB) return 1;
-  
-  // For non-pregnant cows, prioritize PD due/overdue
-  const pdDueA = isPDDue(a.latestAIDate, a.aiRecord.pd_done, currentDate);
-  const pdDueB = isPDDue(b.latestAIDate, b.aiRecord.pd_done, currentDate);
-  const pdOverdueA = isPDOverdue(a.latestAIDate, a.aiRecord.pd_done, currentDate);
-  const pdOverdueB = isPDOverdue(b.latestAIDate, b.aiRecord.pd_done, currentDate);
-  
-  // PD overdue gets highest priority
-  if (pdOverdueA && !pdOverdueB) return -1;
-  if (!pdOverdueA && pdOverdueB) return 1;
-  
-  // Then PD due
-  if (pdDueA && !pdDueB) return -1;
-  if (!pdDueA && pdDueB) return 1;
-  
-  // For same PD status, sort by PD due date (earliest PD due date first)
-  if ((pdDueA && pdDueB) || (pdOverdueA && pdOverdueB)) {
-    const aiDateA = safeParse(a.latestAIDate);
-    const aiDateB = safeParse(b.latestAIDate);
-    if (aiDateA && aiDateB) {
-      // Calculate PD due dates (AI date + 60 days) 
-      const pdDueDateA = new Date(aiDateA);
-      pdDueDateA.setDate(pdDueDateA.getDate() + PD_MAX_DAYS);
-      const pdDueDateB = new Date(aiDateB);
-      pdDueDateB.setDate(pdDueDateB.getDate() + PD_MAX_DAYS);
-      
-      return pdDueDateA.getTime() - pdDueDateB.getTime(); // Earliest PD due date first
+
+  // 1) Primary key: SortGroup
+  const gA = getCowSortGroup(a, currentDate);
+  const gB = getCowSortGroup(b, currentDate);
+  if (gA !== gB) return gA - gB;
+
+  // 2) Per-group tie-breakers
+  switch (gA) {
+    case SortGroup.MOVE_TO_MILKING:
+    case SortGroup.ABOUT_TO_DELIVER: {
+      const dA = getDTD(a, currentDate);
+      const dB = getDTD(b, currentDate);
+      if (dA !== dB) return dA - dB;
+
+      const tA = getEDDTimestamp(a);
+      const tB = getEDDTimestamp(b);
+      if (tA !== tB) return tA - tB;
+      break;
     }
-    return aiDateA ? -1 : aiDateB ? 1 : 0;
+
+    case SortGroup.PD_DUE:
+    case SortGroup.PD_OVERDUE: {
+      const pA = getPDDueTimestamp(a);
+      const pB = getPDDueTimestamp(b);
+      if (pA !== pB) return pA - pB;
+
+      const aiA = safeParse(a.latestAIDate)?.getTime() ?? Number.POSITIVE_INFINITY;
+      const aiB = safeParse(b.latestAIDate)?.getTime() ?? Number.POSITIVE_INFINITY;
+      if (aiA !== aiB) return aiA - aiB;
+      break;
+    }
+
+    case SortGroup.FLAGGED: {
+      const fA = safeParse(a.needsMilkingMoveAt ?? '')?.getTime() ?? Number.POSITIVE_INFINITY;
+      const fB = safeParse(b.needsMilkingMoveAt ?? '')?.getTime() ?? Number.POSITIVE_INFINITY;
+      if (fA !== fB) return fA - fB;
+
+      const dA = getDTD(a, currentDate);
+      const dB = getDTD(b, currentDate);
+      if (dA !== dB) return dA - dB;
+      break;
+    }
+
+    case SortGroup.EVERYTHING_ELSE:
+    default:
+      break;
   }
-  
-  // Fallback: Latest AI date desc, then cow number asc
-  const aiDateCompare = b.latestAIDate.localeCompare(a.latestAIDate);
-  if (aiDateCompare !== 0) return aiDateCompare;
-  
-  return a.cowNumber.localeCompare(b.cowNumber, undefined, { numeric: true });
+
+  // 3) Global fallback: latest AI first, then cow number
+  const tAIa = safeParse(a.latestAIDate)?.getTime() ?? 0;
+  const tAIb = safeParse(b.latestAIDate)?.getTime() ?? 0;
+  if (tAIa !== tAIb) return tAIb - tAIa;
+
+  return parseNumericCowNumber(a.cowNumber) - parseNumericCowNumber(b.cowNumber);
 };
 
 // Parse numeric cow number safely
