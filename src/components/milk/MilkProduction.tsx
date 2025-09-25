@@ -13,7 +13,6 @@ import { MilkProductionForm } from './MilkProductionForm';
 import { MilkStatsCards } from './MilkStatsCards';
 import { MilkProductionTable } from './MilkProductionTable';
 import { MilkProductionFiltersModal } from './MilkProductionFiltersModal';
-import { ActiveSessionStatus } from './ActiveSessionStatus';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useMilkingLog } from '@/hooks/useMilkingLogs';
 import { useToast } from '@/hooks/use-toast';
@@ -325,10 +324,7 @@ export const MilkProduction = () => {
         </div>
       </div>
 
-      <ActiveSessionStatus 
-        sessionSettings={sessionSettings} 
-        timezone={tz} 
-      />
+      {/* Session status is already shown in SessionNotifications component below */}
 
       <SessionNotifications
         sessionSettings={sessionSettings}
