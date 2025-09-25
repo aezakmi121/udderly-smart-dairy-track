@@ -189,21 +189,33 @@ export const usePushNotifications = () => {
       return;
     }
 
-    if (!isEnabled || !token) {
-      toast({
-        title: 'Notifications Not Enabled',
-        description: 'Please enable notifications first.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
     try {
-      // Check if permission is still granted
+      // Check if permission is granted, if not request it
       if (Notification.permission !== 'granted') {
+        console.log('Requesting notification permission...');
+        const permission = await Notification.requestPermission();
+        setPermission(permission);
+        
+        if (permission !== 'granted') {
+          toast({
+            title: 'Permission Denied',
+            description: 'Please allow notifications in your browser to receive alerts.',
+            variant: 'destructive'
+          });
+          return;
+        }
+        
+        // If permission was just granted, enable notifications
+        if (!isEnabled) {
+          await enableNotifications();
+        }
+      }
+
+      // If still not enabled after permission granted, show error
+      if (!isEnabled || !token) {
         toast({
-          title: 'Permission Required',
-          description: 'Please grant notification permission to send test notifications.',
+          title: 'Setup Required',
+          description: 'Please enable notifications first using the Enable button.',
           variant: 'destructive'
         });
         return;
