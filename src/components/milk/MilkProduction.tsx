@@ -13,6 +13,7 @@ import { MilkProductionForm } from './MilkProductionForm';
 import { MilkStatsCards } from './MilkStatsCards';
 import { MilkProductionTable } from './MilkProductionTable';
 import { MilkProductionFiltersModal } from './MilkProductionFiltersModal';
+import { ActiveSessionStatus } from './ActiveSessionStatus';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useMilkingLog } from '@/hooks/useMilkingLogs';
 import { useToast } from '@/hooks/use-toast';
@@ -324,18 +325,10 @@ export const MilkProduction = () => {
         </div>
       </div>
 
-      <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-2">
-        <span>
-          Session: {selectedSession === 'morning' ? 'Morning' : 'Evening'} • {started
-            ? `Started ${milkingLog?.milking_start_time ? new Date(milkingLog.milking_start_time).toLocaleTimeString() : ''}${ended ? ` • Ended ${milkingLog?.milking_end_time ? new Date(milkingLog.milking_end_time).toLocaleTimeString() : ''}` : ' • In progress'}`
-            : (milkingLog && !ended ? 'Unlocked (no start time)' : 'Not started')}
-        </span>
-        {!started && (
-          <Button className="w-full sm:w-auto" size="sm" variant="outline" onClick={async () => { await startLog(selectedDate, selectedSession); toast({ title: 'Session started' }); }}>
-            Start Session
-          </Button>
-        )}
-      </div>
+      <ActiveSessionStatus 
+        sessionSettings={sessionSettings} 
+        timezone={tz} 
+      />
 
       <SessionNotifications
         sessionSettings={sessionSettings}
