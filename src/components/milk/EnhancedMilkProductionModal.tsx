@@ -9,7 +9,7 @@ import { formatCowDate } from '@/lib/pdUtils';
 import { Sun, Moon } from 'lucide-react';
 import { useAppSetting } from '@/hooks/useAppSettings';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
-import { fromZonedTime } from 'date-fns-tz';
+import { toZonedTime } from 'date-fns-tz';
 
 interface EnhancedMilkProductionModalProps {
   selectedRecord?: any;
@@ -75,28 +75,24 @@ export const EnhancedMilkProductionModal: React.FC<EnhancedMilkProductionModalPr
     if (!sessionWindow) return true;
     
     try {
-      // Create proper timestamps using the configured timezone
-      const selectedDateStr = selectedDate;
-      const startTime = `${selectedDateStr}T${sessionWindow.start}:00`;
-      const endTime = `${selectedDateStr}T${sessionWindow.end}:00`;
+      // Get current time in the configured timezone
+      const nowInTimezone = toZonedTime(new Date(), tz);
+      const currentTimeStr = nowInTimezone.toTimeString().slice(0, 5); // HH:MM format
       
-      const startTs = fromZonedTime(startTime, tz).getTime();
-      const endTs = fromZonedTime(endTime, tz).getTime();
-      const nowTs = Date.now();
+      // Compare time strings directly (works since they're in HH:MM format)
+      const isAfterStart = currentTimeStr >= sessionWindow.start;
+      const isBeforeEnd = currentTimeStr <= sessionWindow.end;
       
       console.log('Session window check:', {
         session,
-        selectedDate: selectedDateStr,
+        currentTimeStr,
         sessionWindow,
-        startTime,
-        endTime,
-        startTs: new Date(startTs).toISOString(),
-        endTs: new Date(endTs).toISOString(),
-        nowTs: new Date(nowTs).toISOString(),
-        isWithin: nowTs >= startTs && nowTs <= endTs
+        isAfterStart,
+        isBeforeEnd,
+        isWithin: isAfterStart && isBeforeEnd
       });
       
-      return nowTs >= startTs && nowTs <= endTs;
+      return isAfterStart && isBeforeEnd;
     } catch (error) {
       console.error('Error checking session window:', error);
       return false;
