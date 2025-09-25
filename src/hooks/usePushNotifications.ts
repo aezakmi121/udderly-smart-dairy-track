@@ -345,6 +345,22 @@ export const usePushNotifications = () => {
         } else {
           throw sendError;
         }
+      } else if (data && data.failed > 0) {
+        // Check if the response indicates failures even when no error is thrown
+        console.log('⚠️ Edge function succeeded but FCM sends failed');
+        console.log('🔄 Token likely expired, attempting to refresh...');
+        
+        toast({
+          title: 'Token Expired',
+          description: 'Your notification token has expired. Getting a fresh one...',
+          variant: 'default'
+        });
+        
+        // Clear the current token and re-enable notifications
+        setToken(null);
+        setIsEnabled(false);
+        await enableNotifications();
+        return;
       } else {
         console.log('✅ FCM test notification sent successfully!');
         console.log('📊 Response data:', data);

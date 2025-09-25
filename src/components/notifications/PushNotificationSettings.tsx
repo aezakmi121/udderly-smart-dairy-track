@@ -14,6 +14,8 @@ export const PushNotificationSettings = () => {
 
   const broadcastTestNotification = async () => {
     try {
+      console.log('📡 Starting broadcast test notification...');
+      
       // Get all user tokens from the database
       const { data: profiles, error } = await supabase
         .from('profiles')
@@ -44,8 +46,10 @@ export const PushNotificationSettings = () => {
         return;
       }
 
+      console.log(`📤 Broadcasting to ${tokens.length} tokens...`);
+
       // Call the edge function to send notifications to all devices
-      const { error: sendError } = await supabase.functions.invoke('send-push-notification', {
+      const { data, error: sendError } = await supabase.functions.invoke('send-push-notification', {
         body: {
           tokens,
           title: 'Admin Test Broadcast',
@@ -57,17 +61,37 @@ export const PushNotificationSettings = () => {
         }
       });
 
+      console.log('📊 Broadcast response:', { data, error: sendError });
+
       if (sendError) {
         throw sendError;
       }
 
-      toast({
-        title: 'Broadcast Sent',
-        description: `Test broadcast sent to ${tokens.length} registered device(s)!`,
-      });
+      if (data) {
+        const { sent, failed, details } = data;
+        console.log(`📊 Broadcast results: ${sent} sent, ${failed} failed`);
+        
+        if (failed > 0) {
+          toast({
+            title: 'Partial Success',
+            description: `Broadcast sent to ${sent} devices, ${failed} failed (likely expired tokens)`,
+            variant: 'default'
+          });
+        } else {
+          toast({
+            title: 'Broadcast Sent',
+            description: `Test broadcast sent to ${sent} registered device(s)!`,
+          });
+        }
+      } else {
+        toast({
+          title: 'Broadcast Sent',
+          description: `Test broadcast sent to ${tokens.length} registered device(s)!`,
+        });
+      }
 
     } catch (error) {
-      console.error('Error broadcasting notification:', error);
+      console.error('❌ Error broadcasting notification:', error);
       toast({
         title: 'Broadcast Failed',
         description: `Failed to send broadcast: ${error instanceof Error ? error.message : 'Unknown error'}`,
