@@ -4,14 +4,14 @@
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js');
 
-// Firebase configuration
+// Firebase configuration - TODO: Update with your actual config
 const firebaseConfig = {
-  apiKey: "AIzaSyBvJ8nR2nPJKqr8HrR1WaW2m2Kqk5nQqPc",
-  authDomain: "dairy-farm-manager.firebaseapp.com", 
-  projectId: "dairy-farm-manager",
-  storageBucket: "dairy-farm-manager.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:abcdef123456789"
+  apiKey: "YOUR_ACTUAL_API_KEY",
+  authDomain: "your-project-id.firebaseapp.com", 
+  projectId: "your-actual-project-id",
+  storageBucket: "your-project-id.appspot.com",
+  messagingSenderId: "YOUR_ACTUAL_SENDER_ID",
+  appId: "YOUR_ACTUAL_APP_ID"
 };
 
 // Initialize Firebase
