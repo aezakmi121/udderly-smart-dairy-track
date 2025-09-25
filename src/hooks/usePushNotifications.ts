@@ -99,36 +99,58 @@ export const usePushNotifications = () => {
   };
 
   const enableNotifications = async () => {
+    console.log('🔄 ENABLE: Starting notification enablement process...');
+    console.log('🔍 ENABLE: Current state:', {
+      isSupported,
+      permission: Notification.permission,
+      hasToken: !!token,
+      isEnabled
+    });
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        console.error('❌ ENABLE: User not authenticated');
         throw new Error('User not authenticated');
       }
+      console.log('✅ ENABLE: User authenticated:', { id: user.id, email: user.email });
 
       // Check permission again before enabling
       const currentPermission = Notification.permission;
+      console.log('🔍 ENABLE: Current permission:', currentPermission);
+      
       if (currentPermission !== 'granted') {
+        console.error('❌ ENABLE: Permission not granted:', currentPermission);
         throw new Error(`Notification permission not granted: ${currentPermission}`);
       }
+      console.log('✅ ENABLE: Permission is granted');
 
-      console.log('🔄 Attempting to get FCM token...');
+      console.log('🧹 ENABLE: Cleaning up existing service workers...');
       
       // Clean up any existing service workers first
       if ('serviceWorker' in navigator) {
         const registrations = await navigator.serviceWorker.getRegistrations();
-        console.log(`📋 Found ${registrations.length} existing service worker registrations`);
+        console.log(`🔍 ENABLE: Found ${registrations.length} existing service worker registrations`);
         
         // Unregister old service workers to avoid conflicts
         for (const registration of registrations) {
+          console.log('🔍 ENABLE: Checking registration:', {
+            scope: registration.scope,
+            scriptURL: registration.active?.scriptURL
+          });
+          
           if (registration.scope.includes('firebase-messaging')) {
-            console.log('🗑️ Unregistering old Firebase messaging service worker');
+            console.log('🗑️ ENABLE: Unregistering old Firebase messaging service worker');
             await registration.unregister();
           }
         }
       }
+      console.log('✅ ENABLE: Service worker cleanup complete');
       
       // Try to get FCM token from Firebase first
+      console.log('🎫 ENABLE: Attempting to get FCM token...');
       const fcmToken = await requestNotificationPermission();
+      console.log('🎫 ENABLE: FCM token result:', fcmToken ? `${fcmToken.substring(0, 30)}...` : 'null');
       
       let tokenToSave = fcmToken;
       let tokenType = 'FCM';
@@ -246,7 +268,17 @@ export const usePushNotifications = () => {
   };
 
   const testNotification = async () => {
+    console.log('🧪 TEST: Starting test notification process...');
+    console.log('🔍 TEST: Current state:', {
+      isSupported,
+      permission: Notification.permission,
+      hasToken: !!token,
+      tokenPreview: token ? token.substring(0, 20) + '...' : 'null',
+      isEnabled
+    });
+    
     if (!isSupported) {
+      console.error('❌ TEST: Push notifications not supported');
       toast({
         title: 'Not Supported',
         description: 'Push notifications are not supported in this browser.',
@@ -256,15 +288,18 @@ export const usePushNotifications = () => {
     }
 
     try {
-      console.log('🧪 Starting test notification...');
-      
       // Check if permission is granted, if not request it
-      if (Notification.permission !== 'granted') {
-        console.log('🔐 Requesting notification permission...');
+      const currentPermission = Notification.permission;
+      console.log('🔍 TEST: Current permission:', currentPermission);
+      
+      if (currentPermission !== 'granted') {
+        console.log('🔐 TEST: Requesting notification permission...');
         const permission = await Notification.requestPermission();
+        console.log('📋 TEST: Permission result:', permission);
         setPermission(permission);
         
         if (permission !== 'granted') {
+          console.error('❌ TEST: Permission denied');
           toast({
             title: 'Permission Denied',
             description: 'Please allow notifications in your browser to receive alerts.',
@@ -275,12 +310,14 @@ export const usePushNotifications = () => {
         
         // If permission was just granted, enable notifications
         if (!isEnabled) {
+          console.log('🔄 TEST: Permission just granted, enabling notifications...');
           await enableNotifications();
         }
       }
 
       // If still not enabled after permission granted, show error
       if (!isEnabled || !token) {
+        console.error('❌ TEST: Not enabled or no token:', { isEnabled, hasToken: !!token });
         toast({
           title: 'Setup Required',
           description: 'Please enable notifications first using the Enable button.',
@@ -289,29 +326,52 @@ export const usePushNotifications = () => {
         return;
       }
 
-      console.log('📤 Sending test notification with token:', token.substring(0, 20) + '...');
+      console.log('📤 TEST: Sending test notification...');
+      console.log('🎫 TEST: Using token:', token.substring(0, 30) + '...');
+      console.log('📏 TEST: Token length:', token.length);
 
-      // Send actual FCM notification to test the full pipeline
-      const { data, error: sendError } = await supabase.functions.invoke('send-push-notification', {
-        body: {
-          tokens: [token],
-          title: 'Test Notification',
-          body: 'This is a test notification from Dairy Farm Manager! 🥛 If you see this, notifications are working correctly.',
-          data: {
-            type: 'test',
-            timestamp: new Date().toISOString()
-          }
+      // Prepare notification payload
+      const notificationPayload = {
+        tokens: [token],
+        title: 'Test Notification',
+        body: 'This is a test notification from Dairy Farm Manager! 🥛 If you see this, notifications are working correctly.',
+        data: {
+          type: 'test',
+          timestamp: new Date().toISOString()
         }
+      };
+      
+      console.log('📦 TEST: Notification payload:', {
+        tokenCount: notificationPayload.tokens.length,
+        title: notificationPayload.title,
+        bodyLength: notificationPayload.body.length,
+        dataKeys: Object.keys(notificationPayload.data)
       });
 
-      console.log('📊 Edge function response:', { data, error: sendError });
+      // Send actual FCM notification to test the full pipeline
+      console.log('🚀 TEST: Invoking edge function...');
+      const { data, error: sendError } = await supabase.functions.invoke('send-push-notification', {
+        body: notificationPayload
+      });
+
+      console.log('📊 TEST: Edge function response:', { 
+        hasData: !!data, 
+        hasError: !!sendError,
+        data: data,
+        error: sendError 
+      });
 
       if (sendError) {
-        console.error('❌ FCM test failed, error:', sendError);
+        console.error('❌ TEST: FCM test failed with error:', sendError);
+        console.error('❌ TEST: Error details:', {
+          name: sendError.name,
+          message: sendError.message,
+          code: sendError.code
+        });
         
         // If it's an UNREGISTERED token error, try to refresh the token
         if (sendError.message?.includes('UNREGISTERED') || sendError.message?.includes('NOT_FOUND')) {
-          console.log('🔄 Token appears invalid, attempting to refresh...');
+          console.log('🔄 TEST: Token appears invalid, attempting to refresh...');
           toast({
             title: 'Token Expired',
             description: 'Your notification token has expired. Refreshing...',
@@ -324,36 +384,48 @@ export const usePushNotifications = () => {
         }
         
         // Fallback to local notification if FCM fails for other reasons
-        console.log('🔄 Falling back to local notification');
+        console.log('🔄 TEST: Falling back to local notification');
         if ('serviceWorker' in navigator) {
-          const registration = await navigator.serviceWorker.ready;
-          
-          await registration.showNotification('Test Notification (Local)', {
-            body: 'This is a local test notification from Dairy Farm Manager! 🥛',
-            icon: '/android-chrome-192x192.png',
-            badge: '/favicon-32x32.png',
-            tag: 'test',
-            requireInteraction: false,
-            silent: false
-          });
+          try {
+            const registration = await navigator.serviceWorker.ready;
+            console.log('📱 TEST: Showing local notification via service worker');
+            
+            await registration.showNotification('Test Notification (Local)', {
+              body: 'This is a local test notification from Dairy Farm Manager! 🥛',
+              icon: '/android-chrome-192x192.png',
+              badge: '/favicon-32x32.png',
+              tag: 'test',
+              requireInteraction: false,
+              silent: false
+            });
 
-          toast({
-            title: 'Local Test Sent',
-            description: 'FCM failed, but local notification sent successfully.',
-            variant: 'default'
-          });
+            toast({
+              title: 'Local Test Sent',
+              description: 'FCM failed, but local notification sent successfully.',
+              variant: 'default'
+            });
+          } catch (localError) {
+            console.error('❌ TEST: Local notification also failed:', localError);
+            throw sendError;
+          }
         } else {
           throw sendError;
         }
       } else if (data && data.failed > 0) {
         // Check if the response indicates failures even when no error is thrown
-        console.log('⚠️ Edge function succeeded but FCM sends failed');
-        console.log('🔄 Token likely expired, attempting to refresh...');
+        console.log('⚠️ TEST: Edge function succeeded but FCM sends failed');
+        console.log('📊 TEST: Response details:', {
+          sent: data.sent,
+          failed: data.failed,
+          success: data.success,
+          message: data.message,
+          details: data.details
+        });
         
         // Clear the expired token from the user's profile
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          console.log('🗑️ Clearing expired token from database...');
+          console.log('🗑️ TEST: Clearing expired token from database...');
           await supabase
             .from('profiles')
             .update({ fcm_token: null })
@@ -372,8 +444,14 @@ export const usePushNotifications = () => {
         
         return;
       } else {
-        console.log('✅ FCM test notification sent successfully!');
-        console.log('📊 Response data:', data);
+        console.log('✅ TEST: FCM test notification sent successfully!');
+        console.log('📊 TEST: Response data:', data);
+        console.log('🎉 TEST: Success details:', {
+          sent: data?.sent,
+          failed: data?.failed,
+          message: data?.message
+        });
+        
         toast({
           title: 'Test Sent',
           description: data?.message || 'FCM test notification sent successfully!',
@@ -381,7 +459,13 @@ export const usePushNotifications = () => {
       }
 
     } catch (error) {
-      console.error('❌ Test notification error:', error);
+      console.error('❌ TEST: Unexpected error during test notification:', error);
+      console.error('❌ TEST: Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
       toast({
         title: 'Send Error',
         description: `Failed to send test notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
