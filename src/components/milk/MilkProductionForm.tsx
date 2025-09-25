@@ -25,6 +25,7 @@ interface MilkProductionFormProps {
   onSubmit: (data: any) => void;
   onCancel: () => void;
   isLoading: boolean;
+  clearCowAndQuantity?: boolean;
 }
 
 export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
@@ -33,7 +34,8 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
   defaultSession,
   onSubmit,
   onCancel,
-  isLoading
+  isLoading,
+  clearCowAndQuantity = false
 }) => {
   const { cows } = useMilkingCows();
   const selectedSession = selectedRecord?.session || defaultSession || 'morning';
@@ -59,7 +61,7 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <Label htmlFor="cow_id">Cow *</Label>
-        <Select name="cow_id" defaultValue={selectedRecord?.cow_id} required>
+        <Select name="cow_id" defaultValue={clearCowAndQuantity ? undefined : selectedRecord?.cow_id} required>
           <SelectTrigger>
             <SelectValue placeholder="Select cow" />
           </SelectTrigger>
@@ -100,7 +102,7 @@ export const MilkProductionForm: React.FC<MilkProductionFormProps> = ({
           name="quantity"
           type="number"
           step="0.001"
-          defaultValue={selectedRecord?.quantity || ''}
+          defaultValue={clearCowAndQuantity ? '' : (selectedRecord?.quantity || '')}
           required
         />
       </div>

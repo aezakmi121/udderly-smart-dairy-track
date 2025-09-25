@@ -37,6 +37,7 @@ export const EnhancedMilkProductionModal: React.FC<EnhancedMilkProductionModalPr
   const [internalOpen, setInternalOpen] = useState(false);
   const [sessionOverride, setSessionOverride] = useState<'morning' | 'evening' | null>(null);
   const [keepOpen, setKeepOpen] = useState(false);
+  const [formKey, setFormKey] = useState(0);
   
   const { value: sessionSettings } = useAppSetting<any>('milking_session_settings');
   const { isAdmin } = useUserPermissions();
@@ -104,8 +105,9 @@ export const EnhancedMilkProductionModal: React.FC<EnhancedMilkProductionModalPr
     if (keepOpen && !selectedRecord) {
       // Keep modal open for adding another record
       // The parent component should handle closing on success
-      // and we'll reopen it after a brief delay
+      // and we'll reopen it after a brief delay with cleared form
       setTimeout(() => {
+        setFormKey(prev => prev + 1); // Force form reset
         setOpen(true);
       }, 100);
     }
@@ -227,12 +229,14 @@ export const EnhancedMilkProductionModal: React.FC<EnhancedMilkProductionModalPr
           
           <div className="space-y-4">
             <MilkProductionForm
+              key={formKey}
               selectedRecord={selectedRecord}
               selectedDate={selectedDate}
               defaultSession={effectiveSession}
               onSubmit={handleSubmit}
               onCancel={handleCancel}
               isLoading={isLoading}
+              clearCowAndQuantity={keepOpen && !selectedRecord}
             />
             
             {/* Keep Open Option */}
