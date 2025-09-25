@@ -91,8 +91,8 @@ export const MilkProduction = () => {
   }, [sessionSettings?.enforceWindow, sessionWindow, selectedSession, tz]);
   
   const withinWindow = isWithinSessionWindow;
-  // Admins can always modify, workers need session constraints
-  const canModify = isAdmin ? true : isFarmWorker ? (!!milkingLog && !ended && (!sessionSettings?.enforceWindow || withinWindow)) : false;
+  // Admins can always modify, farm workers can add/edit (session controls are just for time window enforcement, not blocking)
+  const canModify = isAdmin || isFarmWorker;
 
   // Auto start/end based on settings and timezone
   useEffect(() => {

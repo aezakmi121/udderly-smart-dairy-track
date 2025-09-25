@@ -156,42 +156,48 @@ export const EnhancedMilkProductionModal: React.FC<EnhancedMilkProductionModalPr
 
   return (
     <>
-      {/* Quick Session Triggers */}
-      <div className="flex gap-2">
+      {/* Quick Session Triggers - Mobile-friendly stacked layout */}
+      <div className="flex flex-col sm:flex-row gap-2">
         <Button 
           variant="outline"
           size="sm"
-          className="flex-1 sm:flex-initial"
+          className="w-full sm:flex-1"
           onClick={() => handleQuickSession('morning')}
-          disabled={disabledAdd || !isWithinSessionWindow('morning')}
+          disabled={disabledAdd || (!isAdmin && !isWithinSessionWindow('morning'))}
           title={
             disabledAdd 
-              ? 'Session ended — adding is locked' 
-              : !isWithinSessionWindow('morning')
-              ? 'Morning session time window has passed'
+              ? 'Adding is disabled' 
+              : !isAdmin && !isWithinSessionWindow('morning')
+              ? 'Morning session time window has passed (Admin override available)'
               : 'Add morning record'
           }
         >
           <Sun className="h-4 w-4 mr-2" />
           Add Morning
+          {!isAdmin && !isWithinSessionWindow('morning') && (
+            <span className="ml-2 text-xs opacity-60">(Override)</span>
+          )}
         </Button>
         
         <Button 
           variant="outline"
           size="sm"
-          className="flex-1 sm:flex-initial"
+          className="w-full sm:flex-1"
           onClick={() => handleQuickSession('evening')}
-          disabled={disabledAdd || !isWithinSessionWindow('evening')}
+          disabled={disabledAdd || (!isAdmin && !isWithinSessionWindow('evening'))}
           title={
             disabledAdd 
-              ? 'Session ended — adding is locked' 
-              : !isWithinSessionWindow('evening')
-              ? 'Evening session time window has passed'
+              ? 'Adding is disabled' 
+              : !isAdmin && !isWithinSessionWindow('evening')
+              ? 'Evening session time window has passed (Admin override available)'
               : 'Add evening record'
           }
         >
           <Moon className="h-4 w-4 mr-2" />
           Add Evening
+          {!isAdmin && !isWithinSessionWindow('evening') && (
+            <span className="ml-2 text-xs opacity-60">(Override)</span>
+          )}
         </Button>
       </div>
 
