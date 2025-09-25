@@ -14,4 +14,4 @@ export const firebaseConfig = {
 
 // VAPID key for push notifications (public key)
 // TODO: Replace with your actual VAPID key from Firebase Console > Project Settings > Cloud Messaging
-export const vapidKey = "LzT0Y45_z2myDr603io_tqzqut3FwgM_uE7pcOt4ebY";
+export const vapidKey = "BKnhXweZqTb28QGkBwlZB83sLFg8E4C7MWEJJWH4imBn5rS-WHtucdJPXAYVMJnyjWH2DbSNGB3t_31yurhY_Q8";
