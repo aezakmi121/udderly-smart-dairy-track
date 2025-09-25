@@ -40,11 +40,11 @@ const secondary = (c: Cow): number => {
   switch (group(c)) {
     case 0:
     case 1:
-      return daysTo(c.expected_delivery) ?? 9999;
+      return daysTo(c.expected_delivery) ?? 9999; // closer delivery = smaller number = higher priority
     case 2:
-      return daysTo(c.pd_due) ?? 9999; // overdue (negative) bubbles to top
+      return daysTo(c.pd_due) ?? 9999; // overdue = negative = higher priority
     case 3:
-      return daysSince(c.delivered_on) ?? 9999;
+      return -(daysSince(c.delivered_on) ?? 0); // more recent delivery = higher priority
     default:
       return 9999;
   }
