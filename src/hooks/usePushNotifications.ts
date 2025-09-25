@@ -350,16 +350,26 @@ export const usePushNotifications = () => {
         console.log('⚠️ Edge function succeeded but FCM sends failed');
         console.log('🔄 Token likely expired, attempting to refresh...');
         
+        // Clear the expired token from the user's profile
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          console.log('🗑️ Clearing expired token from database...');
+          await supabase
+            .from('profiles')
+            .update({ fcm_token: null })
+            .eq('id', user.id);
+        }
+
+        // Clear local state
+        setToken(null);
+        setIsEnabled(false);
+        
         toast({
           title: 'Token Expired',
-          description: 'Your notification token has expired. Getting a fresh one...',
+          description: 'Your notification token expired. Click "Enable Notifications" to get a fresh one.',
           variant: 'default'
         });
         
-        // Clear the current token and re-enable notifications
-        setToken(null);
-        setIsEnabled(false);
-        await enableNotifications();
         return;
       } else {
         console.log('✅ FCM test notification sent successfully!');
