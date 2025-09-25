@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { notificationScheduler } from '@/services/notificationScheduler';
+import { requestNotificationPermission, setupForegroundMessageListener, getFCMToken } from '@/services/firebaseMessaging';
 
 export const usePushNotifications = () => {
   const [isSupported, setIsSupported] = useState(false);
@@ -82,25 +83,46 @@ export const usePushNotifications = () => {
         throw new Error('User not authenticated');
       }
 
-      // Generate a simple token based on user ID and timestamp
-      const browserToken = `browser_${user.id}_${Date.now()}`;
-      
-      // Save token to user profile
-      const { error } = await supabase
-        .from('profiles')
-        .update({ fcm_token: browserToken } as any)
-        .eq('id', user.id);
+      // Get FCM token from Firebase
+      const fcmToken = await requestNotificationPermission();
+      if (!fcmToken) {
+        // Fallback to browser token for testing
+        const browserToken = `browser_${user.id}_${Date.now()}`;
+        
+        const { error } = await supabase
+          .from('profiles')
+          .update({ fcm_token: browserToken } as any)
+          .eq('id', user.id);
 
-      if (error) {
-        throw error;
-      }
+        if (error) throw error;
 
-      setToken(browserToken);
-      setIsEnabled(true);
-      
-      // Register service worker for notifications
-      if ('serviceWorker' in navigator) {
-        await navigator.serviceWorker.register('/sw.js');
+        setToken(browserToken);
+        setIsEnabled(true);
+
+        // Register fallback service worker
+        if ('serviceWorker' in navigator) {
+          await navigator.serviceWorker.register('/sw.js');
+        }
+      } else {
+        // Save FCM token to user profile
+        const { error } = await supabase
+          .from('profiles')
+          .update({ fcm_token: fcmToken } as any)
+          .eq('id', user.id);
+
+        if (error) throw error;
+
+        setToken(fcmToken);
+        setIsEnabled(true);
+
+        // Set up foreground message listener
+        setupForegroundMessageListener((payload) => {
+          console.log('Foreground notification received:', payload);
+          toast({
+            title: payload.notification?.title || 'Notification',
+            description: payload.notification?.body || 'New message received',
+          });
+        });
       }
 
       // Start notification scheduler
@@ -108,7 +130,7 @@ export const usePushNotifications = () => {
 
       toast({
         title: 'Notifications Enabled',
-        description: 'You will now receive push notifications for milking sessions and collection times.',
+        description: 'You will now receive push notifications for farm activities.',
       });
 
     } catch (error) {
