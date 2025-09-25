@@ -23,6 +23,7 @@ export const SessionNotifications: React.FC<SessionNotificationsProps> = ({
   const [sessionStatus, setSessionStatus] = useState<'before' | 'active' | 'after' | 'disabled'>('disabled');
   const [timeToStart, setTimeToStart] = useState<string>('');
   const [timeToEnd, setTimeToEnd] = useState<string>('');
+  const [currentSeconds, setCurrentSeconds] = useState(0);
 
   useEffect(() => {
     if (!sessionSettings || !sessionSettings.enforceWindow) {
@@ -31,9 +32,12 @@ export const SessionNotifications: React.FC<SessionNotificationsProps> = ({
     }
 
     const updateTime = () => {
-      const nowInTimezone = toZonedTime(new Date(), timezone);
+      const now = new Date();
+      const nowInTimezone = toZonedTime(now, timezone);
       const currentTime = nowInTimezone.toTimeString().slice(0, 5);
-      setCurrentTimeStr(`${currentTime} (${timezone})`);
+      const currentSeconds = nowInTimezone.getSeconds();
+      setCurrentTimeStr(`${currentTime}:${currentSeconds.toString().padStart(2, '0')} (${timezone})`);
+      setCurrentSeconds(currentSeconds);
 
       const sessionWindow = sessionSettings[selectedSession];
       if (!sessionWindow) {
@@ -46,10 +50,10 @@ export const SessionNotifications: React.FC<SessionNotificationsProps> = ({
 
       if (!isAfterStart) {
         setSessionStatus('before');
-        setTimeToStart(calculateTimeUntil(currentTime, sessionWindow.start));
+        setTimeToStart(calculateTimeUntilWithSeconds(nowInTimezone, sessionWindow.start));
       } else if (isAfterStart && isBeforeEnd) {
         setSessionStatus('active');
-        setTimeToEnd(calculateTimeUntil(currentTime, sessionWindow.end));
+        setTimeToEnd(calculateTimeUntilWithSeconds(nowInTimezone, sessionWindow.end));
       } else {
         setSessionStatus('after');
       }
@@ -82,6 +86,28 @@ export const SessionNotifications: React.FC<SessionNotificationsProps> = ({
     } else {
       return `${minutes}m`;
     }
+  };
+
+  const calculateTimeUntilWithSeconds = (nowInTimezone: Date, targetTime: string): string => {
+    const [targetHour, targetMinute] = targetTime.split(':').map(Number);
+    
+    // Create target date for today
+    const targetDate = new Date(nowInTimezone);
+    targetDate.setHours(targetHour, targetMinute, 0, 0);
+    
+    // If target time has passed today, set it for tomorrow
+    if (targetDate <= nowInTimezone) {
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+    
+    const diffMs = targetDate.getTime() - nowInTimezone.getTime();
+    const diffSeconds = Math.floor(diffMs / 1000);
+    
+    const hours = Math.floor(diffSeconds / 3600);
+    const minutes = Math.floor((diffSeconds % 3600) / 60);
+    const seconds = diffSeconds % 60;
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const getStatusIcon = () => {
