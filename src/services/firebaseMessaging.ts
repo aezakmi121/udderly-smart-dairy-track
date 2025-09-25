@@ -31,37 +31,61 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
   try {
     const messagingInstance = await initializeFirebaseMessaging();
     if (!messagingInstance) {
+      console.log('Firebase messaging not available, falling back to browser notifications');
       return null;
     }
 
-    // Check if service worker is registered
+    // Check if service worker is supported
     if (!('serviceWorker' in navigator)) {
       console.error('Service Worker not supported');
       return null;
     }
 
-    // Register service worker for Firebase messaging
-    const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    // Clear any existing registrations to avoid conflicts
+    const existingRegistrations = await navigator.serviceWorker.getRegistrations();
+    console.log(`Found ${existingRegistrations.length} existing service worker registrations`);
+
+    // Register Firebase messaging service worker
+    let registration;
+    try {
+      registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        scope: '/'
+      });
+      console.log('Firebase messaging service worker registered successfully');
+      
+      // Wait for the service worker to be ready
+      await navigator.serviceWorker.ready;
+    } catch (regError) {
+      console.error('Failed to register Firebase messaging service worker:', regError);
+      return null;
+    }
     
-    // Request permission if not granted
-    if (Notification.permission !== 'granted') {
+    // Check current permission
+    let permission = Notification.permission;
+    if (permission !== 'granted') {
       console.log('Requesting notification permission for FCM...');
-      const permission = await Notification.requestPermission();
+      permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         console.log('Permission denied, cannot get FCM token');
         return null;
       }
     }
 
-    const token = await getToken(messagingInstance, {
-      vapidKey: vapidKey,
-      serviceWorkerRegistration: registration
-    });
+    try {
+      const token = await getToken(messagingInstance, {
+        vapidKey: vapidKey,
+        serviceWorkerRegistration: registration
+      });
 
-    console.log('FCM Token generated:', token);
-    return token;
+      console.log('FCM Token generated:', token);
+      return token;
+    } catch (tokenError) {
+      console.error('Error getting FCM token:', tokenError);
+      // This is where the "Registration failed - push service error" typically occurs
+      return null;
+    }
   } catch (error) {
-    console.error('Error getting FCM token:', error);
+    console.error('Error in requestNotificationPermission:', error);
     return null;
   }
 };

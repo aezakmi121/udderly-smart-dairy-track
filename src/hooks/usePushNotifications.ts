@@ -56,10 +56,20 @@ export const usePushNotifications = () => {
       
       let permission = Notification.permission;
       
-      // Only request permission if not already granted or denied
-      if (permission === 'default') {
+      // Handle different permission states
+      if (permission === 'denied') {
+        // Permission was previously denied - user needs to manually enable in browser
+        toast({
+          title: 'Permission Previously Denied',
+          description: 'Please click the 🔒 lock icon in your browser address bar and allow notifications, then try again.',
+          variant: 'destructive'
+        });
+        return false;
+      } else if (permission === 'default') {
         console.log('Requesting notification permission...');
+        // Request permission for the first time
         permission = await Notification.requestPermission();
+        console.log('Permission result:', permission);
       }
       
       setPermission(permission);
@@ -69,8 +79,10 @@ export const usePushNotifications = () => {
         return true;
       } else {
         toast({
-          title: 'Permission Denied',
-          description: 'Please enable notifications in your browser settings to receive alerts.',
+          title: 'Permission Required',
+          description: permission === 'denied' 
+            ? 'Click the 🔒 lock icon in your browser address bar to allow notifications'
+            : 'Please allow notifications to receive important updates.',
           variant: 'destructive'
         });
         return false;
@@ -93,7 +105,20 @@ export const usePushNotifications = () => {
         throw new Error('User not authenticated');
       }
 
+      // Check permission again before enabling
+      const currentPermission = Notification.permission;
+      if (currentPermission !== 'granted') {
+        throw new Error(`Notification permission not granted: ${currentPermission}`);
+      }
+
       console.log('Attempting to get FCM token...');
+      
+      // Clean up any existing service workers first
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        console.log('Existing service worker registrations:', registrations.length);
+      }
+      
       // Try to get FCM token from Firebase first
       const fcmToken = await requestNotificationPermission();
       
@@ -108,7 +133,12 @@ export const usePushNotifications = () => {
         
         // Register fallback service worker for browser notifications
         if ('serviceWorker' in navigator) {
-          await navigator.serviceWorker.register('/sw.js');
+          try {
+            await navigator.serviceWorker.register('/sw.js');
+            console.log('Fallback service worker registered');
+          } catch (swError) {
+            console.error('Failed to register fallback service worker:', swError);
+          }
         }
       } else {
         console.log('FCM token generated successfully:', fcmToken);
@@ -152,6 +182,13 @@ export const usePushNotifications = () => {
     }
   };
 
+  const refreshPermissionStatus = () => {
+    const currentPermission = Notification.permission;
+    setPermission(currentPermission);
+    console.log('Permission status refreshed:', currentPermission);
+    return currentPermission;
+  };
+
   const disableNotifications = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -168,13 +205,16 @@ export const usePushNotifications = () => {
 
       setToken(null);
       setIsEnabled(false);
+      
+      // Update permission state
+      setPermission(Notification.permission);
 
       // Stop notification scheduler
       notificationScheduler.stop();
 
       toast({
         title: 'Notifications Disabled',
-        description: 'You will no longer receive push notifications.',
+        description: 'Push notifications have been disabled. To re-enable, use the Enable button above.',
       });
 
     } catch (error) {
@@ -266,6 +306,7 @@ export const usePushNotifications = () => {
     isEnabled,
     requestPermission,
     disableNotifications,
-    testNotification
+    testNotification,
+    refreshPermissionStatus
   };
 };

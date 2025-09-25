@@ -3,11 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { supabase } from '@/integrations/supabase/client';
-import { Bell, BellOff, Send, Megaphone } from 'lucide-react';
+import { Bell, BellOff, Send, Megaphone, RefreshCw, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const PushNotificationSettings = () => {
-  const { isSupported, permission, token, isEnabled, requestPermission, disableNotifications, testNotification } = usePushNotifications();
+  const { isSupported, permission, token, isEnabled, requestPermission, disableNotifications, testNotification, refreshPermissionStatus } = usePushNotifications();
   const { isAdmin } = useUserPermissions();
   const { toast } = useToast();
 
@@ -103,27 +104,60 @@ export const PushNotificationSettings = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {permission === 'denied' && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Notifications are blocked. To enable them:
+              <br />
+              1. Click the 🔒 lock icon in your browser's address bar
+              <br />
+              2. Change notifications from "Block" to "Allow"
+              <br />
+              3. Click "Refresh Status" below
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">
-              Status: {isEnabled ? 'Enabled' : permission === 'denied' ? 'Denied' : 'Not enabled'}
+              Status: {isEnabled ? 'Enabled' : permission === 'denied' ? 'Blocked by Browser' : 'Not enabled'}
             </p>
             <p className="text-xs text-muted-foreground">
               {token ? 'Device registered for notifications' : 'Device not registered'}
             </p>
           </div>
           
-          {!isEnabled && permission !== 'denied' && (
-            <Button onClick={requestPermission}>
-              Enable Notifications
+          <div className="flex gap-2">
+            <Button
+              onClick={refreshPermissionStatus}
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-1"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Refresh Status
             </Button>
-          )}
-          
-          {isEnabled && (
-            <Button onClick={disableNotifications} variant="outline">
-              Disable Notifications
-            </Button>
-          )}
+            
+            {!isEnabled && permission !== 'denied' && (
+              <Button onClick={requestPermission}>
+                Enable Notifications
+              </Button>
+            )}
+            
+            {!isEnabled && permission === 'denied' && (
+              <Button onClick={requestPermission} variant="outline">
+                Try Enable Again
+              </Button>
+            )}
+            
+            {isEnabled && (
+              <Button onClick={disableNotifications} variant="outline">
+                Disable Notifications
+              </Button>
+            )}
+          </div>
         </div>
 
         {isEnabled && token && (
