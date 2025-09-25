@@ -269,28 +269,52 @@ export const usePushNotifications = () => {
         return;
       }
 
-      // Use service worker registration to show notification
-      if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.ready;
-        
-        await registration.showNotification('Test Notification', {
-          body: 'This is a test notification from Dairy Farm Manager! 🥛',
-          icon: '/android-chrome-192x192.png',
-          badge: '/favicon-32x32.png',
-          tag: 'test',
-          requireInteraction: false,
-          silent: false
-        });
+      // Send actual FCM notification to test the full pipeline
+      const { error: sendError } = await supabase.functions.invoke('send-push-notification', {
+        body: {
+          tokens: [token],
+          title: 'Test Notification',
+          body: 'This is a test notification from Dairy Farm Manager! 🥛 If you see this, notifications are working correctly.',
+          data: {
+            type: 'test',
+            timestamp: new Date().toISOString()
+          }
+        }
+      });
 
+      if (sendError) {
+        console.error('FCM test failed, falling back to local notification:', sendError);
+        
+        // Fallback to local notification if FCM fails
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.ready;
+          
+          await registration.showNotification('Test Notification (Local)', {
+            body: 'This is a local test notification from Dairy Farm Manager! 🥛',
+            icon: '/android-chrome-192x192.png',
+            badge: '/favicon-32x32.png',
+            tag: 'test',
+            requireInteraction: false,
+            silent: false
+          });
+
+          toast({
+            title: 'Local Test Sent',
+            description: 'FCM failed, but local notification sent successfully.',
+            variant: 'default'
+          });
+        } else {
+          throw sendError;
+        }
+      } else {
         toast({
           title: 'Test Sent',
-          description: 'Test notification sent successfully!',
+          description: 'FCM test notification sent successfully!',
         });
-      } else {
-        throw new Error('Service worker not supported');
       }
 
     } catch (error) {
+      console.error('Test notification error:', error);
       toast({
         title: 'Send Error',
         description: `Failed to send test notification: ${error instanceof Error ? error.message : 'Unknown error'}`,
