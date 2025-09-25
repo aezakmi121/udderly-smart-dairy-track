@@ -34,6 +34,7 @@ import {
   PD_MIN_DAYS,
   PD_MAX_DAYS
 } from '@/lib/pdUtils';
+import { sortCowSummaries } from '@/lib/cowSorting';
 
 type FilterType = 'all' | 'about_to_deliver' | 'pd_due' | 'flagged';
 
@@ -110,8 +111,8 @@ export const CowSummaryDashboard: React.FC = () => {
       }
     });
 
-    // Sort using unified comparator
-    return filtered.sort((a, b) => compareCows(a, b, today));
+    // Sort using new deterministic priority sorting
+    return sortCowSummaries(filtered);
   }, [aiRecords, filter, includeDelivered]);
 
   const getDeliveryBadge = (cow: CowSummary) => {

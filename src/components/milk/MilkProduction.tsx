@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EnhancedMilkProductionModal } from './EnhancedMilkProductionModal';
+import { SessionNotifications } from './SessionNotifications';
 import { Plus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMilkProduction } from '@/hooks/useMilkProduction';
@@ -16,7 +17,7 @@ import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { useMilkingLog } from '@/hooks/useMilkingLogs';
 import { useToast } from '@/hooks/use-toast';
 import { useAppSetting } from '@/hooks/useAppSettings';
-import { fromZonedTime } from 'date-fns-tz';
+import { toZonedTime } from 'date-fns-tz';
 interface MilkProduction {
   id: string;
   cow_id?: string;
@@ -61,9 +62,35 @@ export const MilkProduction = () => {
   const started = !!milkingLog?.milking_start_time;
   const ended = !!milkingLog?.milking_end_time;
   const sessionWindow = sessionSettings?.[selectedSession] ?? { start: '00:00', end: '23:59' };
-  const startTs = fromZonedTime(`${selectedDate}T${sessionWindow.start}:00`, tz).getTime();
-  const endTs = fromZonedTime(`${selectedDate}T${sessionWindow.end}:00`, tz).getTime();
-  const withinWindow = Date.now() >= startTs && Date.now() <= endTs;
+  
+  // Fixed session window check using proper timezone handling
+  const isWithinSessionWindow = useMemo(() => {
+    if (!sessionSettings?.enforceWindow) return true;
+    
+    try {
+      const nowInTimezone = toZonedTime(new Date(), tz);
+      const currentTimeStr = nowInTimezone.toTimeString().slice(0, 5); // HH:MM format
+      
+      const isAfterStart = currentTimeStr >= sessionWindow.start;
+      const isBeforeEnd = currentTimeStr <= sessionWindow.end;
+      
+      console.log('MilkProduction session window check:', {
+        selectedSession,
+        currentTimeStr,
+        sessionWindow,
+        isAfterStart,
+        isBeforeEnd,
+        isWithin: isAfterStart && isBeforeEnd
+      });
+      
+      return isAfterStart && isBeforeEnd;
+    } catch (error) {
+      console.error('Error checking session window:', error);
+      return false;
+    }
+  }, [sessionSettings?.enforceWindow, sessionWindow, selectedSession, tz]);
+  
+  const withinWindow = isWithinSessionWindow;
   // Admins can always modify, workers need session constraints
   const canModify = isAdmin ? true : isFarmWorker ? (!!milkingLog && !ended && (!sessionSettings?.enforceWindow || withinWindow)) : false;
 
@@ -72,13 +99,15 @@ export const MilkProduction = () => {
     if (!sessionSettings?.auto) return;
     const win = sessionWindow;
     const now = Date.now();
-    const sStart = fromZonedTime(`${selectedDate}T${win.start}:00`, tz).getTime();
-    const sEnd = fromZonedTime(`${selectedDate}T${win.end}:00`, tz).getTime();
+    const nowInTz = toZonedTime(new Date(), tz);
+    const currentTime = nowInTz.toTimeString().slice(0, 5);
+    const sessionStarted = currentTime >= win.start;
+    const sessionEnded = currentTime >= win.end;
 
-    if (!milkingLog?.milking_start_time && now >= sStart) {
+    if (!milkingLog?.milking_start_time && sessionStarted) {
       setStartTime(selectedDate, selectedSession, win.start, tz);
     }
-    if (!milkingLog?.milking_end_time && now >= sEnd) {
+    if (!milkingLog?.milking_end_time && sessionEnded) {
       setEndTime(selectedDate, selectedSession, win.end, tz);
     }
   }, [selectedDate, selectedSession, tz, sessionSettings?.auto, sessionSettings?.morning?.start, sessionSettings?.morning?.end, sessionSettings?.evening?.start, sessionSettings?.evening?.end, milkingLog?.milking_start_time, milkingLog?.milking_end_time]);
@@ -307,6 +336,14 @@ export const MilkProduction = () => {
           </Button>
         )}
       </div>
+
+      <SessionNotifications
+        sessionSettings={sessionSettings}
+        selectedSession={selectedSession}
+        selectedDate={selectedDate}
+        milkingLog={milkingLog}
+        timezone={tz}
+      />
 
       <MilkStatsCards dailyStats={dailyStats} />
 
