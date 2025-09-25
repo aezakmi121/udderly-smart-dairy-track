@@ -1,7 +1,7 @@
 // Firebase configuration for push notifications
 // TODO: Replace ALL values below with your actual Firebase project config
 // Get these from: Firebase Console > Project Settings > General > Your apps
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyCA0DqorvBjg_tWcInU35GunCO38Ca3m0E",
   authDomain: "udderlypush.firebaseapp.com",
   projectId: "udderlypush",
