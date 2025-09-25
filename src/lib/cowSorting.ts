@@ -1,6 +1,6 @@
 import { parse, differenceInCalendarDays } from "date-fns";
 
-const FMT = "dd-MM-yyyy";
+const FMT = "yyyy-MM-dd"; // Changed to match ISO date format
 const TODAY = new Date();
 const CLOSE_UP_DAYS = 60;
 
@@ -18,10 +18,10 @@ type Status = "Pregnant" | "Pending" | "Delivered";
 type Cow = {
   cow_no: number;
   status: Status;
-  expected_delivery?: string; // dd-MM-yyyy
-  pd_due?: string;            // dd-MM-yyyy
-  delivered_on?: string;      // dd-MM-yyyy
-  ai_date?: string;           // dd-MM-yyyy
+  expected_delivery?: string; // yyyy-MM-dd
+  pd_due?: string;            // yyyy-MM-dd
+  delivered_on?: string;      // yyyy-MM-dd
+  ai_date?: string;           // yyyy-MM-dd
   service_no?: number;
 };
 
@@ -87,7 +87,7 @@ function calculatePDDueDate(aiDate: string): string {
   if (!ai) return '';
   const pdDue = new Date(ai);
   pdDue.setDate(pdDue.getDate() + 60); // PD due 60 days after AI
-  return `${pdDue.getDate().toString().padStart(2, '0')}-${(pdDue.getMonth() + 1).toString().padStart(2, '0')}-${pdDue.getFullYear()}`;
+  return `${pdDue.getFullYear()}-${(pdDue.getMonth() + 1).toString().padStart(2, '0')}-${pdDue.getDate().toString().padStart(2, '0')}`;
 }
 
 export function sortCowSummaries(cowSummaries: any[]): any[] {
