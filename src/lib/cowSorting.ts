@@ -91,23 +91,9 @@ function calculatePDDueDate(aiDate: string): string {
 }
 
 export function sortCowSummaries(cowSummaries: any[]): any[] {
-  const sorted = [...cowSummaries].sort((a, b) => {
+  return [...cowSummaries].sort((a, b) => {
     const cowA = adaptCowSummaryForSorting(a);
     const cowB = adaptCowSummaryForSorting(b);
-    const result = cowComparator(cowA, cowB);
-    
-    // Debug logging
-    if (cowA.cow_no === 6 || cowB.cow_no === 6 || cowA.cow_no === 16 || cowB.cow_no === 16) {
-      console.log(`Comparing cow ${cowA.cow_no} vs ${cowB.cow_no}:`, {
-        cowA: { status: cowA.status, expected_delivery: cowA.expected_delivery, pd_due: cowA.pd_due },
-        cowB: { status: cowB.status, expected_delivery: cowB.expected_delivery, pd_due: cowB.pd_due },
-        result
-      });
-    }
-    
-    return result;
+    return cowComparator(cowA, cowB);
   });
-  
-  console.log('Final sorted order:', sorted.map(cow => `Cow ${cow.cowNumber} (${cow.status}) - ${cow.expectedDeliveryDate || cow.latestAIDate}`));
-  return sorted;
 }

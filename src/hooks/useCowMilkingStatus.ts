@@ -34,7 +34,10 @@ export const useCowMilkingStatus = () => {
       });
     },
     onError: (error) => {
-      console.error('Error updating cow milking status:', error);
+      // Log error to console in development mode only
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error updating cow milking status:', error);
+      }
       toast({
         title: "Error",
         description: "Failed to update cow status",

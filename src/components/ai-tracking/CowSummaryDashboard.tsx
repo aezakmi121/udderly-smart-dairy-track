@@ -28,7 +28,6 @@ import {
   isPDDue,
   isPDOverdue,
   pdTargetDate,
-  compareCows,
   getCowSortGroup,
   SortGroup,
   PD_MIN_DAYS,

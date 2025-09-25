@@ -78,15 +78,7 @@ export const MilkProduction = () => {
       const isAfterStart = currentTimeStr >= sessionWindow.start;
       const isBeforeEnd = currentTimeStr <= sessionWindow.end;
       
-      console.log('MilkProduction session window check:', {
-        selectedSession,
-        currentTimeStr,
-        sessionWindow,
-        isAfterStart,
-        isBeforeEnd,
-        isWithin: isAfterStart && isBeforeEnd
-      });
-      
+      // Remove debug logging for production
       return isAfterStart && isBeforeEnd;
     } catch (error) {
       console.error('Error checking session window:', error);
