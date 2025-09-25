@@ -125,7 +125,10 @@ export const PushNotificationSettings = () => {
               Status: {isEnabled ? 'Enabled' : permission === 'denied' ? 'Blocked by Browser' : 'Not enabled'}
             </p>
             <p className="text-xs text-muted-foreground">
-              {token ? 'Device registered for notifications' : 'Device not registered'}
+              {token ? `Device registered - Token: ${token.substring(0, 20)}...` : 'Device not registered'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Permission: {permission} | Browser Support: {isSupported ? 'Yes' : 'No'}
             </p>
           </div>
           

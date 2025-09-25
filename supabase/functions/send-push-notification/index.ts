@@ -106,7 +106,7 @@ async function getAccessToken(): Promise<string> {
 }
 
 // Helper function to send FCM notification
-async function sendFCMNotification(token: string, title: string, body: string, data?: Record<string, any>): Promise<boolean> {
+async function sendFCMNotification(token: string, title: string, body: string, data?: Record<string, any>): Promise<{ success: boolean; error?: string }> {
   try {
     const accessToken = await getAccessToken();
     const serviceAccount = JSON.parse(Deno.env.get('FIREBASE_SERVICE_ACCOUNT_KEY') || '{}');
@@ -137,6 +137,8 @@ async function sendFCMNotification(token: string, title: string, body: string, d
       }
     };
 
+    console.log(`📤 Sending FCM to token ${token.substring(0, 20)}...`);
+    
     const response = await fetch(fcmUrl, {
       method: 'POST',
       headers: {
@@ -148,15 +150,26 @@ async function sendFCMNotification(token: string, title: string, body: string, d
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`FCM request failed for token ${token.substring(0, 20)}...: ${response.status} ${errorText}`);
-      return false;
+      console.error(`❌ FCM request failed for token ${token.substring(0, 20)}...: ${response.status} ${errorText}`);
+      
+      // Parse FCM error to provide specific feedback
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.error?.details?.[0]?.errorCode === 'UNREGISTERED') {
+          return { success: false, error: 'TOKEN_UNREGISTERED' };
+        }
+      } catch (parseError) {
+        // Ignore parse errors
+      }
+      
+      return { success: false, error: `HTTP_${response.status}: ${errorText}` };
     }
 
-    console.log(`Successfully sent FCM notification to token ${token.substring(0, 20)}...`);
-    return true;
+    console.log(`✅ Successfully sent FCM notification to token ${token.substring(0, 20)}...`);
+    return { success: true };
   } catch (error) {
-    console.error(`Error sending FCM notification to token ${token.substring(0, 20)}...:`, error);
-    return false;
+    console.error(`❌ Error sending FCM notification to token ${token.substring(0, 20)}...:`, error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 }
 
@@ -200,14 +213,27 @@ serve(async (req) => {
 
     // Send FCM notifications
     if (fcmTokens.length > 0) {
-      console.log(`Sending ${fcmTokens.length} FCM notifications...`);
+      console.log(`📬 Sending ${fcmTokens.length} FCM notifications...`);
+      const unregisteredTokens = [];
+      
       for (const token of fcmTokens) {
-        const success = await sendFCMNotification(token, title, body, data);
-        if (success) {
+        const result = await sendFCMNotification(token, title, body, data);
+        if (result.success) {
           successfulSends++;
         } else {
           failedSends++;
+          
+          // Track unregistered tokens for cleanup
+          if (result.error === 'TOKEN_UNREGISTERED') {
+            unregisteredTokens.push(token);
+            console.log(`🗑️ Token ${token.substring(0, 20)}... is unregistered and should be cleaned up`);
+          }
         }
+      }
+      
+      // Log summary of unregistered tokens
+      if (unregisteredTokens.length > 0) {
+        console.log(`⚠️ Found ${unregisteredTokens.length} unregistered tokens that need cleanup`);
       }
     }
 
