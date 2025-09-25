@@ -79,27 +79,32 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
     }
     console.log('✅ TOKEN REQUEST: Service Worker supported');
 
-    // Clear any existing registrations to avoid conflicts
-    console.log('🔍 SERVICE WORKER: Checking existing registrations...');
+    // First, unregister all existing service workers to avoid conflicts
+    console.log('🧹 TOKEN REQUEST: Cleaning up existing service workers...');
     const existingRegistrations = await navigator.serviceWorker.getRegistrations();
-    console.log(`📋 SERVICE WORKER: Found ${existingRegistrations.length} existing registrations`);
+    console.log(`📋 TOKEN REQUEST: Found ${existingRegistrations.length} existing registrations`);
     
     for (const reg of existingRegistrations) {
-      console.log('📋 EXISTING SW:', {
-        scope: reg.scope,
-        state: reg.active?.state,
-        scriptURL: reg.active?.scriptURL
+      console.log('🗑️ TOKEN REQUEST: Unregistering:', {
+        scope: (reg as ServiceWorkerRegistration).scope,
+        state: (reg as ServiceWorkerRegistration).active?.state,
+        scriptURL: (reg as ServiceWorkerRegistration).active?.scriptURL
       });
+      await reg.unregister();
     }
+    console.log('✅ TOKEN REQUEST: Cleanup complete');
 
-    // Register Firebase messaging service worker
-    console.log('🚀 SERVICE WORKER: Registering Firebase messaging service worker...');
+    // Wait a moment for cleanup to complete
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Register fresh Firebase messaging service worker
+    console.log('🚀 TOKEN REQUEST: Registering fresh Firebase messaging service worker...');
     let registration;
     try {
       registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-        scope: '/'
+        scope: '/firebase-cloud-messaging-push-scope'
       });
-      console.log('✅ SERVICE WORKER: Firebase messaging service worker registered');
+      console.log('✅ TOKEN REQUEST: Firebase messaging service worker registered');
       console.log('📋 SW DETAILS:', {
         scope: registration.scope,
         installing: !!registration.installing,
@@ -107,95 +112,128 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
         active: !!registration.active
       });
       
-      // Wait for the service worker to be ready
-      console.log('⏳ SERVICE WORKER: Waiting for service worker to be ready...');
-      const readyRegistration = await navigator.serviceWorker.ready;
-      console.log('✅ SERVICE WORKER: Service worker is ready');
+      // Wait for the service worker to be ready with timeout
+      console.log('⏳ TOKEN REQUEST: Waiting for service worker to be ready...');
+      const readyPromise = navigator.serviceWorker.ready;
+      const timeoutPromise = new Promise<ServiceWorkerRegistration>((_, reject) => 
+        setTimeout(() => reject(new Error('Service worker timeout')), 10000)
+      );
+      
+      const readyRegistration = await Promise.race([readyPromise, timeoutPromise]);
+      console.log('✅ TOKEN REQUEST: Service worker is ready');
       console.log('📋 READY SW:', {
         scope: readyRegistration.scope,
         state: readyRegistration.active?.state
       });
     } catch (regError) {
-      console.error('❌ SERVICE WORKER: Failed to register Firebase messaging service worker:', regError);
-      return null;
+      console.error('❌ TOKEN REQUEST: Failed to register Firebase messaging service worker:', regError);
+      throw regError;
     }
     
     // Check current permission
-    console.log('🔍 PERMISSION: Checking current notification permission...');
+    console.log('🔍 TOKEN REQUEST: Checking current notification permission...');
     let permission = Notification.permission;
     console.log('📋 PERMISSION STATUS:', permission);
     
     if (permission !== 'granted') {
-      console.log('📋 PERMISSION: Requesting notification permission...');
+      console.log('📋 TOKEN REQUEST: Requesting notification permission...');
       permission = await Notification.requestPermission();
       console.log('📋 PERMISSION RESULT:', permission);
       
       if (permission !== 'granted') {
-        console.error('❌ PERMISSION: Permission denied, cannot get FCM token');
-        return null;
+        console.error('❌ TOKEN REQUEST: Permission denied, cannot get FCM token');
+        throw new Error(`Permission denied: ${permission}`);
       }
     }
-    console.log('✅ PERMISSION: Notification permission granted');
+    console.log('✅ TOKEN REQUEST: Notification permission granted');
 
-    console.log('🎫 TOKEN: Attempting to get FCM token...');
+    // Attempt to get FCM token with multiple retry strategies
+    console.log('🎫 TOKEN REQUEST: Attempting to get FCM token with enhanced error handling...');
     console.log('🔑 VAPID KEY:', vapidKey?.substring(0, 30) + '...');
     
-    try {
-      const tokenOptions = {
+    const tokenStrategies = [
+      // Strategy 1: With service worker registration
+      () => getToken(messagingInstance, {
         vapidKey: vapidKey,
         serviceWorkerRegistration: registration
-      };
-      console.log('🎫 TOKEN OPTIONS:', {
-        hasVapidKey: !!tokenOptions.vapidKey,
-        vapidKeyLength: tokenOptions.vapidKey?.length,
-        hasRegistration: !!tokenOptions.serviceWorkerRegistration,
-        registrationScope: tokenOptions.serviceWorkerRegistration?.scope
-      });
-
-      const token = await getToken(messagingInstance, tokenOptions);
+      }),
       
-      if (token) {
-        console.log('✅ TOKEN: FCM Token generated successfully!');
-        console.log('🎫 TOKEN PREVIEW:', token.substring(0, 30) + '...');
-        console.log('📏 TOKEN LENGTH:', token.length);
-        console.log('🔍 TOKEN STRUCTURE:', {
-          startsCorrectly: token.startsWith('c') || token.startsWith('f') || token.startsWith('e'),
-          hasCorrectLength: token.length > 100,
-          containsColon: token.includes(':')
+      // Strategy 2: Without explicit service worker registration
+      () => getToken(messagingInstance, {
+        vapidKey: vapidKey
+      }),
+      
+      // Strategy 3: After a short delay
+      async () => {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return getToken(messagingInstance, {
+          vapidKey: vapidKey,
+          serviceWorkerRegistration: registration
         });
-        
-        return token;
-      } else {
-        console.error('❌ TOKEN: No FCM token received from getToken()');
-        return null;
       }
-    } catch (tokenError) {
-      console.error('❌ TOKEN ERROR: Error getting FCM token:', tokenError);
-      console.error('❌ TOKEN ERROR DETAILS:', {
-        name: tokenError instanceof Error ? tokenError.name : 'Unknown',
-        message: tokenError instanceof Error ? tokenError.message : tokenError,
-        stack: tokenError instanceof Error ? tokenError.stack : undefined
-      });
-      
-      // Log specific error types
-      if (tokenError instanceof Error) {
-        if (tokenError.message.includes('Registration failed')) {
-          console.error('❌ SPECIFIC ERROR: Push service registration failed - this usually means FCM servers are unreachable or VAPID key is incorrect');
-        } else if (tokenError.message.includes('messaging/unsupported-browser')) {
-          console.error('❌ SPECIFIC ERROR: Browser not supported for FCM');
-        } else if (tokenError.message.includes('messaging/permission-blocked')) {
-          console.error('❌ SPECIFIC ERROR: Notification permission blocked');
+    ];
+
+    for (let i = 0; i < tokenStrategies.length; i++) {
+      try {
+        console.log(`🎫 TOKEN REQUEST: Trying strategy ${i + 1}...`);
+        const token = await tokenStrategies[i]();
+        
+        if (token) {
+          console.log('✅ TOKEN REQUEST: FCM Token generated successfully!');
+          console.log('🎫 TOKEN PREVIEW:', token.substring(0, 30) + '...');
+          console.log('📏 TOKEN LENGTH:', token.length);
+          console.log('🔍 TOKEN STRUCTURE:', {
+            startsCorrectly: token.startsWith('c') || token.startsWith('f') || token.startsWith('e'),
+            hasCorrectLength: token.length > 100,
+            containsColon: token.includes(':')
+          });
+          
+          return token;
+        } else {
+          console.warn(`⚠️ TOKEN REQUEST: Strategy ${i + 1} returned null token`);
+        }
+      } catch (tokenError) {
+        console.error(`❌ TOKEN REQUEST: Strategy ${i + 1} failed:`, tokenError);
+        
+        // Log specific error details for the first strategy
+        if (i === 0) {
+          console.error('❌ DETAILED ERROR ANALYSIS:', {
+            name: tokenError instanceof Error ? tokenError.name : 'Unknown',
+            message: tokenError instanceof Error ? tokenError.message : tokenError,
+            stack: tokenError instanceof Error ? tokenError.stack : undefined
+          });
+          
+          // Analyze specific error types
+          if (tokenError instanceof Error) {
+            if (tokenError.message.includes('Registration failed')) {
+              console.error('🔍 SPECIFIC ERROR: Push service registration failed - FCM servers unreachable or VAPID key incorrect');
+            } else if (tokenError.message.includes('messaging/unsupported-browser')) {
+              console.error('🔍 SPECIFIC ERROR: Browser not supported for FCM');
+            } else if (tokenError.message.includes('messaging/permission-blocked')) {
+              console.error('🔍 SPECIFIC ERROR: Notification permission blocked');
+            } else if (tokenError.message.includes('AbortError')) {
+              console.error('🔍 SPECIFIC ERROR: Request was aborted - likely network or server issue');
+            }
+          }
+        }
+        
+        // If this is the last strategy, throw the error
+        if (i === tokenStrategies.length - 1) {
+          throw tokenError;
         }
       }
-      
-      return null;
     }
+    
+    throw new Error('All token generation strategies failed');
+    
   } catch (error) {
-    console.error('❌ REQUEST PERMISSION ERROR:', error);
-    console.error('❌ REQUEST PERMISSION ERROR DETAILS:', {
+    console.error('❌ TOKEN REQUEST: Complete failure in requestNotificationPermission:', error);
+    console.error('❌ ERROR SUMMARY:', {
       name: error instanceof Error ? error.name : 'Unknown',
       message: error instanceof Error ? error.message : error,
-      stack: error instanceof Error ? error.stack : undefined
+      isAbortError: error instanceof Error && error.name === 'AbortError',
+      isNetworkError: error instanceof Error && error.message.includes('network'),
+      isPermissionError: error instanceof Error && error.message.includes('permission')
     });
     return null;
   }

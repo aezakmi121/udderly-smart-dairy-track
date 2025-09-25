@@ -156,25 +156,28 @@ export const usePushNotifications = () => {
       let tokenType = 'FCM';
       
       if (!fcmToken) {
-        console.log('⚠️ FCM token generation failed, using browser fallback token');
-        // Fallback to browser token for testing
-        tokenToSave = `browser_${user.id}_${Date.now()}`;
-        tokenType = 'Browser';
+        console.log('⚠️ ENABLE: FCM token generation failed, but continuing with local notifications');
+        console.log('🔍 ENABLE: This means notifications will work locally but won\'t receive remote push notifications');
         
-        // Register fallback service worker for browser notifications
+        // Create a placeholder token for local notifications
+        tokenToSave = `local_${user.id}_${Date.now()}`;
+        tokenType = 'Local';
+        
+        // Register fallback service worker for local notifications only
         if ('serviceWorker' in navigator) {
           try {
+            console.log('🚀 ENABLE: Registering fallback service worker for local notifications...');
             await navigator.serviceWorker.register('/sw.js');
-            console.log('✅ Fallback service worker registered');
+            console.log('✅ ENABLE: Fallback service worker registered');
           } catch (swError) {
-            console.error('❌ Failed to register fallback service worker:', swError);
+            console.error('❌ ENABLE: Failed to register fallback service worker:', swError);
           }
         }
       } else {
-        console.log('✅ FCM token generated successfully:', fcmToken.substring(0, 20) + '...');
+        console.log('✅ ENABLE: FCM token generated successfully:', fcmToken.substring(0, 30) + '...');
         // Set up foreground message listener for FCM
         setupForegroundMessageListener((payload) => {
-          console.log('📱 Foreground notification received:', payload);
+          console.log('📱 ENABLE: Foreground notification received:', payload);
           toast({
             title: payload.notification?.title || 'Notification',
             description: payload.notification?.body || 'New message received',
@@ -202,7 +205,9 @@ export const usePushNotifications = () => {
 
       toast({
         title: 'Notifications Enabled',
-        description: `${tokenType} notifications activated successfully! Token: ${tokenToSave.substring(0, 20)}...`,
+        description: tokenType === 'Local' 
+          ? 'Local notifications enabled. Remote notifications unavailable due to FCM configuration.' 
+          : `${tokenType} notifications activated successfully!`,
       });
 
       console.log('🎉 Notifications setup complete!', {
