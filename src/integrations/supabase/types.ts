@@ -1115,6 +1115,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_within_session_window: {
+        Args: { _production_date: string; _session: string }
+        Returns: boolean
+      }
     }
     Enums: {
       ai_status: "pending" | "done" | "failed"
