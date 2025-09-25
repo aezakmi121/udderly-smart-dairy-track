@@ -11,6 +11,7 @@ import { SessionUnlock } from './SessionUnlock';
 import { AlertSettings } from './AlertSettings';
 import { MilkingSessionSettings } from './MilkingSessionSettings';
 import { PushNotificationSettings } from '@/components/notifications/PushNotificationSettings';
+import { FirebaseDebugPanel } from '@/components/notifications/FirebaseDebugPanel';
 
 export const SettingsManagement = () => {
   const { isAdmin } = useUserPermissions();
@@ -119,6 +120,11 @@ export const SettingsManagement = () => {
                 <div className="border-t pt-6">
                   <h3 className="text-md font-semibold mb-3">Alert Settings</h3>
                   <AlertSettings />
+                </div>
+
+                <div className="border-t pt-6">
+                  <h3 className="text-md font-semibold mb-3">Firebase Debug Panel</h3>
+                  <FirebaseDebugPanel />
                 </div>
               </CardContent>
             </CollapsibleContent>
