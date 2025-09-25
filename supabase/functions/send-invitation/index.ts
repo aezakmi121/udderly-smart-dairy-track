@@ -1,11 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "npm:resend@4.0.0";
-import { renderAsync } from "npm:@react-email/components@0.0.22";
-import React from "npm:react@18.3.1";
-import { InvitationEmail } from "./_templates/invitation-email.tsx";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,6 +11,68 @@ interface InvitationRequest {
   email: string;
   role: string;
   inviterName: string;
+}
+
+// Simple HTML email template
+function createInvitationEmail(inviterName: string, role: string, signupUrl: string, farmName: string): string {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>You're invited to join ${farmName}</title>
+    </head>
+    <body style="font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Ubuntu,sans-serif; background-color: #f6f9fc; margin: 0; padding: 0;">
+      <div style="background-color: #ffffff; margin: 0 auto; padding: 20px 0 48px; margin-bottom: 64px; max-width: 600px;">
+        
+        <div style="padding: 32px 24px; background-color: #16a34a; text-align: center;">
+          <h1 style="color: #ffffff; font-size: 24px; font-weight: bold; margin: 0;">
+            🐄 ${farmName}
+          </h1>
+        </div>
+        
+        <h1 style="color: #333; font-size: 28px; font-weight: bold; margin: 40px 24px 20px; padding: 0; text-align: center;">
+          You're Invited!
+        </h1>
+        
+        <p style="color: #333; font-size: 16px; margin: 16px 24px; line-height: 1.5;">
+          <strong>${inviterName}</strong> has invited you to join their dairy farm management system 
+          as a <strong>${role}</strong>.
+        </p>
+        
+        <p style="color: #333; font-size: 16px; margin: 16px 24px; line-height: 1.5;">
+          This system helps manage:
+        </p>
+        
+        <div style="margin: 24px; padding: 16px; background-color: #f8f9fa; border-radius: 8px;">
+          <p style="color: #333; font-size: 14px; margin: 8px 0; line-height: 1.4;">• Cattle management and tracking</p>
+          <p style="color: #333; font-size: 14px; margin: 8px 0; line-height: 1.4;">• Milk production monitoring</p>
+          <p style="color: #333; font-size: 14px; margin: 8px 0; line-height: 1.4;">• Feed management</p>
+          <p style="color: #333; font-size: 14px; margin: 8px 0; line-height: 1.4;">• Health and vaccination records</p>
+          <p style="color: #333; font-size: 14px; margin: 8px 0; line-height: 1.4;">• Analytics and reporting</p>
+        </div>
+        
+        <div style="text-align: center; margin: 32px 24px;">
+          <a href="${signupUrl}" target="_blank" style="background-color: #16a34a; border-radius: 8px; color: #fff; font-size: 16px; font-weight: bold; text-decoration: none; text-align: center; display: inline-block; padding: 16px 24px;">
+            Accept Invitation & Create Account
+          </a>
+        </div>
+        
+        <p style="color: #666; font-size: 12px; margin: 16px 24px; line-height: 1.4;">
+          This invitation will expire in 7 days. If you didn't expect this invitation, 
+          you can safely ignore this email.
+        </p>
+        
+        <p style="color: #666; font-size: 14px; margin: 32px 24px 0; line-height: 1.4;">
+          Best regards,<br>
+          The ${farmName} Team
+        </p>
+        
+      </div>
+    </body>
+    </html>
+  `;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -87,30 +143,25 @@ const handler = async (req: Request): Promise<Response> => {
     // Create signup URL with invitation token
     const signupUrl = `${Deno.env.get("SUPABASE_URL")?.replace("supabase.co", "supabase.com") || "https://gjimccbtclynetngfrpw.supabase.com"}/auth/v1/verify?token=${invitationToken}&type=invite&redirect_to=${encodeURIComponent(Deno.env.get("SITE_URL") || "https://2d32d2de-68e0-4e6c-a137-eb09985ceae9.lovableproject.com")}`;
 
-    // Render email template
-    const html = await renderAsync(
-      React.createElement(InvitationEmail, {
-        inviterName,
-        role,
-        signupUrl,
-        farmName: "Dairy Farm Management System",
-      })
+    // Create HTML email using our template function
+    const html = createInvitationEmail(
+      inviterName,
+      role,
+      signupUrl,
+      "Dairy Farm Management System"
     );
 
-    // Send invitation email
-    const emailResponse = await resend.emails.send({
-      from: "Dairy Farm Manager <onboarding@resend.dev>",
-      to: [email],
-      subject: `You're invited to join ${inviterName}'s dairy farm`,
-      html,
-    });
+    console.log("Invitation created successfully - email functionality disabled for now");
+    console.log("Email would be sent to:", email);
+    console.log("Signup URL:", signupUrl);
 
-    console.log("Invitation email sent:", emailResponse);
-
+    // For now, just return success without sending email
+    // TODO: Re-enable email sending once Resend dependency is resolved
     return new Response(
       JSON.stringify({ 
-        message: "Invitation sent successfully",
-        invitationId: invitationToken 
+        message: "Invitation created successfully (email sending temporarily disabled)",
+        invitationId: invitationToken,
+        signupUrl: signupUrl
       }),
       {
         status: 200,
