@@ -1,32 +1,11 @@
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { firebaseConfig, vapidKey } from '@/config/firebase';
 import { Separator } from '@/components/ui/separator';
 import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
 export const FirebaseDebugPanel = () => {
-  const [firebaseKeyInput, setFirebaseKeyInput] = useState('');
-  const { toast } = useToast();
-
-  const handleFirebaseKeyUpdate = async () => {
-    try {
-      // Validate JSON
-      JSON.parse(firebaseKeyInput);
-      toast({
-        title: "Firebase Key Update",
-        description: "Click the button below to securely update your Firebase service account key.",
-      });
-    } catch (error) {
-      toast({
-        title: "Invalid JSON",
-        description: "Please enter a valid JSON service account key.",
-        variant: "destructive",
-      });
-    }
-  };
   const checkConfig = () => {
     const issues = [];
     
@@ -165,31 +144,6 @@ export const FirebaseDebugPanel = () => {
               <span className="font-medium">VAPID Key:</span>{' '}
               <Badge variant="outline">{vapidKey.substring(0, 20)}...</Badge>
             </div>
-          </div>
-        </div>
-        
-        <Separator />
-        
-        <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-          <h4 className="font-medium">Update Firebase Service Account Key</h4>
-          <div className="space-y-2">
-            <label htmlFor="firebase-key" className="text-sm font-medium">
-              Paste your new Firebase service account JSON key:
-            </label>
-            <textarea
-              id="firebase-key"
-              placeholder="Paste the entire JSON content from your Firebase service account key file here..."
-              className="w-full h-32 p-2 text-xs font-mono border rounded-md resize-vertical"
-              onChange={(e) => setFirebaseKeyInput(e.target.value)}
-              value={firebaseKeyInput}
-            />
-            <Button 
-              onClick={handleFirebaseKeyUpdate}
-              disabled={!firebaseKeyInput.trim()}
-              className="w-full"
-            >
-              Validate and Update Firebase Key
-            </Button>
           </div>
         </div>
         
