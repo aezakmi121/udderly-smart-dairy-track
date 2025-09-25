@@ -34,10 +34,16 @@ export const useNotifications = () => {
 
       try {
         // Check for low stock feed items
-        const { data: lowStockItems } = await supabase
+        const { data: allFeedItems } = await supabase
           .from('feed_items')
-          .select('*')
-          .filter('current_stock', 'lte', 'minimum_stock_level');
+          .select('*');
+
+        // Filter client-side to find low stock items
+        const lowStockItems = allFeedItems?.filter(item => {
+          const currentStock = parseFloat(item.current_stock?.toString() || '0');
+          const minimumLevel = parseFloat(item.minimum_stock_level?.toString() || '0');
+          return currentStock <= minimumLevel && currentStock > 0; // Only items with some stock but below minimum
+        }) || [];
 
         lowStockItems?.forEach(item => {
           notifications.push({
