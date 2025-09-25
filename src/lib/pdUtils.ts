@@ -188,14 +188,18 @@ export const compareCows = (a: CowSummary, b: CowSummary, today?: Date): number 
 
     case SortGroup.PD_DUE:
     case SortGroup.PD_OVERDUE: {
+      // Sort purely by PD due date (earliest first)
       const pA = getPDDueTimestamp(a);
       const pB = getPDDueTimestamp(b);
       if (pA !== pB) return pA - pB;
-
-      const aiA = safeParse(a.latestAIDate)?.getTime() ?? Number.POSITIVE_INFINITY;
-      const aiB = safeParse(b.latestAIDate)?.getTime() ?? Number.POSITIVE_INFINITY;
-      if (aiA !== aiB) return aiA - aiB;
-      break;
+      
+      // If PD due dates are same, sort by service number (lower first - earlier AI)
+      if (a.serviceNumber !== b.serviceNumber) {
+        return a.serviceNumber - b.serviceNumber;
+      }
+      
+      // Final fallback: cow number
+      return parseNumericCowNumber(a.cowNumber) - parseNumericCowNumber(b.cowNumber);
     }
 
     case SortGroup.FLAGGED: {

@@ -65,13 +65,42 @@ export const EnhancedMilkProductionModal: React.FC<EnhancedMilkProductionModalPr
     // Admins can always access both sessions
     if (isAdmin) return true;
     
+    // If enforceWindow is disabled, allow access
     if (!sessionSettings?.enforceWindow) return true;
     
-    const sessionWindow = sessionSettings?.[session] ?? { start: '00:00', end: '23:59' };
-    const startTs = fromZonedTime(`${selectedDate}T${sessionWindow.start}:00`, tz).getTime();
-    const endTs = fromZonedTime(`${selectedDate}T${sessionWindow.end}:00`, tz).getTime();
+    // If no session settings exist, allow access
+    if (!sessionSettings) return true;
     
-    return Date.now() >= startTs && Date.now() <= endTs;
+    const sessionWindow = sessionSettings[session];
+    if (!sessionWindow) return true;
+    
+    try {
+      // Create proper timestamps using the configured timezone
+      const selectedDateStr = selectedDate;
+      const startTime = `${selectedDateStr}T${sessionWindow.start}:00`;
+      const endTime = `${selectedDateStr}T${sessionWindow.end}:00`;
+      
+      const startTs = fromZonedTime(startTime, tz).getTime();
+      const endTs = fromZonedTime(endTime, tz).getTime();
+      const nowTs = Date.now();
+      
+      console.log('Session window check:', {
+        session,
+        selectedDate: selectedDateStr,
+        sessionWindow,
+        startTime,
+        endTime,
+        startTs: new Date(startTs).toISOString(),
+        endTs: new Date(endTs).toISOString(),
+        nowTs: new Date(nowTs).toISOString(),
+        isWithin: nowTs >= startTs && nowTs <= endTs
+      });
+      
+      return nowTs >= startTs && nowTs <= endTs;
+    } catch (error) {
+      console.error('Error checking session window:', error);
+      return false;
+    }
   };
 
   // Handle quick session triggers
