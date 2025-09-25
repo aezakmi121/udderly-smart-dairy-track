@@ -43,10 +43,14 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
     // Register service worker for Firebase messaging
     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
     
-    // Check if permission is already granted, don't request again
+    // Request permission if not granted
     if (Notification.permission !== 'granted') {
-      console.log('Permission not granted, cannot get FCM token');
-      return null;
+      console.log('Requesting notification permission for FCM...');
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.log('Permission denied, cannot get FCM token');
+        return null;
+      }
     }
 
     const token = await getToken(messagingInstance, {
@@ -91,10 +95,11 @@ export const getFCMToken = async (): Promise<string | null> => {
       return null;
     }
 
-    const registration = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+    // Use existing service worker registration or register Firebase SW
+    let registration = await navigator.serviceWorker.getRegistration();
     if (!registration) {
-      console.log('Service worker not registered, registering now...');
-      await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      console.log('Registering Firebase messaging service worker...');
+      registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
     }
 
     const token = await getToken(messagingInstance, {

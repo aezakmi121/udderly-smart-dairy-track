@@ -93,39 +93,26 @@ export const usePushNotifications = () => {
         throw new Error('User not authenticated');
       }
 
-      // Get FCM token from Firebase
+      console.log('Attempting to get FCM token...');
+      // Try to get FCM token from Firebase first
       const fcmToken = await requestNotificationPermission();
+      
+      let tokenToSave = fcmToken;
+      let tokenType = 'FCM';
+      
       if (!fcmToken) {
+        console.log('FCM token generation failed, using browser fallback token');
         // Fallback to browser token for testing
-        const browserToken = `browser_${user.id}_${Date.now()}`;
+        tokenToSave = `browser_${user.id}_${Date.now()}`;
+        tokenType = 'Browser';
         
-        const { error } = await supabase
-          .from('profiles')
-          .update({ fcm_token: browserToken } as any)
-          .eq('id', user.id);
-
-        if (error) throw error;
-
-        setToken(browserToken);
-        setIsEnabled(true);
-
-        // Register fallback service worker
+        // Register fallback service worker for browser notifications
         if ('serviceWorker' in navigator) {
           await navigator.serviceWorker.register('/sw.js');
         }
       } else {
-        // Save FCM token to user profile
-        const { error } = await supabase
-          .from('profiles')
-          .update({ fcm_token: fcmToken } as any)
-          .eq('id', user.id);
-
-        if (error) throw error;
-
-        setToken(fcmToken);
-        setIsEnabled(true);
-
-        // Set up foreground message listener
+        console.log('FCM token generated successfully:', fcmToken);
+        // Set up foreground message listener for FCM
         setupForegroundMessageListener((payload) => {
           console.log('Foreground notification received:', payload);
           toast({
@@ -135,19 +122,30 @@ export const usePushNotifications = () => {
         });
       }
 
+      // Save token to user profile
+      const { error } = await supabase
+        .from('profiles')
+        .update({ fcm_token: tokenToSave } as any)
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setToken(tokenToSave);
+      setIsEnabled(true);
+
       // Start notification scheduler
       notificationScheduler.start();
 
       toast({
         title: 'Notifications Enabled',
-        description: 'You will now receive push notifications for farm activities.',
+        description: `${tokenType} notifications activated successfully!`,
       });
 
     } catch (error) {
       console.error('Error enabling notifications:', error);
       toast({
         title: 'Failed to Enable',
-        description: 'Unable to enable notifications. Please try again.',
+        description: `Unable to enable notifications: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: 'destructive'
       });
       throw error;
