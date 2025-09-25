@@ -29,9 +29,9 @@ const group = (c: Cow): number => {
   if (c.status === "Pregnant") {
     const t = daysTo(c.expected_delivery);
     if (t !== undefined && t <= CLOSE_UP_DAYS) return 0;
-    return 2;
+    return 1;
   }
-  if (c.status === "Pending") return 1;
+  if (c.status === "Pending") return 2;
   if (c.status === "Delivered") return 3;
   return 9;
 };
@@ -39,9 +39,9 @@ const group = (c: Cow): number => {
 const secondary = (c: Cow): number => {
   switch (group(c)) {
     case 0:
-    case 2:
-      return daysTo(c.expected_delivery) ?? 9999;
     case 1:
+      return daysTo(c.expected_delivery) ?? 9999;
+    case 2:
       return daysTo(c.pd_due) ?? 9999; // overdue (negative) bubbles to top
     case 3:
       return daysSince(c.delivered_on) ?? 9999;
