@@ -43,10 +43,9 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
     // Register service worker for Firebase messaging
     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
     
-    // Request permission and get token
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      console.log('Notification permission denied');
+    // Check if permission is already granted, don't request again
+    if (Notification.permission !== 'granted') {
+      console.log('Permission not granted, cannot get FCM token');
       return null;
     }
 

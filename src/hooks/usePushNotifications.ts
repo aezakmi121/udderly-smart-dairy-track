@@ -51,7 +51,17 @@ export const usePushNotifications = () => {
     }
 
     try {
-      const permission = await Notification.requestPermission();
+      // Check current permission status first
+      console.log('Current permission status:', Notification.permission);
+      
+      let permission = Notification.permission;
+      
+      // Only request permission if not already granted or denied
+      if (permission === 'default') {
+        console.log('Requesting notification permission...');
+        permission = await Notification.requestPermission();
+      }
+      
       setPermission(permission);
       
       if (permission === 'granted') {
@@ -60,7 +70,7 @@ export const usePushNotifications = () => {
       } else {
         toast({
           title: 'Permission Denied',
-          description: 'Please enable notifications to receive alerts.',
+          description: 'Please enable notifications in your browser settings to receive alerts.',
           variant: 'destructive'
         });
         return false;
