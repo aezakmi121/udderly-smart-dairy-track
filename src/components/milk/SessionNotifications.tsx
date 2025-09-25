@@ -23,7 +23,6 @@ export const SessionNotifications: React.FC<SessionNotificationsProps> = ({
   const [sessionStatus, setSessionStatus] = useState<'before' | 'active' | 'after' | 'disabled'>('disabled');
   const [timeToStart, setTimeToStart] = useState<string>('');
   const [timeToEnd, setTimeToEnd] = useState<string>('');
-  const [currentSeconds, setCurrentSeconds] = useState(0);
 
   useEffect(() => {
     if (!sessionSettings || !sessionSettings.enforceWindow) {
@@ -37,7 +36,6 @@ export const SessionNotifications: React.FC<SessionNotificationsProps> = ({
       const currentTime = nowInTimezone.toTimeString().slice(0, 5);
       const currentSeconds = nowInTimezone.getSeconds();
       setCurrentTimeStr(`${currentTime}:${currentSeconds.toString().padStart(2, '0')} (${timezone})`);
-      setCurrentSeconds(currentSeconds);
 
       const sessionWindow = sessionSettings[selectedSession];
       if (!sessionWindow) {
@@ -64,29 +62,6 @@ export const SessionNotifications: React.FC<SessionNotificationsProps> = ({
 
     return () => clearInterval(interval);
   }, [sessionSettings, selectedSession, timezone]);
-
-  const calculateTimeUntil = (currentTime: string, targetTime: string): string => {
-    const [currentHour, currentMinute] = currentTime.split(':').map(Number);
-    const [targetHour, targetMinute] = targetTime.split(':').map(Number);
-
-    const currentMinutes = currentHour * 60 + currentMinute;
-    let targetMinutes = targetHour * 60 + targetMinute;
-
-    // Handle next day scenario
-    if (targetMinutes <= currentMinutes) {
-      targetMinutes += 24 * 60;
-    }
-
-    const diffMinutes = targetMinutes - currentMinutes;
-    const hours = Math.floor(diffMinutes / 60);
-    const minutes = diffMinutes % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    } else {
-      return `${minutes}m`;
-    }
-  };
 
   const calculateTimeUntilWithSeconds = (nowInTimezone: Date, targetTime: string): string => {
     const [targetHour, targetMinute] = targetTime.split(':').map(Number);

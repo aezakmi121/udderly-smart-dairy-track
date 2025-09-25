@@ -33,7 +33,11 @@ export const MilkProduction = () => {
   const [selectedRecord, setSelectedRecord] = useState<MilkProduction | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedSession, setSelectedSession] = useState<'morning' | 'evening'>('morning');
+  const [selectedSession, setSelectedSession] = useState<'morning' | 'evening'>(() => {
+    // Smart default: morning before 12 PM, evening after
+    const hour = new Date().getHours();
+    return hour < 12 ? 'morning' : 'evening';
+  });
 
   const { log: milkingLog, isLoading: milkingLogLoading, startLog, endLog, setStartTime, setEndTime } = useMilkingLog(selectedDate, selectedSession);
   const { canEdit, isAdmin, isFarmWorker } = useUserPermissions();
