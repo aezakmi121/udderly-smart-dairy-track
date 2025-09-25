@@ -448,6 +448,75 @@ export const usePushNotifications = () => {
         });
         
         return;
+      } else if (data && data.details && data.details.browserTokens > 0 && data.details.fcmTokens === 0) {
+        // Handle browser tokens with client-side notification
+        console.log('📱 TEST: Browser token detected, showing local notification...');
+        
+        if ('serviceWorker' in navigator) {
+          try {
+            const registration = await navigator.serviceWorker.ready;
+            console.log('📱 TEST: Showing local notification via service worker');
+            
+            await registration.showNotification('Test Notification', {
+              body: 'This is a test notification from Dairy Farm Manager! 🥛 Browser notifications are working correctly.',
+              icon: '/android-chrome-192x192.png',
+              badge: '/favicon-32x32.png',
+              tag: 'test-browser',
+              requireInteraction: false,
+              silent: false,
+              data: {
+                type: 'test',
+                timestamp: new Date().toISOString()
+              }
+            });
+
+            toast({
+              title: 'Browser Test Sent',
+              description: 'Local browser notification sent successfully! Check your system tray.',
+            });
+            
+            console.log('✅ TEST: Browser notification sent successfully');
+            return;
+          } catch (localError) {
+            console.error('❌ TEST: Local notification failed:', localError);
+            
+            // Try direct browser notification as fallback
+            try {
+              console.log('🔄 TEST: Trying direct browser notification...');
+              new Notification('Test Notification', {
+                body: 'This is a test notification from Dairy Farm Manager! 🥛',
+                icon: '/android-chrome-192x192.png'
+              });
+              
+              toast({
+                title: 'Direct Test Sent',
+                description: 'Direct browser notification sent successfully!',
+              });
+              return;
+            } catch (directError) {
+              console.error('❌ TEST: Direct notification also failed:', directError);
+              throw localError;
+            }
+          }
+        } else {
+          // Try direct browser notification for browsers without service worker
+          try {
+            console.log('📱 TEST: No service worker, trying direct notification...');
+            new Notification('Test Notification', {
+              body: 'This is a test notification from Dairy Farm Manager! 🥛',
+              icon: '/android-chrome-192x192.png'
+            });
+            
+            toast({
+              title: 'Direct Test Sent',
+              description: 'Direct browser notification sent successfully!',
+            });
+            return;
+          } catch (directError) {
+            console.error('❌ TEST: Direct notification failed:', directError);
+            throw directError;
+          }
+        }
       } else {
         console.log('✅ TEST: FCM test notification sent successfully!');
         console.log('📊 TEST: Response data:', data);
