@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { MoreHorizontal, Edit, Trash2, Receipt, Filter, Download } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Filter, Download, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/common/DataTable';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { ExpenseFiltersModal } from './ExpenseFiltersModal';
 import { useExpenseManagement, type Expense, type ExpenseFilters } from '@/hooks/useExpenseManagement';
 import { useReportExports } from '@/hooks/useReportExports';
@@ -25,6 +28,7 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
   onFiltersChange,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { deleteExpense } = useExpenseManagement();
   const { exportToCSV } = useReportExports();
 
@@ -44,7 +48,11 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
   };
 
   const handleExport = () => {
-    const exportData = expenses.map(expense => ({
+    // Filter expenses by selected date
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const filteredExpenses = expenses.filter(expense => expense.expense_date === dateStr);
+    
+    const exportData = filteredExpenses.map(expense => ({
       date: expense.expense_date,
       category: expense.expense_categories?.name || 'N/A',
       source: expense.expense_sources?.name || 'N/A',
@@ -61,7 +69,7 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
       'amount', 'status', 'paid_by', 'payment_date'
     ];
 
-    exportToCSV(exportData, 'expenses', headers);
+    exportToCSV(exportData, `expenses-${dateStr}`, headers);
   };
 
   const columns = [
@@ -173,14 +181,6 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
               <Edit className="mr-2 h-4 w-4" />
               Edit
             </DropdownMenuItem>
-            {row.original.receipt_url && (
-              <DropdownMenuItem 
-                onClick={() => window.open(row.original.receipt_url, '_blank')}
-              >
-                <Receipt className="mr-2 h-4 w-4" />
-                View Receipt
-              </DropdownMenuItem>
-            )}
             <DropdownMenuItem 
               onClick={() => deleteExpense.mutate(row.original.id)}
               className="text-red-600"
@@ -206,6 +206,30 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
             <Filter className="h-4 w-4 mr-2" />
             Filters
           </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "justify-start text-left font-normal",
+                  !selectedDate && "text-muted-foreground"
+                )}
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => date && setSelectedDate(date)}
+                initialFocus
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
           <Button
             variant="outline"
             size="sm"

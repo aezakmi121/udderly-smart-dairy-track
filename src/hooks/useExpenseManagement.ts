@@ -22,6 +22,12 @@ export interface PaymentMethod {
   is_active: boolean;
 }
 
+export interface PaidByPerson {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
+
 export interface Expense {
   id: string;
   expense_date: string;
@@ -158,6 +164,22 @@ export const useExpenseManagement = () => {
     });
   };
 
+  // Fetch paid by people
+  const usePaidByPeople = () => {
+    return useQuery({
+      queryKey: ['paid-by-people'],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from('paid_by_people')
+          .select('*')
+          .eq('is_active', true)
+          .order('name');
+        if (error) throw error;
+        return data as PaidByPerson[];
+      },
+    });
+  };
+
   // Create expense
   const createExpense = useMutation({
     mutationFn: async (expense: Omit<Expense, 'id' | 'created_at' | 'updated_at'>) => {
@@ -230,27 +252,46 @@ export const useExpenseManagement = () => {
     },
   });
 
-  // Upload receipt
-  const uploadReceipt = useMutation({
-    mutationFn: async ({ file, expenseId }: { file: File; expenseId: string }) => {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${expenseId}-${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('expense-receipts')
-        .upload(fileName, file);
-      
-      if (uploadError) throw uploadError;
-      
-      const { data } = supabase.storage
-        .from('expense-receipts')
-        .getPublicUrl(fileName);
-      
-      return data.publicUrl;
+  // Create paid by person
+  const createPaidByPerson = useMutation({
+    mutationFn: async (person: { name: string }) => {
+      const { data, error } = await supabase
+        .from('paid_by_people')
+        .insert(person)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paid-by-people'] });
+      toast({ title: 'Person added successfully!' });
     },
     onError: (error) => {
       toast({ 
-        title: 'Failed to upload receipt', 
+        title: 'Failed to add person', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  // Delete paid by person
+  const deletePaidByPerson = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('paid_by_people')
+        .delete()
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paid-by-people'] });
+      toast({ title: 'Person deleted successfully!' });
+    },
+    onError: (error) => {
+      toast({ 
+        title: 'Failed to delete person', 
         description: error.message,
         variant: 'destructive' 
       });
@@ -262,9 +303,11 @@ export const useExpenseManagement = () => {
     useCategories,
     useSources,
     usePaymentMethods,
+    usePaidByPeople,
     createExpense,
     updateExpense,
     deleteExpense,
-    uploadReceipt,
+    createPaidByPerson,
+    deletePaidByPerson,
   };
 };

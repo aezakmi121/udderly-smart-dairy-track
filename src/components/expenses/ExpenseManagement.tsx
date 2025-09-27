@@ -57,46 +57,13 @@ export const ExpenseManagement = () => {
 
       <ExpenseStats expenses={expenses} />
 
-      <Tabs defaultValue="expenses" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3">
-          <TabsTrigger value="expenses" className="flex items-center gap-2">
-            <Receipt className="h-4 w-4" />
-            Expenses
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Analytics
-          </TabsTrigger>
-          <TabsTrigger value="recurring" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Recurring
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="expenses">
-          <ExpenseTable
-            expenses={expenses}
-            isLoading={isLoading}
-            onEdit={handleEditExpense}
-            filters={filters}
-            onFiltersChange={setFilters}
-          />
-        </TabsContent>
-
-        <TabsContent value="analytics">
-          <div className="rounded-lg border bg-card p-6">
-            <h3 className="text-lg font-semibold mb-4">Expense Analytics</h3>
-            <p className="text-muted-foreground">Advanced analytics coming soon...</p>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="recurring">
-          <div className="rounded-lg border bg-card p-6">
-            <h3 className="text-lg font-semibold mb-4">Recurring Expenses</h3>
-            <p className="text-muted-foreground">Recurring expense management coming soon...</p>
-          </div>
-        </TabsContent>
-      </Tabs>
+      <ExpenseTable
+        expenses={expenses}
+        isLoading={isLoading}
+        onEdit={handleEditExpense}
+        filters={filters}
+        onFiltersChange={setFilters}
+      />
 
       {showExpenseForm && (
         <ExpenseForm

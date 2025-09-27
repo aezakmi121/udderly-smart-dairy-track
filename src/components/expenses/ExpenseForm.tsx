@@ -24,13 +24,9 @@ const expenseSchema = z.object({
   payment_method_id: z.string().optional(),
   amount: z.number().min(0.01, 'Amount must be greater than 0'),
   description: z.string().optional(),
-  paid_by: z.string().optional(),
+  paid_by: z.string().min(1, 'Paid by is required'),
   vendor_name: z.string().optional(),
   invoice_number: z.string().optional(),
-  status: z.enum(['pending', 'paid', 'overdue', 'cancelled']),
-  is_recurring: z.boolean(),
-  recurring_frequency: z.string().optional(),
-  notes: z.string().optional(),
 });
 
 type ExpenseFormData = z.infer<typeof expenseSchema>;
@@ -44,23 +40,22 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
   const { 
     useCategories, 
     useSources, 
-    usePaymentMethods, 
+    usePaymentMethods,
+    usePaidByPeople,
     createExpense, 
-    updateExpense,
-    uploadReceipt 
+    updateExpense 
   } = useExpenseManagement();
 
   const { data: categories = [] } = useCategories();
   const { data: sources = [] } = useSources();
   const { data: paymentMethods = [] } = usePaymentMethods();
+  const { data: paidByPeople = [] } = usePaidByPeople();
 
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
       expense_date: new Date(),
-      status: 'pending',
-      is_recurring: false,
-      amount: 0,
+      payment_date: new Date(),
     },
   });
 
@@ -68,7 +63,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
     if (expense) {
       form.reset({
         expense_date: new Date(expense.expense_date),
-        payment_date: expense.payment_date ? new Date(expense.payment_date) : undefined,
+        payment_date: expense.payment_date ? new Date(expense.payment_date) : new Date(),
         category_id: expense.category_id || '',
         source_id: expense.source_id || '',
         payment_method_id: expense.payment_method_id || '',
@@ -77,10 +72,6 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
         paid_by: expense.paid_by || '',
         vendor_name: expense.vendor_name || '',
         invoice_number: expense.invoice_number || '',
-        status: expense.status,
-        is_recurring: expense.is_recurring,
-        recurring_frequency: expense.recurring_frequency || '',
-        notes: expense.notes || '',
       });
     }
   }, [expense, form]);
@@ -90,7 +81,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
       const expenseData = {
         ...data,
         expense_date: data.expense_date.toISOString().split('T')[0],
-        payment_date: data.payment_date ? data.payment_date.toISOString().split('T')[0] : undefined,
+        payment_date: data.payment_date ? data.payment_date.toISOString().split('T')[0] : data.expense_date.toISOString().split('T')[0],
+        status: 'paid' as const,
       };
       
       if (expense) {
@@ -101,18 +93,6 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
       onClose();
     } catch (error) {
       console.error('Error saving expense:', error);
-    }
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && expense?.id) {
-      try {
-        const url = await uploadReceipt.mutateAsync({ file, expenseId: expense.id });
-        await updateExpense.mutateAsync({ id: expense.id, receipt_url: url });
-      } catch (error) {
-        console.error('Error uploading receipt:', error);
-      }
     }
   };
 
@@ -268,15 +248,19 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
                 name="amount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Amount</FormLabel>
+                    <FormLabel>Amount (₹)</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                      />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">₹</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          className="pl-8"
+                          value={field.value || ''}
+                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -285,21 +269,22 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
 
               <FormField
                 control={form.control}
-                name="status"
+                name="payment_method_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Status</FormLabel>
+                    <FormLabel>Payment Method</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select payment method" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="overdue">Overdue</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                        {paymentMethods.map((method) => (
+                          <SelectItem key={method.id} value={method.id}>
+                            {method.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -329,9 +314,20 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Paid By</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Who made the payment" {...field} />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select who paid" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {paidByPeople.map((person) => (
+                          <SelectItem key={person.id} value={person.name}>
+                            {person.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -354,16 +350,12 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
 
             <FormField
               control={form.control}
-              name="notes"
+              name="invoice_number"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                  <FormLabel>Invoice Number (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Additional notes or comments"
-                      className="min-h-[80px]"
-                      {...field}
-                    />
+                    <Input placeholder="Invoice or bill number" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
