@@ -18,7 +18,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     // Show different routes based on user role
     const keyRoutes = ['/dashboard', '/milk-production', '/milk-collection', '/ai-tracking', '/expenses'];
     return keyRoutes.includes(route.path);
-  }).slice(0, 4);
+  }).slice(0, 5);
 
   // Custom labels for bottom navigation
   const getBottomNavLabel = (label: string, path: string) => {
