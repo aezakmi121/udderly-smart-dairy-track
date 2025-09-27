@@ -24,7 +24,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   const getBottomNavLabel = (label: string, path: string) => {
     const labelMap: { [key: string]: string } = {
       '/dashboard': 'Home',
-      '/milk-production': 'Milk',
+      '/milk-production': 'Production',
       '/milk-collection': 'Collection',
       '/ai-tracking': 'AI Track',
       '/expenses': 'Expenses'
