@@ -36,8 +36,8 @@ export interface Expense {
   description?: string;
   paid_by?: string;
   vendor_name?: string;
-  invoice_number?: string;
-  receipt_url?: string;
+  
+  
   status: 'pending' | 'paid' | 'overdue' | 'cancelled';
   is_recurring: boolean;
   recurring_frequency?: string;
@@ -77,7 +77,11 @@ export const useExpenseManagement = () => {
         let query = supabase
           .from('expenses')
           .select(`
-            *,
+            id, expense_date, payment_date, amount, description, 
+            paid_by, vendor_name, status, is_recurring, 
+            recurring_frequency, tags, notes, category_id, 
+            source_id, payment_method_id, created_by, 
+            created_at, updated_at,
             expense_categories(id, name),
             expense_sources(id, name),
             payment_methods(id, name)

@@ -26,7 +26,7 @@ const expenseSchema = z.object({
   description: z.string().optional(),
   paid_by: z.string().min(1, 'Paid by is required'),
   vendor_name: z.string().optional(),
-  invoice_number: z.string().optional(),
+  
 });
 
 type ExpenseFormData = z.infer<typeof expenseSchema>;
@@ -71,7 +71,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
         description: expense.description || '',
         paid_by: expense.paid_by || '',
         vendor_name: expense.vendor_name || '',
-        invoice_number: expense.invoice_number || '',
+        
       });
     }
   }, [expense, form]);
@@ -348,19 +348,6 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="invoice_number"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Invoice Number (Optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Invoice or bill number" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <div className="flex justify-between pt-6">
               <Button type="button" variant="outline" onClick={onClose}>
