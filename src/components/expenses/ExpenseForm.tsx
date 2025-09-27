@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Upload, X } from 'lucide-react';
+import { CalendarIcon, Upload, X, Image } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { useExpenseManagement, type Expense } from '@/hooks/useExpenseManagement';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const expenseSchema = z.object({
   expense_date: z.date({ required_error: 'Expense date is required' }),
@@ -26,7 +28,7 @@ const expenseSchema = z.object({
   description: z.string().optional(),
   paid_by: z.string().min(1, 'Paid by is required'),
   vendor_name: z.string().optional(),
-  
+  receipt_url: z.string().optional(),
 });
 
 type ExpenseFormData = z.infer<typeof expenseSchema>;
@@ -37,6 +39,11 @@ interface ExpenseFormProps {
 }
 
 export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) => {
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(expense?.receipt_url || null);
+  
   const { 
     useCategories, 
     useSources, 
@@ -71,18 +78,82 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
         description: expense.description || '',
         paid_by: expense.paid_by || '',
         vendor_name: expense.vendor_name || '',
-        
+        receipt_url: expense.receipt_url || '',
       });
+      setReceiptPreview(expense.receipt_url || null);
     }
   }, [expense, form]);
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: "File too large",
+          description: "Please select a file smaller than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setReceiptFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setReceiptPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadReceipt = async (): Promise<string | null> => {
+    if (!receiptFile) return receiptPreview;
+
+    setUploading(true);
+    try {
+      const fileExt = receiptFile.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      const filePath = `receipts/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('expense-receipts')
+        .upload(filePath, receiptFile);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('expense-receipts')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading receipt:', error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload receipt image",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeReceipt = () => {
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    form.setValue('receipt_url', '');
+  };
+
   const onSubmit = async (data: ExpenseFormData) => {
     try {
+      const receiptUrl = await uploadReceipt();
+      
       const expenseData = {
         ...data,
         expense_date: data.expense_date.toISOString().split('T')[0],
         payment_date: data.payment_date ? data.payment_date.toISOString().split('T')[0] : data.expense_date.toISOString().split('T')[0],
         status: 'paid' as const,
+        receipt_url: receiptUrl || undefined,
       };
       
       if (expense) {
@@ -348,6 +419,54 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
               )}
             />
 
+            {/* Receipt Upload */}
+            <FormItem>
+              <FormLabel>Receipt Image</FormLabel>
+              <div className="space-y-4">
+                {receiptPreview ? (
+                  <div className="relative">
+                    <img 
+                      src={receiptPreview} 
+                      alt="Receipt preview" 
+                      className="max-w-full h-32 object-cover rounded-md border"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={removeReceipt}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-md p-6">
+                    <div className="text-center">
+                      <Image className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                      <div className="mt-2">
+                        <label htmlFor="receipt-upload" className="cursor-pointer">
+                          <span className="text-sm font-medium text-primary hover:text-primary/80">
+                            Upload receipt image
+                          </span>
+                          <input
+                            id="receipt-upload"
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleFileSelect}
+                          />
+                        </label>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        PNG, JPG up to 5MB
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </FormItem>
+
 
             <div className="flex justify-between pt-6">
               <Button type="button" variant="outline" onClick={onClose}>
@@ -355,9 +474,9 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
               </Button>
               <Button 
                 type="submit" 
-                disabled={createExpense.isPending || updateExpense.isPending}
+                disabled={createExpense.isPending || updateExpense.isPending || uploading}
               >
-                {expense ? 'Update Expense' : 'Create Expense'}
+                {uploading ? 'Uploading...' : expense ? 'Update Expense' : 'Create Expense'}
               </Button>
             </div>
           </form>

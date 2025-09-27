@@ -36,6 +36,7 @@ export interface Expense {
   description?: string;
   paid_by?: string;
   vendor_name?: string;
+  receipt_url?: string;
   
   
   status: 'pending' | 'paid' | 'overdue' | 'cancelled';
