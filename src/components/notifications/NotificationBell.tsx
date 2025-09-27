@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Bell, AlertTriangle, Calendar, Syringe, Heart, Package, X, Settings, Clock, History } from 'lucide-react';
+import { Bell, AlertTriangle, Calendar, Syringe, Heart, Package, X, Settings, Clock, History, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -9,10 +9,11 @@ import {
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useNotifications } from '@/hooks/useNotifications';
+import { useEnhancedNotifications } from '@/hooks/useEnhancedNotifications';
 import { cn } from '@/lib/utils';
 import { NotificationSettingsModal } from './NotificationSettingsModal';
 import { NotificationHistoryModal } from './NotificationHistoryModal';
+import { NotificationDetailsModal } from './NotificationDetailsModal';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const getNotificationIcon = (type: string) => {
@@ -49,6 +50,8 @@ export const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<any>(null);
   const { 
     notifications, 
     isLoading, 
@@ -58,7 +61,7 @@ export const NotificationBell = () => {
     markAllAsRead, 
     snoozeNotification, 
     dismissNotification 
-  } = useNotifications();
+  } = useEnhancedNotifications();
   const unread = notifications.filter(n => !n.read);
 
   if (isLoading) {
@@ -154,14 +157,19 @@ export const NotificationBell = () => {
                               <p className="text-sm font-medium text-foreground">
                                 {notification.title}
                               </p>
-                              {notification.group_count && (
+                              {notification.data?.cows && (
                                 <Badge variant="secondary" className="text-xs">
-                                  {notification.group_count}
+                                  {notification.data.cows.length}
                                 </Badge>
                               )}
-                              {notification.is_overdue && (
+                              {notification.data?.items && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {notification.data.items.length}
+                                </Badge>
+                              )}
+                              {notification.priority === 'high' && (
                                 <Badge variant="destructive" className="text-xs">
-                                  Overdue
+                                  Urgent
                                 </Badge>
                               )}
                             </div>
@@ -173,6 +181,21 @@ export const NotificationBell = () => {
                             </p>
                           </div>
                           <div className="flex items-start gap-1 flex-wrap">
+                            {(notification.type === 'delivery_due' || notification.type === 'pd_due' || notification.type === 'vaccination_due' || notification.type === 'low_stock') && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 touch-manipulation"
+                                aria-label="View details"
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  setSelectedNotification(notification);
+                                  setShowDetails(true);
+                                }}
+                              >
+                                <Eye className="h-3 w-3" />
+                              </Button>
+                            )}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-6 w-6 touch-manipulation">
@@ -223,6 +246,12 @@ export const NotificationBell = () => {
       <NotificationHistoryModal 
         open={showHistory} 
         onOpenChange={setShowHistory} 
+      />
+
+      <NotificationDetailsModal 
+        open={showDetails}
+        onOpenChange={setShowDetails}
+        notification={selectedNotification}
       />
     </>
   );
