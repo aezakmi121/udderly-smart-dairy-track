@@ -157,7 +157,67 @@ export const generatePayoutPDF = (data: {
   return doc;
 };
 
-export const generateWhatsAppMessage = (type: 'collection' | 'production', data: any) => {
+export const generateExpenseReportPDF = (data: {
+  fromDate: string;
+  toDate: string;
+  totalExpenses: number;
+  paidExpenses: number;
+  pendingExpenses: number;
+  categoryBreakdown: Array<{ name: string; amount: number; percentage: number }>;
+  monthlyTrends: Array<{ month: string; amount: number }>;
+}) => {
+  const doc = new jsPDF();
+  
+  // Header
+  doc.setFontSize(20);
+  doc.text('Expense Report', 20, 20);
+  
+  // Date range
+  doc.setFontSize(12);
+  doc.text(`Period: ${formatDate(data.fromDate)} to ${formatDate(data.toDate)}`, 20, 35);
+  
+  // Summary stats
+  doc.text(`Total Expenses: Rs.${data.totalExpenses.toFixed(2)}`, 20, 50);
+  doc.text(`Paid Expenses: Rs.${data.paidExpenses.toFixed(2)}`, 20, 60);
+  doc.text(`Pending Expenses: Rs.${data.pendingExpenses.toFixed(2)}`, 20, 70);
+  
+  // Category breakdown table
+  const categoryData = data.categoryBreakdown.length > 0 
+    ? data.categoryBreakdown.map(item => [
+        item.name,
+        `Rs.${item.amount.toFixed(2)}`,
+        `${item.percentage.toFixed(1)}%`
+      ])
+    : [['No data available', '-', '-']];
+  
+  doc.autoTable({
+    startY: 85,
+    head: [['Category', 'Amount (Rs.)', 'Percentage']],
+    body: categoryData,
+    theme: 'grid',
+    headStyles: { fillColor: [41, 128, 185] }
+  });
+  
+  // Monthly trends table
+  if (data.monthlyTrends.length > 0) {
+    const monthlyData = data.monthlyTrends.map(item => [
+      item.month,
+      `Rs.${item.amount.toFixed(2)}`
+    ]);
+    
+    doc.autoTable({
+      startY: 150, // Fixed position instead of using lastAutoTable
+      head: [['Month', 'Amount (Rs.)']],
+      body: monthlyData,
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185] }
+    });
+  }
+  
+  return doc;
+};
+
+export const generateWhatsAppMessage = (type: 'collection' | 'production' | 'expenses', data: any) => {
   if (type === 'collection') {
     return `*Milk Collection Report*
 📅 Period: ${data.fromDate} to ${data.toDate}
@@ -168,7 +228,7 @@ export const generateWhatsAppMessage = (type: 'collection' | 'production', data:
 📈 Average Rate: Rs.${data.avgRate.toFixed(2)}/L
 
 Generated on ${new Date().toLocaleDateString()}`;
-  } else {
+  } else if (type === 'production') {
     return `*Milk Production Report*
 📅 Period: ${data.fromDate} to ${data.toDate}
 
@@ -177,6 +237,16 @@ Generated on ${new Date().toLocaleDateString()}`;
 📈 Avg Daily Production: ${data.avgProduction.toFixed(2)} L
 🧈 Average Fat: ${data.avgFat.toFixed(2)}%
 🥛 Average SNF: ${data.avgSNF.toFixed(2)}%
+
+Generated on ${new Date().toLocaleDateString()}`;
+  } else {
+    return `*Expense Report*
+📅 Period: ${data.fromDate} to ${data.toDate}
+
+📊 *Summary:*
+💰 Total Expenses: Rs.${data.totalExpenses.toFixed(2)}
+✅ Paid: Rs.${data.paidExpenses.toFixed(2)}
+⏳ Pending: Rs.${data.pendingExpenses.toFixed(2)}
 
 Generated on ${new Date().toLocaleDateString()}`;
   }

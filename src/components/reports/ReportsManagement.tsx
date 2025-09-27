@@ -5,8 +5,12 @@ import { MilkCollectionReports } from './MilkCollectionReports';
 import { MilkProductionReports } from './MilkProductionReports';
 import { FeedReports } from './FeedReports';
 import { CattleReports } from './CattleReports';
+import { ExpenseReports } from './ExpenseReports';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 export const ReportsManagement = () => {
+  const { isAdmin } = useUserPermissions();
+
   return (
     <div className="space-y-6">
       <div>
@@ -15,12 +19,14 @@ export const ReportsManagement = () => {
       </div>
 
       <Tabs defaultValue="collection" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto gap-1 p-1">
+        <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'} h-auto gap-1 p-1`}>
           <TabsTrigger value="collection" className="text-xs sm:text-sm">Milk Collection</TabsTrigger>
           <TabsTrigger value="production" className="text-xs sm:text-sm">Milk Production</TabsTrigger>
           <TabsTrigger value="feed" className="text-xs sm:text-sm">Feed Reports</TabsTrigger>
           <TabsTrigger value="cattle" className="text-xs sm:text-sm">Cattle Reports</TabsTrigger>
-          <TabsTrigger value="expenses" className="text-xs sm:text-sm">Expense Reports</TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="expenses" className="text-xs sm:text-sm">Expense Reports</TabsTrigger>
+          )}
         </TabsList>
         
         <TabsContent value="collection">
@@ -39,12 +45,11 @@ export const ReportsManagement = () => {
           <CattleReports />
         </TabsContent>
         
-        <TabsContent value="expenses">
-          <div className="rounded-lg border bg-card p-6">
-            <h3 className="text-lg font-semibold mb-4">Expense Reports</h3>
-            <p className="text-muted-foreground">Expense reporting features coming soon...</p>
-          </div>
-        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="expenses">
+            <ExpenseReports />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
