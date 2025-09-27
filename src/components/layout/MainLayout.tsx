@@ -1,39 +1,32 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { TopBar } from './TopBar';
+import { BottomNavigation } from './BottomNavigation';
+import { getAccessibleRoutes } from '@/config/routes';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
-import { routes, getAccessibleRoutes } from '@/config/routes';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MainLayoutProps {
   children: React.ReactNode;
 }
 
-export const MainLayout = ({ children }: MainLayoutProps) => {
+export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const isMobile = useIsMobile();
   const location = useLocation();
   const navigate = useNavigate();
-  const userPermissions = useUserPermissions();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const permissions = useUserPermissions();
 
-  React.useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (mobile) {
-        setSidebarCollapsed(true);
-      }
-    };
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarCollapsed(true);
+    }
+  }, [isMobile]);
 
-    window.addEventListener('resize', handleResize);
-    handleResize();
+  const accessibleRoutes = getAccessibleRoutes(permissions);
 
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const accessibleRoutes = getAccessibleRoutes(userPermissions);
-  
   const handleNavigation = (path: string) => {
     navigate(path);
     if (isMobile) {
@@ -42,29 +35,40 @@ export const MainLayout = ({ children }: MainLayoutProps) => {
   };
 
   return (
-    <div className="flex h-screen bg-background relative">
+    <div className="min-h-screen flex w-full bg-background">
       {/* Mobile overlay */}
       {isMobile && !sidebarCollapsed && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setSidebarCollapsed(true)}
         />
       )}
       
-      <div className={`${isMobile ? 'fixed inset-y-0 left-0 z-50' : ''} ${sidebarCollapsed && isMobile ? '-translate-x-full' : ''} transition-transform duration-300 ease-in-out`}>
-        <Sidebar 
+      {/* Sidebar - hidden on mobile */}
+      <div className={`${isMobile ? 'fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out' : 'relative'} ${
+        isMobile && sidebarCollapsed ? '-translate-x-full' : ''
+      }`}>
+        <Sidebar
           routes={accessibleRoutes}
           currentPath={location.pathname}
           onNavigate={handleNavigation}
-          isCollapsed={sidebarCollapsed && !isMobile}
+          isCollapsed={!isMobile && sidebarCollapsed}
         />
       </div>
-      
-      <div className={`flex-1 flex flex-col overflow-hidden ${isMobile ? 'w-full' : ''}`}>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-w-0">
         <TopBar onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 md:p-6">
+        <main className="flex-1 overflow-auto p-3 md:p-6 pb-20 md:pb-6">
           {children}
         </main>
+        
+        {/* Bottom Navigation - only on mobile */}
+        <BottomNavigation
+          routes={accessibleRoutes}
+          currentPath={location.pathname}
+          onNavigate={handleNavigation}
+        />
       </div>
     </div>
   );

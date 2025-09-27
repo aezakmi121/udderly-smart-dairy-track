@@ -82,43 +82,55 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
         <DialogHeader>
-          <DialogTitle>Expense Settings</DialogTitle>
+          <DialogTitle className="text-lg sm:text-xl">Expense Settings</DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="categories" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="categories">Categories</TabsTrigger>
-            <TabsTrigger value="sources">Sources</TabsTrigger>
-            <TabsTrigger value="payment-methods">Payment Methods</TabsTrigger>
-            <TabsTrigger value="paid-by">Paid By</TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="categories" className="space-y-4">
+          <div className="overflow-x-auto">
+            <TabsList className="inline-flex w-max min-w-full gap-1 p-1">
+              <TabsTrigger value="categories" className="text-xs sm:text-sm px-2 sm:px-3">
+                Categories
+              </TabsTrigger>
+              <TabsTrigger value="sources" className="text-xs sm:text-sm px-2 sm:px-3">
+                Sources  
+              </TabsTrigger>
+              <TabsTrigger value="payment-methods" className="text-xs sm:text-sm px-2 sm:px-3">
+                Payment
+              </TabsTrigger>
+              <TabsTrigger value="paid-by" className="text-xs sm:text-sm px-2 sm:px-3">
+                Paid By
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="categories" className="space-y-4">
+          <TabsContent value="categories" className="space-y-4 max-h-[60vh] overflow-y-auto">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Expense Categories</h3>
+              <h3 className="text-base sm:text-lg font-semibold">Expense Categories</h3>
               
               {/* Add new category */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg">
-                <div className="space-y-2">
-                  <Label>Category Name</Label>
-                  <Input
-                    placeholder="Enter category name"
-                    value={newCategory.name}
-                    onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Input
-                    placeholder="Enter description"
-                    value={newCategory.description}
-                    onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button onClick={handleAddCategory} className="w-full">
+              <div className="space-y-3 p-3 sm:p-4 border rounded-lg">
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Category Name</Label>
+                    <Input
+                      placeholder="Enter category name"
+                      value={newCategory.name}
+                      onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">Description</Label>
+                    <Input
+                      placeholder="Enter description"
+                      value={newCategory.description}
+                      onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                      className="text-sm"
+                    />
+                  </div>
+                  <Button onClick={handleAddCategory} className="w-full text-sm">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Category
                   </Button>
@@ -128,19 +140,19 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
               {/* Existing categories */}
               <div className="space-y-2">
                 {categories.map((category) => (
-                  <div key={category.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">{category.name}</h4>
+                  <div key={category.id} className="flex items-start sm:items-center justify-between p-3 border rounded-lg gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-sm sm:text-base truncate">{category.name}</h4>
                       {category.description && (
-                        <p className="text-sm text-muted-foreground">{category.description}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{category.description}</p>
                       )}
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4" />
+                    <div className="flex gap-1 flex-shrink-0">
+                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                        <Edit className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm">
-                        <Trash2 className="h-4 w-4" />
+                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
@@ -149,30 +161,32 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
             </div>
           </TabsContent>
 
-          <TabsContent value="sources" className="space-y-4">
+          <TabsContent value="sources" className="space-y-4 max-h-[60vh] overflow-y-auto">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Expense Sources</h3>
+              <h3 className="text-base sm:text-lg font-semibold">Expense Sources</h3>
               
               {/* Add new source */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg">
-                <div className="space-y-2">
-                  <Label>Source Name</Label>
-                  <Input
-                    placeholder="Enter source name"
-                    value={newSource.name}
-                    onChange={(e) => setNewSource({ ...newSource, name: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Input
-                    placeholder="Enter description"
-                    value={newSource.description}
-                    onChange={(e) => setNewSource({ ...newSource, description: e.target.value })}
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button onClick={handleAddSource} className="w-full">
+              <div className="space-y-3 p-3 sm:p-4 border rounded-lg">
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Source Name</Label>
+                    <Input
+                      placeholder="Enter source name"
+                      value={newSource.name}
+                      onChange={(e) => setNewSource({ ...newSource, name: e.target.value })}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">Description</Label>
+                    <Input
+                      placeholder="Enter description"
+                      value={newSource.description}
+                      onChange={(e) => setNewSource({ ...newSource, description: e.target.value })}
+                      className="text-sm"
+                    />
+                  </div>
+                  <Button onClick={handleAddSource} className="w-full text-sm">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Source
                   </Button>
@@ -182,19 +196,19 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
               {/* Existing sources */}
               <div className="space-y-2">
                 {sources.map((source) => (
-                  <div key={source.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">{source.name}</h4>
+                  <div key={source.id} className="flex items-start sm:items-center justify-between p-3 border rounded-lg gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-sm sm:text-base truncate">{source.name}</h4>
                       {source.description && (
-                        <p className="text-sm text-muted-foreground">{source.description}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{source.description}</p>
                       )}
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4" />
+                    <div className="flex gap-1 flex-shrink-0">
+                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                        <Edit className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm">
-                        <Trash2 className="h-4 w-4" />
+                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
@@ -203,22 +217,23 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
             </div>
           </TabsContent>
 
-          <TabsContent value="payment-methods" className="space-y-4">
+          <TabsContent value="payment-methods" className="space-y-4 max-h-[60vh] overflow-y-auto">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Payment Methods</h3>
+              <h3 className="text-base sm:text-lg font-semibold">Payment Methods</h3>
               
               {/* Add new payment method */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
-                <div className="space-y-2">
-                  <Label>Payment Method Name</Label>
-                  <Input
-                    placeholder="Enter payment method name"
-                    value={newPaymentMethod.name}
-                    onChange={(e) => setNewPaymentMethod({ ...newPaymentMethod, name: e.target.value })}
-                  />
-                </div>
-                <div className="flex items-end">
-                  <Button onClick={handleAddPaymentMethod} className="w-full">
+              <div className="space-y-3 p-3 sm:p-4 border rounded-lg">
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Payment Method Name</Label>
+                    <Input
+                      placeholder="Enter payment method name"
+                      value={newPaymentMethod.name}
+                      onChange={(e) => setNewPaymentMethod({ ...newPaymentMethod, name: e.target.value })}
+                      className="text-sm"
+                    />
+                  </div>
+                  <Button onClick={handleAddPaymentMethod} className="w-full text-sm">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Method
                   </Button>
@@ -229,13 +244,13 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
               <div className="space-y-2">
                 {paymentMethods.map((method) => (
                   <div key={method.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <h4 className="font-medium">{method.name}</h4>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4" />
+                    <h4 className="font-medium text-sm sm:text-base flex-1 truncate">{method.name}</h4>
+                    <div className="flex gap-1 flex-shrink-0">
+                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                        <Edit className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm">
-                        <Trash2 className="h-4 w-4" />
+                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
@@ -244,24 +259,25 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
             </div>
           </TabsContent>
 
-          <TabsContent value="paid-by" className="space-y-4">
+          <TabsContent value="paid-by" className="space-y-4 max-h-[60vh] overflow-y-auto">
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Paid By People</h3>
+              <h3 className="text-base sm:text-lg font-semibold">Paid By People</h3>
               
               {/* Add new person */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
-                <div className="space-y-2">
-                  <Label>Person Name</Label>
-                  <Input
-                    placeholder="Enter person name"
-                    value={newPaidByPerson.name}
-                    onChange={(e) => setNewPaidByPerson({ name: e.target.value })}
-                  />
-                </div>
-                <div className="flex items-end">
+              <div className="space-y-3 p-3 sm:p-4 border rounded-lg">
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Person Name</Label>
+                    <Input
+                      placeholder="Enter person name"
+                      value={newPaidByPerson.name}
+                      onChange={(e) => setNewPaidByPerson({ name: e.target.value })}
+                      className="text-sm"
+                    />
+                  </div>
                   <Button 
                     onClick={handleAddPaidByPerson} 
-                    className="w-full"
+                    className="w-full text-sm"
                     disabled={createPaidByPerson.isPending}
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -274,15 +290,16 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
               <div className="space-y-2">
                 {paidByPeople.map((person) => (
                   <div key={person.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <h4 className="font-medium">{person.name}</h4>
-                    <div className="flex gap-2">
+                    <h4 className="font-medium text-sm sm:text-base flex-1 truncate">{person.name}</h4>
+                    <div className="flex gap-1 flex-shrink-0">
                       <Button 
                         variant="outline" 
                         size="sm"
+                        className="h-8 w-8 p-0"
                         onClick={() => handleDeletePaidByPerson(person.id)}
                         disabled={deletePaidByPerson.isPending}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>

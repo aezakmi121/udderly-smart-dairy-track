@@ -24,29 +24,30 @@ export const ManagementLayout: React.FC<ManagementLayoutProps> = ({
   className = ""
 }) => {
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`space-y-4 sm:space-y-6 ${className}`}>
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h1>
-        {description && <p className="text-muted-foreground">{description}</p>}
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">{title}</h1>
+        {description && <p className="text-sm sm:text-base text-muted-foreground mt-1">{description}</p>}
       </div>
 
-      <Tabs defaultValue={defaultTab || tabs[0]?.id} className="space-y-6">
+      <Tabs defaultValue={defaultTab || tabs[0]?.id} className="space-y-4 sm:space-y-6">
         <div className="overflow-x-auto">
-          <TabsList className="flex w-max min-w-full gap-1">
+          <TabsList className="inline-flex w-max min-w-full gap-1 p-1">
             {tabs.map((tab) => (
               <TabsTrigger 
                 key={tab.id} 
                 value={tab.id} 
-                className="text-xs sm:text-sm"
+                className="text-xs sm:text-sm px-2 sm:px-3 py-1.5"
               >
-                {tab.mobileLabel || tab.label}
+                <span className="sm:hidden">{tab.mobileLabel}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
               </TabsTrigger>
             ))}
           </TabsList>
         </div>
         
         {tabs.map((tab) => (
-          <TabsContent key={tab.id} value={tab.id}>
+          <TabsContent key={tab.id} value={tab.id} className="mt-4 sm:mt-6">
             <tab.component />
           </TabsContent>
         ))}

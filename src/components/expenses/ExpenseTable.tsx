@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { MoreHorizontal, Edit, Trash2, Filter, Download, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { DataTable } from '@/components/common/DataTable';
+import { MobileDataTable } from '@/components/common/MobileDataTable';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -196,12 +196,13 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowFilters(true)}
+            className="text-sm"
           >
             <Filter className="h-4 w-4 mr-2" />
             Filters
@@ -212,12 +213,17 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "justify-start text-left font-normal",
+                  "justify-start text-left font-normal text-sm",
                   !selectedDate && "text-muted-foreground"
                 )}
               >
                 <Calendar className="mr-2 h-4 w-4" />
-                {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                <span className="hidden sm:inline">
+                  {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+                </span>
+                <span className="sm:hidden">
+                  {selectedDate ? format(selectedDate, "MMM dd") : "Date"}
+                </span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -235,20 +241,25 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
             size="sm"
             onClick={handleExport}
             disabled={expenses.length === 0}
+            className="text-sm"
           >
             <Download className="h-4 w-4 mr-2" />
-            Export CSV
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">Export</span>
           </Button>
         </div>
-        <div className="text-sm text-muted-foreground">
+        <div className="text-xs sm:text-sm text-muted-foreground">
           {expenses.length} expense{expenses.length !== 1 ? 's' : ''}
         </div>
       </div>
 
-      <DataTable
+      <MobileDataTable
         columns={columns}
         data={expenses}
         isLoading={isLoading}
+        onEdit={onEdit}
+        onDelete={(expense) => deleteExpense.mutate(expense.id)}
+        mobileCardView={true}
       />
 
       {showFilters && (
