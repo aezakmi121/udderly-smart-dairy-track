@@ -23,6 +23,13 @@ interface NotificationDetailsModalProps {
 export const NotificationDetailsModal = ({ open, onOpenChange, notification }: NotificationDetailsModalProps) => {
   const navigate = useNavigate();
 
+  console.log('📋 NotificationDetailsModal - Props:', {
+    open,
+    notificationId: notification?.id,
+    notificationType: notification?.type,
+    notificationData: notification?.data
+  });
+
   if (!notification) return null;
 
   const getIcon = (type: string) => {
@@ -229,6 +236,7 @@ export const NotificationDetailsModal = ({ open, onOpenChange, notification }: N
           <div className="flex gap-3 pt-4 border-t">
             <Button 
               onClick={() => {
+                console.log('🚀 Navigating to:', getNavigationPath(notification.type));
                 navigate(getNavigationPath(notification.type));
                 onOpenChange(false);
               }}

@@ -63,6 +63,19 @@ export const NotificationBell = () => {
     dismissNotification 
   } = useEnhancedNotifications();
   const unread = notifications.filter(n => !n.read);
+  console.log('🔔 Notification filtering:', {
+    totalNotifications: notifications.length,
+    unreadNotifications: unread.length,
+    firstFewNotifications: notifications.slice(0, 2).map(n => ({ id: n.id, type: n.type, read: n.read }))
+  });
+
+  console.log('🔔 NotificationBell - State:', {
+    notificationCount: notifications.length,
+    unreadCount,
+    highPriorityCount,
+    showDetails,
+    selectedNotification: selectedNotification?.id
+  });
 
   if (isLoading) {
     return (
@@ -129,18 +142,19 @@ export const NotificationBell = () => {
             </div>
           </div>
           <ScrollArea className="max-h-96">
-            {unread.length === 0 ? (
+            {notifications.length === 0 ? (
               <div className="p-6 text-center text-sm text-muted-foreground">
-                All caught up — no new notifications
+                All caught up — no notifications
               </div>
             ) : (
               <div className="divide-y">
-                {unread.map((notification) => (
+                {notifications.slice(0, 10).map((notification) => ( // Show up to 10 notifications
                   <div
                     key={notification.id}
                     className={cn(
                       "p-3 border-l-4 hover:bg-accent/5",
-                      getPriorityColor(notification.priority)
+                      getPriorityColor(notification.priority),
+                      notification.read ? "opacity-60" : "" // Visual indicator for read notifications
                     )}
                   >
                     <div className="flex items-start gap-3">
@@ -182,19 +196,21 @@ export const NotificationBell = () => {
                           </div>
                           <div className="flex items-start gap-1 flex-wrap">
                             {(notification.type === 'delivery_due' || notification.type === 'pd_due' || notification.type === 'vaccination_due' || notification.type === 'low_stock') && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 touch-manipulation"
-                                aria-label="View details"
-                                onClick={(e) => { 
-                                  e.stopPropagation(); 
-                                  setSelectedNotification(notification);
-                                  setShowDetails(true);
-                                }}
-                              >
-                                <Eye className="h-3 w-3" />
-                              </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 touch-manipulation"
+                              aria-label="View details"
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                console.log('🔍 View details clicked:', notification.id, notification.type);
+                                setSelectedNotification(notification);
+                                setShowDetails(true);
+                                setIsOpen(false); // Close the notification popover
+                              }}
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
                             )}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -221,6 +237,7 @@ export const NotificationBell = () => {
                               aria-label="Dismiss notification"
                               onClick={(e) => { 
                                 e.stopPropagation(); 
+                                console.log('❌ Dismiss clicked:', notification.id);
                                 dismissNotification(notification.id); 
                               }}
                             >

@@ -324,7 +324,12 @@ export const useEnhancedNotifications = () => {
   const highPriorityCount = notifications.filter(n => !n.read && n.priority === 'high').length;
 
   const markAsRead = (id: string) => {
-    setReadNotifications(prev => new Set([...prev, id]));
+    console.log('✅ Enhanced notifications - markAsRead called:', id, 'Current read notifications:', readNotifications.size);
+    setReadNotifications(prev => {
+      const newSet = new Set([...prev, id]);
+      console.log('✅ New read notifications size:', newSet.size);
+      return newSet;
+    });
   };
 
   const markAllAsRead = () => {
@@ -337,6 +342,7 @@ export const useEnhancedNotifications = () => {
   };
 
   const dismissNotification = (id: string) => {
+    console.log('🗑️ Enhanced notifications - dismissNotification called:', id);
     markAsRead(id);
   };
 
