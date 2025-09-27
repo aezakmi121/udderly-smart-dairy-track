@@ -82,13 +82,13 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl max-h-[90vh] w-[95vw] sm:w-full flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-lg sm:text-xl">Expense Settings</DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="categories" className="space-y-4">
-          <div className="overflow-x-auto">
+        <Tabs defaultValue="categories" className="flex flex-col flex-1 min-h-0">
+          <div className="overflow-x-auto flex-shrink-0">
             <TabsList className="inline-flex w-max min-w-full gap-1 p-1">
               <TabsTrigger value="categories" className="text-xs sm:text-sm px-2 sm:px-3">
                 Categories
@@ -105,7 +105,7 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
             </TabsList>
           </div>
 
-          <TabsContent value="categories" className="space-y-4 max-h-[60vh] overflow-y-auto">
+          <TabsContent value="categories" className="flex-1 overflow-y-auto space-y-4">
             <div className="space-y-4">
               <h3 className="text-base sm:text-lg font-semibold">Expense Categories</h3>
               
@@ -161,7 +161,7 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
             </div>
           </TabsContent>
 
-          <TabsContent value="sources" className="space-y-4 max-h-[60vh] overflow-y-auto">
+          <TabsContent value="sources" className="flex-1 overflow-y-auto space-y-4">
             <div className="space-y-4">
               <h3 className="text-base sm:text-lg font-semibold">Expense Sources</h3>
               
@@ -217,7 +217,7 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
             </div>
           </TabsContent>
 
-          <TabsContent value="payment-methods" className="space-y-4 max-h-[60vh] overflow-y-auto">
+          <TabsContent value="payment-methods" className="flex-1 overflow-y-auto space-y-4">
             <div className="space-y-4">
               <h3 className="text-base sm:text-lg font-semibold">Payment Methods</h3>
               
@@ -259,7 +259,7 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
             </div>
           </TabsContent>
 
-          <TabsContent value="paid-by" className="space-y-4 max-h-[60vh] overflow-y-auto">
+          <TabsContent value="paid-by" className="flex-1 overflow-y-auto space-y-4">
             <div className="space-y-4">
               <h3 className="text-base sm:text-lg font-semibold">Paid By People</h3>
               
@@ -309,7 +309,7 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-end pt-6">
+        <div className="flex justify-end pt-4 border-t flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
