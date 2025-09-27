@@ -390,6 +390,151 @@ export type Database = {
           },
         ]
       }
+      expense_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      expense_sources: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expense_date: string
+          id: string
+          invoice_number: string | null
+          is_recurring: boolean
+          notes: string | null
+          paid_by: string | null
+          payment_date: string | null
+          payment_method_id: string | null
+          receipt_url: string | null
+          recurring_frequency: string | null
+          source_id: string | null
+          status: Database["public"]["Enums"]["expense_status"]
+          tags: Json | null
+          updated_at: string
+          vendor_name: string | null
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expense_date: string
+          id?: string
+          invoice_number?: string | null
+          is_recurring?: boolean
+          notes?: string | null
+          paid_by?: string | null
+          payment_date?: string | null
+          payment_method_id?: string | null
+          receipt_url?: string | null
+          recurring_frequency?: string | null
+          source_id?: string | null
+          status?: Database["public"]["Enums"]["expense_status"]
+          tags?: Json | null
+          updated_at?: string
+          vendor_name?: string | null
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expense_date?: string
+          id?: string
+          invoice_number?: string | null
+          is_recurring?: boolean
+          notes?: string | null
+          paid_by?: string | null
+          payment_date?: string | null
+          payment_method_id?: string | null
+          receipt_url?: string | null
+          recurring_frequency?: string | null
+          source_id?: string | null
+          status?: Database["public"]["Enums"]["expense_status"]
+          tags?: Json | null
+          updated_at?: string
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "expense_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farmers: {
         Row: {
           address: string | null
@@ -858,6 +1003,30 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_methods: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -1125,6 +1294,7 @@ export type Database = {
       app_role: "admin" | "farmer" | "worker" | "store_manager" | "delivery_boy"
       calf_status: "alive" | "dead" | "sold" | "promoted"
       cow_status: "active" | "dry" | "pregnant" | "sick" | "sold" | "dead"
+      expense_status: "pending" | "paid" | "overdue" | "cancelled"
       gender: "male" | "female"
       pd_result: "positive" | "negative" | "inconclusive"
       session_type: "morning" | "evening"
@@ -1260,6 +1430,7 @@ export const Constants = {
       app_role: ["admin", "farmer", "worker", "store_manager", "delivery_boy"],
       calf_status: ["alive", "dead", "sold", "promoted"],
       cow_status: ["active", "dry", "pregnant", "sick", "sold", "dead"],
+      expense_status: ["pending", "paid", "overdue", "cancelled"],
       gender: ["male", "female"],
       pd_result: ["positive", "negative", "inconclusive"],
       session_type: ["morning", "evening"],

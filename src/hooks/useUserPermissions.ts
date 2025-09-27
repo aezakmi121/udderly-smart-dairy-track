@@ -46,6 +46,7 @@ export const useUserPermissions = () => {
       aiTracking: !hasNoRole && (isAdmin || isFarmWorker),
       feedManagement: !hasNoRole && (isAdmin || isFarmWorker),
       analytics: !hasNoRole && (isAdmin || isFarmWorker),
+      expenses: !hasNoRole && isAdmin,
       settings: !hasNoRole && isAdmin,
     }
   };
