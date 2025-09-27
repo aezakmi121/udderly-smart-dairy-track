@@ -20,9 +20,21 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
     return keyRoutes.includes(route.path);
   }).slice(0, 4);
 
+  // Custom labels for bottom navigation
+  const getBottomNavLabel = (label: string, path: string) => {
+    const labelMap: { [key: string]: string } = {
+      '/dashboard': 'Home',
+      '/milk-production': 'Milk',
+      '/milk-collection': 'Collection',
+      '/ai-tracking': 'AI Track',
+      '/expenses': 'Expenses'
+    };
+    return labelMap[path] || label.split(' ')[0];
+  };
+
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50">
-      <div className="flex items-center justify-around px-2 py-2 safe-area-pb">
+      <div className="flex items-center justify-around px-1 py-2 safe-area-pb">
         {bottomNavRoutes.map((route) => {
           const Icon = route.icon;
           const isActive = currentPath === route.path;
@@ -32,15 +44,15 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
               key={route.path}
               onClick={() => onNavigate(route.path)}
               className={cn(
-                'flex flex-col items-center justify-center p-2 min-w-[60px] rounded-lg touch-manipulation transition-all duration-200',
+                'flex flex-col items-center justify-center p-2 min-w-[70px] rounded-lg touch-manipulation transition-all duration-200',
                 isActive
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               )}
             >
-              <Icon className="h-5 w-5 mb-1" />
-              <span className="text-xs font-medium truncate max-w-[50px]">
-                {route.label.split(' ')[0]}
+              <Icon className="h-4 w-4 mb-1" />
+              <span className="text-[10px] font-medium leading-tight text-center">
+                {getBottomNavLabel(route.label, route.path)}
               </span>
             </button>
           );

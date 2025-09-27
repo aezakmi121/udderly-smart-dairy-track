@@ -26,6 +26,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   }, [isMobile]);
 
   const accessibleRoutes = getAccessibleRoutes(permissions);
+  
+  // Routes shown in bottom navigation (mobile only)
+  const bottomNavPaths = ['/dashboard', '/milk-production', '/milk-collection', '/ai-tracking', '/expenses'];
+  
+  // Filter sidebar routes to exclude those in bottom nav when on mobile
+  const sidebarRoutes = isMobile 
+    ? accessibleRoutes.filter(route => !bottomNavPaths.includes(route.path))
+    : accessibleRoutes;
 
   const handleNavigation = (path: string) => {
     navigate(path);
@@ -49,7 +57,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         isMobile && sidebarCollapsed ? '-translate-x-full' : ''
       }`}>
         <Sidebar
-          routes={accessibleRoutes}
+          routes={sidebarRoutes}
           currentPath={location.pathname}
           onNavigate={handleNavigation}
           isCollapsed={!isMobile && sidebarCollapsed}
