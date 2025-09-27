@@ -1,10 +1,12 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Calendar, Syringe, Heart, Package, Bell, X } from 'lucide-react';
-import { useNotifications } from '@/hooks/useNotifications';
+import { AlertTriangle, Calendar, Syringe, Heart, Package, Bell, X, Eye, Clock } from 'lucide-react';
+import { useEnhancedNotifications } from '@/hooks/useEnhancedNotifications';
+import { NotificationDetailsModal } from './NotificationDetailsModal';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 const getNotificationIcon = (type: string) => {
@@ -38,7 +40,24 @@ const getPriorityBadge = (priority: string) => {
 };
 
 export const NotificationPanel = () => {
-  const { notifications, isLoading, highPriorityCount, markAsRead } = useNotifications();
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<any>(null);
+  
+  const { 
+    notifications, 
+    isLoading, 
+    highPriorityCount, 
+    markAsRead, 
+    snoozeNotification, 
+    dismissNotification 
+  } = useEnhancedNotifications();
+  
+  console.log('📋 NotificationPanel - Dashboard notifications:', {
+    totalNotifications: notifications.length,
+    unreadCount: notifications.filter(n => !n.read).length,
+    highPriorityCount
+  });
+  
   const unread = notifications.filter(n => !n.read);
 
   if (isLoading) {
@@ -103,13 +122,65 @@ export const NotificationPanel = () => {
                         </p>
                         <div className="flex items-center gap-2">
                           {getPriorityBadge(notification.priority)}
+                          
+                          {/* View Details Button */}
+                          {(notification.type === 'delivery_due' || notification.type === 'pd_due' || notification.type === 'vaccination_due' || notification.type === 'low_stock') && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              aria-label="View details"
+                              onClick={() => {
+                                console.log('🔍 Dashboard - View details clicked:', notification.id);
+                                setSelectedNotification(notification);
+                                setShowDetails(true);
+                              }}
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                          )}
+                          
+                          {/* Snooze Button */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6">
+                                <Clock className="h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                console.log('💤 Dashboard - Snooze 1h clicked:', notification.id);
+                                snoozeNotification(notification.id, 1);
+                              }}>
+                                Snooze 1 hour
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                console.log('💤 Dashboard - Snooze 4h clicked:', notification.id);
+                                snoozeNotification(notification.id, 4);
+                              }}>
+                                Snooze 4 hours
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                console.log('💤 Dashboard - Snooze 1d clicked:', notification.id);
+                                snoozeNotification(notification.id, 24);
+                              }}>
+                                Snooze 1 day
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          
+                          {/* Dismiss Button */}
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="h-6 w-6"
                             aria-label="Dismiss notification"
-                            onClick={() => markAsRead(notification.id)}
+                            onClick={() => {
+                              console.log('❌ Dashboard - Dismiss clicked:', notification.id);
+                              dismissNotification(notification.id);
+                            }}
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>
@@ -159,13 +230,65 @@ export const NotificationPanel = () => {
                         </p>
                         <div className="flex items-center gap-2">
                           {getPriorityBadge(notification.priority)}
+                          
+                          {/* View Details Button */}
+                          {(notification.type === 'delivery_due' || notification.type === 'pd_due' || notification.type === 'vaccination_due' || notification.type === 'low_stock') && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              aria-label="View details"
+                              onClick={() => {
+                                console.log('🔍 Dashboard - View details clicked:', notification.id);
+                                setSelectedNotification(notification);
+                                setShowDetails(true);
+                              }}
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                          )}
+                          
+                          {/* Snooze Button */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6">
+                                <Clock className="h-3 w-3" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => {
+                                console.log('💤 Dashboard - Snooze 1h clicked:', notification.id);
+                                snoozeNotification(notification.id, 1);
+                              }}>
+                                Snooze 1 hour
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                console.log('💤 Dashboard - Snooze 4h clicked:', notification.id);
+                                snoozeNotification(notification.id, 4);
+                              }}>
+                                Snooze 4 hours
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => {
+                                console.log('💤 Dashboard - Snooze 1d clicked:', notification.id);
+                                snoozeNotification(notification.id, 24);
+                              }}>
+                                Snooze 1 day
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          
+                          {/* Dismiss Button */}
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="h-6 w-6"
                             aria-label="Dismiss notification"
-                            onClick={() => markAsRead(notification.id)}
+                            onClick={() => {
+                              console.log('❌ Dashboard - Dismiss clicked:', notification.id);
+                              dismissNotification(notification.id);
+                            }}
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>
@@ -189,6 +312,13 @@ export const NotificationPanel = () => {
           </>
         )}
       </CardContent>
+      
+      {/* Details Modal */}
+      <NotificationDetailsModal 
+        open={showDetails}
+        onOpenChange={setShowDetails}
+        notification={selectedNotification}
+      />
     </Card>
   );
 };
