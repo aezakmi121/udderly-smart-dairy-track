@@ -12,5 +12,6 @@ export interface UserPermissions {
   farmers: boolean;
   milkCollection: boolean;
   analytics: boolean;
+  expenses: boolean;
   settings: boolean;
 }

@@ -11,7 +11,8 @@ import {
   BarChart3,
   Settings,
   Wheat,
-  Grid2X2
+  Grid2X2,
+  Receipt
 } from 'lucide-react';
 import { RouteConfig } from '@/types/routes';
 import { Dashboard } from '@/components/dashboard/Dashboard';
@@ -26,6 +27,7 @@ import { WeightLogsManagement } from '@/components/weight/WeightLogsManagement';
 import { FeedManagement } from '@/components/feed/FeedManagement';
 import { CowGroupingManagement } from '@/components/grouping/CowGroupingManagement';
 import { ReportsManagement } from '@/components/reports/ReportsManagement';
+import { ExpenseManagement } from '@/components/expenses/ExpenseManagement';
 import { SettingsManagement } from '@/components/settings/SettingsManagement';
 
 export const routes: RouteConfig[] = [
@@ -110,6 +112,13 @@ export const routes: RouteConfig[] = [
     permission: 'analytics',
     label: 'Reports',
     icon: BarChart3
+  },
+  {
+    path: '/expenses',
+    component: ExpenseManagement,
+    permission: 'expenses',
+    label: 'Expenses',
+    icon: Receipt
   },
   {
     path: '/settings',
