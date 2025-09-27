@@ -161,8 +161,8 @@ export const generateExpenseReportPDF = (data: {
   fromDate: string;
   toDate: string;
   totalExpenses: number;
-  paidExpenses: number;
-  pendingExpenses: number;
+  averagePerMonth: number;
+  recordsCount: number;
   categoryBreakdown: Array<{ name: string; amount: number; percentage: number }>;
   monthlyTrends: Array<{ month: string; amount: number }>;
 }) => {
@@ -178,8 +178,8 @@ export const generateExpenseReportPDF = (data: {
   
   // Summary stats
   doc.text(`Total Expenses: Rs.${data.totalExpenses.toFixed(2)}`, 20, 50);
-  doc.text(`Paid Expenses: Rs.${data.paidExpenses.toFixed(2)}`, 20, 60);
-  doc.text(`Pending Expenses: Rs.${data.pendingExpenses.toFixed(2)}`, 20, 70);
+  doc.text(`Average per Month: Rs.${data.averagePerMonth.toFixed(2)}`, 20, 60);
+  doc.text(`Total Records: ${data.recordsCount}`, 20, 70);
   
   // Category breakdown table
   const categoryData = data.categoryBreakdown.length > 0 
@@ -245,8 +245,8 @@ Generated on ${new Date().toLocaleDateString()}`;
 
 📊 *Summary:*
 💰 Total Expenses: Rs.${data.totalExpenses.toFixed(2)}
-✅ Paid: Rs.${data.paidExpenses.toFixed(2)}
-⏳ Pending: Rs.${data.pendingExpenses.toFixed(2)}
+📈 Average per Month: Rs.${data.averagePerMonth.toFixed(2)}
+📋 Total Records: ${data.recordsCount}
 
 Generated on ${new Date().toLocaleDateString()}`;
   }

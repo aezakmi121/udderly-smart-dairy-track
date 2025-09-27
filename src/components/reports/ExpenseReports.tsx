@@ -39,8 +39,6 @@ export const ExpenseReports = () => {
 
       // Calculate analytics
       const totalExpenses = data.reduce((sum, record) => sum + Number(record.amount), 0);
-      const paidExpenses = data.filter(r => r.status === 'paid').reduce((sum, record) => sum + Number(record.amount), 0);
-      const pendingExpenses = data.filter(r => r.status === 'pending').reduce((sum, record) => sum + Number(record.amount), 0);
 
       // Category breakdown
       const categoryData = data.reduce((acc, record) => {
@@ -64,12 +62,14 @@ export const ExpenseReports = () => {
         return acc;
       }, {} as any);
 
-      // Status breakdown
-      const statusBreakdown = [
-        { name: 'Paid', amount: paidExpenses, count: data.filter(r => r.status === 'paid').length },
-        { name: 'Pending', amount: pendingExpenses, count: data.filter(r => r.status === 'pending').length },
-        { name: 'Overdue', amount: data.filter(r => r.status === 'overdue').reduce((sum, record) => sum + Number(record.amount), 0), count: data.filter(r => r.status === 'overdue').length }
-      ];
+      const monthlyTrendsArray = Object.values(monthlyTrends).map((trend: any) => ({
+        month: trend.month,
+        amount: Math.round(trend.amount * 100) / 100,
+        count: trend.count
+      })).sort((a, b) => a.month.localeCompare(b.month));
+
+      const monthCount = monthlyTrendsArray.length || 1;
+      const averagePerMonth = totalExpenses / monthCount;
 
       // Payment method breakdown
       const paymentMethodData = data.reduce((acc, record) => {
@@ -84,8 +84,7 @@ export const ExpenseReports = () => {
 
       return {
         totalExpenses: Math.round(totalExpenses * 100) / 100,
-        paidExpenses: Math.round(paidExpenses * 100) / 100,
-        pendingExpenses: Math.round(pendingExpenses * 100) / 100,
+        averagePerMonth: Math.round(averagePerMonth * 100) / 100,
         recordsCount: data.length,
         categoryBreakdown: Object.values(categoryData).map((cat: any) => ({
           name: cat.name,
@@ -93,12 +92,7 @@ export const ExpenseReports = () => {
           count: cat.count,
           percentage: Math.round((cat.amount / totalExpenses) * 100 * 100) / 100
         })),
-        monthlyTrends: Object.values(monthlyTrends).map((trend: any) => ({
-          month: trend.month,
-          amount: Math.round(trend.amount * 100) / 100,
-          count: trend.count
-        })).sort((a, b) => a.month.localeCompare(b.month)),
-        statusBreakdown,
+        monthlyTrends: monthlyTrendsArray,
         paymentMethodBreakdown: Object.values(paymentMethodData),
         rawData: data
       };
@@ -148,8 +142,8 @@ export const ExpenseReports = () => {
       fromDate,
       toDate,
       totalExpenses: expenseAnalytics.totalExpenses || 0,
-      paidExpenses: expenseAnalytics.paidExpenses || 0,
-      pendingExpenses: expenseAnalytics.pendingExpenses || 0,
+      averagePerMonth: expenseAnalytics.averagePerMonth || 0,
+      recordsCount: expenseAnalytics.recordsCount || 0,
       categoryBreakdown: expenseAnalytics.categoryBreakdown || [],
       monthlyTrends: expenseAnalytics.monthlyTrends || []
     };
@@ -171,8 +165,8 @@ export const ExpenseReports = () => {
       fromDate,
       toDate,
       totalExpenses: expenseAnalytics.totalExpenses,
-      paidExpenses: expenseAnalytics.paidExpenses,
-      pendingExpenses: expenseAnalytics.pendingExpenses
+      averagePerMonth: expenseAnalytics.averagePerMonth,
+      recordsCount: expenseAnalytics.recordsCount
     });
     
     const encodedMessage = encodeURIComponent(message);
@@ -225,7 +219,7 @@ export const ExpenseReports = () => {
       {expenseAnalytics && (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -242,22 +236,10 @@ export const ExpenseReports = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Paid</p>
-                    <p className="text-2xl font-bold text-green-600">₹{expenseAnalytics.paidExpenses.toLocaleString()}</p>
+                    <p className="text-sm text-muted-foreground">Average per Month</p>
+                    <p className="text-2xl font-bold">₹{expenseAnalytics.averagePerMonth.toLocaleString()}</p>
                   </div>
-                  <CreditCard className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Pending</p>
-                    <p className="text-2xl font-bold text-orange-600">₹{expenseAnalytics.pendingExpenses.toLocaleString()}</p>
-                  </div>
-                  <Calendar className="h-8 w-8 text-orange-600" />
+                  <TrendingUp className="h-8 w-8 text-blue-600" />
                 </div>
               </CardContent>
             </Card>
@@ -330,23 +312,25 @@ export const ExpenseReports = () => {
             </Card>
           </div>
 
-          {/* Status Breakdown */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Status Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={expenseAnalytics.statusBreakdown}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip formatter={(value: any) => [`₹${value.toLocaleString()}`, 'Amount']} />
-                  <Bar dataKey="amount" fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          {/* Payment Method Breakdown */}
+          {expenseAnalytics.paymentMethodBreakdown && expenseAnalytics.paymentMethodBreakdown.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Method Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={expenseAnalytics.paymentMethodBreakdown}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip formatter={(value: any) => [`₹${value.toLocaleString()}`, 'Amount']} />
+                    <Bar dataKey="amount" fill="#3b82f6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
     </div>
