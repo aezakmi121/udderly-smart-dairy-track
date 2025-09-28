@@ -1,7 +1,6 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Clock, Receipt, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, CreditCard } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { type Expense } from '@/hooks/useExpenseManagement';
 
 interface ExpenseStatsProps {
@@ -14,6 +13,7 @@ export const ExpenseStats: React.FC<ExpenseStatsProps> = ({ expenses }) => {
   const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
   const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
+  // This Month (based on expense_date)
   const currentMonthExpenses = expenses.filter(expense => {
     const expenseDate = new Date(expense.expense_date);
     return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
@@ -26,16 +26,28 @@ export const ExpenseStats: React.FC<ExpenseStatsProps> = ({ expenses }) => {
 
   const totalCurrentMonth = currentMonthExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
   const totalLastMonth = lastMonthExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
-  
   const monthlyChange = totalLastMonth === 0 ? 0 : ((totalCurrentMonth - totalLastMonth) / totalLastMonth) * 100;
-  
-  const pendingExpenses = expenses.filter(expense => expense.status === 'pending');
-  const totalPending = pendingExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
-  
-  const overdueExpenses = expenses.filter(expense => expense.status === 'overdue');
-  const totalOverdue = overdueExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
 
-  const paidThisMonth = currentMonthExpenses.filter(expense => expense.status === 'paid').length;
+  // Accrual (expenses incurred this month - based on expense_date)
+  const accrualAmount = totalCurrentMonth;
+  const accrualChange = monthlyChange;
+
+  // Cashflow (expenses paid this month - based on payment_date)
+  const currentMonthPayments = expenses.filter(expense => {
+    if (!expense.payment_date) return false;
+    const paymentDate = new Date(expense.payment_date);
+    return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear;
+  });
+
+  const lastMonthPayments = expenses.filter(expense => {
+    if (!expense.payment_date) return false;
+    const paymentDate = new Date(expense.payment_date);
+    return paymentDate.getMonth() === lastMonth && paymentDate.getFullYear() === lastMonthYear;
+  });
+
+  const totalCurrentMonthPayments = currentMonthPayments.reduce((sum, expense) => sum + Number(expense.amount), 0);
+  const totalLastMonthPayments = lastMonthPayments.reduce((sum, expense) => sum + Number(expense.amount), 0);
+  const cashflowChange = totalLastMonthPayments === 0 ? 0 : ((totalCurrentMonthPayments - totalLastMonthPayments) / totalLastMonthPayments) * 100;
 
   const stats = [
     {
@@ -46,32 +58,23 @@ export const ExpenseStats: React.FC<ExpenseStatsProps> = ({ expenses }) => {
       description: `${currentMonthExpenses.length} expenses`,
     },
     {
-      title: 'Pending Payments',
-      value: `₹${totalPending.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-      count: pendingExpenses.length,
-      icon: Clock,
-      description: `${pendingExpenses.length} pending`,
-      variant: 'secondary' as const,
+      title: 'Accrual',
+      value: `₹${accrualAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+      change: accrualChange,
+      icon: Calendar,
+      description: 'Expenses incurred',
     },
     {
-      title: 'Overdue',
-      value: `₹${totalOverdue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-      count: overdueExpenses.length,
-      icon: AlertTriangle,
-      description: `${overdueExpenses.length} overdue`,
-      variant: 'destructive' as const,
-    },
-    {
-      title: 'Paid This Month',
-      value: paidThisMonth.toString(),
-      icon: Receipt,
-      description: 'Completed payments',
-      variant: 'outline' as const,
+      title: 'Cashflow',
+      value: `₹${totalCurrentMonthPayments.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+      change: cashflowChange,
+      icon: CreditCard,
+      description: `${currentMonthPayments.length} payments made`,
     },
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {stats.map((stat, index) => {
         const Icon = stat.icon;
         const isIncrease = stat.change !== undefined && stat.change > 0;
@@ -95,14 +98,6 @@ export const ExpenseStats: React.FC<ExpenseStatsProps> = ({ expenses }) => {
                       {Math.abs(stat.change).toFixed(1)}%
                     </span>
                   </div>
-                )}
-                {stat.variant && (
-                  <Badge 
-                    variant={stat.variant} 
-                    className="text-xs"
-                  >
-                    {stat.count}
-                  </Badge>
                 )}
               </div>
             </CardContent>
