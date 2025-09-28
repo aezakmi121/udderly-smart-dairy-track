@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Trash2 } from 'lucide-react';
-import { useExpenseManagement } from '@/hooks/useExpenseManagement';
+import { useExpenseManagement, type ExpenseCategory, type ExpenseSource, type PaymentMethod } from '@/hooks/useExpenseManagement';
 import { useToast } from '@/hooks/use-toast';
 
 interface ExpenseSettingsModalProps {
@@ -24,7 +24,16 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
     usePaymentMethods, 
     usePaidByPeople,
     createPaidByPerson,
-    deletePaidByPerson 
+    deletePaidByPerson,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    createSource,
+    updateSource,
+    deleteSource,
+    createPaymentMethod,
+    updatePaymentMethod,
+    deletePaymentMethod
   } = useExpenseManagement();
   const { data: categories = [] } = useCategories();
   const { data: sources = [] } = useSources();
@@ -36,35 +45,77 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
   const [newSource, setNewSource] = useState({ name: '', description: '' });
   const [newPaymentMethod, setNewPaymentMethod] = useState({ name: '' });
   const [newPaidByPerson, setNewPaidByPerson] = useState({ name: '' });
+  const [editingCategory, setEditingCategory] = useState<ExpenseCategory | null>(null);
+  const [editingSource, setEditingSource] = useState<ExpenseSource | null>(null);
+  const [editingMethod, setEditingMethod] = useState<PaymentMethod | null>(null);
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (!newCategory.name) {
       toast({ title: 'Category name is required', variant: 'destructive' });
       return;
     }
-    // Implementation would go here
+    await createCategory.mutateAsync(newCategory);
     setNewCategory({ name: '', description: '' });
-    toast({ title: 'Category added successfully!' });
   };
 
-  const handleAddSource = () => {
+  const handleUpdateCategory = async () => {
+    if (!editingCategory || !newCategory.name) {
+      toast({ title: 'Category name is required', variant: 'destructive' });
+      return;
+    }
+    await updateCategory.mutateAsync({ id: editingCategory.id, ...newCategory });
+    setEditingCategory(null);
+    setNewCategory({ name: '', description: '' });
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    await deleteCategory.mutateAsync(id);
+  };
+
+  const handleAddSource = async () => {
     if (!newSource.name) {
       toast({ title: 'Source name is required', variant: 'destructive' });
       return;
     }
-    // Implementation would go here
+    await createSource.mutateAsync(newSource);
     setNewSource({ name: '', description: '' });
-    toast({ title: 'Source added successfully!' });
   };
 
-  const handleAddPaymentMethod = () => {
+  const handleUpdateSource = async () => {
+    if (!editingSource || !newSource.name) {
+      toast({ title: 'Source name is required', variant: 'destructive' });
+      return;
+    }
+    await updateSource.mutateAsync({ id: editingSource.id, ...newSource });
+    setEditingSource(null);
+    setNewSource({ name: '', description: '' });
+  };
+
+  const handleDeleteSource = async (id: string) => {
+    await deleteSource.mutateAsync(id);
+  };
+
+  const handleAddPaymentMethod = async () => {
     if (!newPaymentMethod.name) {
       toast({ title: 'Payment method name is required', variant: 'destructive' });
       return;
     }
-    // Implementation would go here
+    await createPaymentMethod.mutateAsync(newPaymentMethod);
     setNewPaymentMethod({ name: '' });
-    toast({ title: 'Payment method added successfully!' });
+  };
+
+  const handleUpdatePaymentMethod = async () => {
+    if (!editingMethod || !newPaymentMethod.name) {
+      toast({ title: 'Payment method name is required', variant: 'destructive' });
+      return;
+    }
+    await updatePaymentMethod.mutateAsync({ id: editingMethod.id, ...newPaymentMethod });
+    setEditingMethod(null);
+    setNewPaymentMethod({ name: '' });
+  };
+
+  const handleDeletePaymentMethod = async (id: string) => {
+    await deletePaymentMethod.mutateAsync(id);
   };
 
   const handleAddPaidByPerson = async () => {
@@ -130,10 +181,26 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
                       className="text-sm"
                     />
                   </div>
-                  <Button onClick={handleAddCategory} className="w-full text-sm">
+                  <Button 
+                    onClick={editingCategory ? handleUpdateCategory : handleAddCategory} 
+                    className="w-full text-sm"
+                    disabled={createCategory.isPending || updateCategory.isPending}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Category
+                    {editingCategory ? 'Update Category' : 'Add Category'}
                   </Button>
+                  {editingCategory && (
+                    <Button 
+                      onClick={() => {
+                        setEditingCategory(null);
+                        setNewCategory({ name: '', description: '' });
+                      }} 
+                      variant="outline" 
+                      className="w-full text-sm"
+                    >
+                      Cancel
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -148,10 +215,24 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
                       )}
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
-                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          setEditingCategory(category);
+                          setNewCategory({ name: category.name, description: category.description || '' });
+                        }}
+                      >
                         <Edit className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleDeleteCategory(category.id)}
+                        disabled={deleteCategory.isPending}
+                      >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
@@ -186,10 +267,26 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
                       className="text-sm"
                     />
                   </div>
-                  <Button onClick={handleAddSource} className="w-full text-sm">
+                  <Button 
+                    onClick={editingSource ? handleUpdateSource : handleAddSource} 
+                    className="w-full text-sm"
+                    disabled={createSource.isPending || updateSource.isPending}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Source
+                    {editingSource ? 'Update Source' : 'Add Source'}
                   </Button>
+                  {editingSource && (
+                    <Button 
+                      onClick={() => {
+                        setEditingSource(null);
+                        setNewSource({ name: '', description: '' });
+                      }} 
+                      variant="outline" 
+                      className="w-full text-sm"
+                    >
+                      Cancel
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -204,10 +301,24 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
                       )}
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
-                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          setEditingSource(source);
+                          setNewSource({ name: source.name, description: source.description || '' });
+                        }}
+                      >
                         <Edit className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleDeleteSource(source.id)}
+                        disabled={deleteSource.isPending}
+                      >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
@@ -233,10 +344,26 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
                       className="text-sm"
                     />
                   </div>
-                  <Button onClick={handleAddPaymentMethod} className="w-full text-sm">
+                  <Button 
+                    onClick={editingMethod ? handleUpdatePaymentMethod : handleAddPaymentMethod} 
+                    className="w-full text-sm"
+                    disabled={createPaymentMethod.isPending || updatePaymentMethod.isPending}
+                  >
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Method
+                    {editingMethod ? 'Update Method' : 'Add Method'}
                   </Button>
+                  {editingMethod && (
+                    <Button 
+                      onClick={() => {
+                        setEditingMethod(null);
+                        setNewPaymentMethod({ name: '' });
+                      }} 
+                      variant="outline" 
+                      className="w-full text-sm"
+                    >
+                      Cancel
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -246,10 +373,24 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
                   <div key={method.id} className="flex items-center justify-between p-3 border rounded-lg">
                     <h4 className="font-medium text-sm sm:text-base flex-1 truncate">{method.name}</h4>
                     <div className="flex gap-1 flex-shrink-0">
-                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          setEditingMethod(method);
+                          setNewPaymentMethod({ name: method.name });
+                        }}
+                      >
                         <Edit className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleDeletePaymentMethod(method.id)}
+                        disabled={deletePaymentMethod.isPending}
+                      >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>

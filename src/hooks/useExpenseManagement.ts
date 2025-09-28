@@ -303,6 +303,219 @@ export const useExpenseManagement = () => {
     },
   });
 
+  // Create category
+  const createCategory = useMutation({
+    mutationFn: async (category: { name: string; description?: string }) => {
+      const { data, error } = await supabase
+        .from('expense_categories')
+        .insert(category)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
+      toast({ title: 'Category added successfully!' });
+    },
+    onError: (error) => {
+      toast({ 
+        title: 'Failed to add category', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  // Update category
+  const updateCategory = useMutation({
+    mutationFn: async ({ id, ...category }: { id: string; name: string; description?: string }) => {
+      const { data, error } = await supabase
+        .from('expense_categories')
+        .update(category)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
+      toast({ title: 'Category updated successfully!' });
+    },
+    onError: (error) => {
+      toast({ 
+        title: 'Failed to update category', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  // Delete category
+  const deleteCategory = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('expense_categories')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
+      toast({ title: 'Category deleted successfully!' });
+    },
+    onError: (error) => {
+      toast({ 
+        title: 'Failed to delete category', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  // Create source
+  const createSource = useMutation({
+    mutationFn: async (source: { name: string; description?: string }) => {
+      const { data, error } = await supabase
+        .from('expense_sources')
+        .insert(source)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense-sources'] });
+      toast({ title: 'Source added successfully!' });
+    },
+    onError: (error) => {
+      toast({ 
+        title: 'Failed to add source', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  // Update source
+  const updateSource = useMutation({
+    mutationFn: async ({ id, ...source }: { id: string; name: string; description?: string }) => {
+      const { data, error } = await supabase
+        .from('expense_sources')
+        .update(source)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense-sources'] });
+      toast({ title: 'Source updated successfully!' });
+    },
+    onError: (error) => {
+      toast({ 
+        title: 'Failed to update source', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  // Delete source
+  const deleteSource = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('expense_sources')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expense-sources'] });
+      toast({ title: 'Source deleted successfully!' });
+    },
+    onError: (error) => {
+      toast({ 
+        title: 'Failed to delete source', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  // Create payment method
+  const createPaymentMethod = useMutation({
+    mutationFn: async (method: { name: string }) => {
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .insert(method)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payment-methods'] });
+      toast({ title: 'Payment method added successfully!' });
+    },
+    onError: (error) => {
+      toast({ 
+        title: 'Failed to add payment method', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  // Update payment method
+  const updatePaymentMethod = useMutation({
+    mutationFn: async ({ id, ...method }: { id: string; name: string }) => {
+      const { data, error } = await supabase
+        .from('payment_methods')
+        .update(method)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payment-methods'] });
+      toast({ title: 'Payment method updated successfully!' });
+    },
+    onError: (error) => {
+      toast({ 
+        title: 'Failed to update payment method', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  // Delete payment method
+  const deletePaymentMethod = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('payment_methods')
+        .update({ is_active: false })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payment-methods'] });
+      toast({ title: 'Payment method deleted successfully!' });
+    },
+    onError: (error) => {
+      toast({ 
+        title: 'Failed to delete payment method', 
+        description: error.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
   return {
     useExpenses,
     useCategories,
@@ -314,5 +527,14 @@ export const useExpenseManagement = () => {
     deleteExpense,
     createPaidByPerson,
     deletePaidByPerson,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    createSource,
+    updateSource,
+    deleteSource,
+    createPaymentMethod,
+    updatePaymentMethod,
+    deletePaymentMethod,
   };
 };
