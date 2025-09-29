@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { MoreHorizontal, Edit, Trash2, Filter, Download, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,12 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
   const { deleteExpense } = useExpenseManagement();
   const { exportToCSV } = useReportExports();
 
+  // Filter expenses by selected date
+  const filteredExpenses = useMemo(() => {
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    return expenses.filter(expense => expense.expense_date === dateStr);
+  }, [expenses, selectedDate]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid':
@@ -48,9 +54,8 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
   };
 
   const handleExport = () => {
-    // Filter expenses by selected date
+    // Use already filtered expenses
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const filteredExpenses = expenses.filter(expense => expense.expense_date === dateStr);
     
     const exportData = filteredExpenses.map(expense => ({
       date: expense.expense_date,
@@ -240,7 +245,7 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
             variant="outline"
             size="sm"
             onClick={handleExport}
-            disabled={expenses.length === 0}
+            disabled={filteredExpenses.length === 0}
             className="text-sm"
           >
             <Download className="h-4 w-4 mr-2" />
@@ -249,13 +254,13 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
           </Button>
         </div>
         <div className="text-xs sm:text-sm text-muted-foreground">
-          {expenses.length} expense{expenses.length !== 1 ? 's' : ''}
+          {filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''} for {format(selectedDate, 'MMM dd, yyyy')}
         </div>
       </div>
 
       <MobileDataTable
         columns={columns}
-        data={expenses}
+        data={filteredExpenses}
         isLoading={isLoading}
         onEdit={onEdit}
         onDelete={(expense) => deleteExpense.mutate(expense.id)}
