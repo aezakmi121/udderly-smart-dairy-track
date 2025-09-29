@@ -5,13 +5,23 @@ import { type Expense } from '@/hooks/useExpenseManagement';
 
 interface ExpenseStatsProps {
   expenses: Expense[];
+  selectedDate?: string;
 }
 
-export const ExpenseStats: React.FC<ExpenseStatsProps> = ({ expenses }) => {
+export const ExpenseStats: React.FC<ExpenseStatsProps> = ({ expenses, selectedDate }) => {
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
   const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+  // Daily expenses (when a specific date is selected)
+  const dailyExpenses = selectedDate ? expenses.filter(expense => {
+    const expenseDate = new Date(expense.expense_date);
+    const selected = new Date(selectedDate);
+    return expenseDate.toDateString() === selected.toDateString();
+  }) : [];
+
+  const totalDaily = dailyExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
 
   // This Month (based on expense_date)
   const currentMonthExpenses = expenses.filter(expense => {
@@ -49,7 +59,29 @@ export const ExpenseStats: React.FC<ExpenseStatsProps> = ({ expenses }) => {
   const totalLastMonthPayments = lastMonthPayments.reduce((sum, expense) => sum + Number(expense.amount), 0);
   const cashflowChange = totalLastMonthPayments === 0 ? 0 : ((totalCurrentMonthPayments - totalLastMonthPayments) / totalLastMonthPayments) * 100;
 
-  const stats = [
+  const stats = selectedDate ? [
+    {
+      title: 'Selected Date',
+      value: `₹${totalDaily.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+      change: undefined,
+      icon: Calendar,
+      description: `${dailyExpenses.length} expenses on ${new Date(selectedDate).toLocaleDateString('en-IN')}`,
+    },
+    {
+      title: 'This Month',
+      value: `₹${totalCurrentMonth.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+      change: monthlyChange,
+      icon: DollarSign,
+      description: `${currentMonthExpenses.length} expenses`,
+    },
+    {
+      title: 'Cashflow',
+      value: `₹${totalCurrentMonthPayments.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+      change: cashflowChange,
+      icon: CreditCard,
+      description: `${currentMonthPayments.length} payments made`,
+    },
+  ] : [
     {
       title: 'This Month',
       value: `₹${totalCurrentMonth.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,

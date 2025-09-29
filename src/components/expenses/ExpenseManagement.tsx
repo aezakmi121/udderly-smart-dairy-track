@@ -56,7 +56,7 @@ export const ExpenseManagement = () => {
         </div>
       </div>
 
-      <ExpenseStats expenses={expenses} />
+      <ExpenseStats expenses={expenses} selectedDate={filters.startDate === filters.endDate ? filters.startDate : undefined} />
 
       <ExpenseTable
         expenses={expenses}
