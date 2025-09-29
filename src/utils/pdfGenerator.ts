@@ -240,13 +240,14 @@ Generated on ${new Date().toLocaleDateString()}`;
 
 Generated on ${new Date().toLocaleDateString()}`;
   } else {
-    return `*Expense Report*
+    return `*Expense ${data.reportType || ''} Report*
 📅 Period: ${data.fromDate} to ${data.toDate}
 
 📊 *Summary:*
 💰 Total Expenses: Rs.${data.totalExpenses.toFixed(2)}
 📈 Average per Month: Rs.${data.averagePerMonth.toFixed(2)}
 📋 Total Records: ${data.recordsCount}
+${data.reportType ? `📊 Type: ${data.reportType}` : ''}
 
 Generated on ${new Date().toLocaleDateString()}`;
   }
