@@ -8,6 +8,7 @@ import { AuthProvider } from "@/components/auth/AuthProvider";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { InstallPrompt } from "@/components/layout/InstallPrompt";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { SecurityAuditPanel } from "@/components/security/SecurityAuditPanel";
 import { routes } from "@/config/routes";
 import { ProtectedRoute as RouteProtectedRoute } from "@/components/common/ProtectedRoute";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
@@ -52,6 +53,9 @@ const App = () => (
                 }
               />
             </Routes>
+            
+            {/* Security Audit Panel - Development Tool */}
+            <SecurityAuditPanel />
           </AuthProvider>
           <InstallPrompt />
         </BrowserRouter>
