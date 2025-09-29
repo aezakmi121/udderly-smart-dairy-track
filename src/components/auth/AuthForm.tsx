@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
+import { SecureInput } from '@/components/ui/secure-input';
+import { SecurityValidation, secureEmailSchema, securePasswordSchema } from '@/components/security/SecurityValidation';
+import { AnimatedButton } from '@/components/ui/animated-button';
 
 export const AuthForm = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -21,8 +23,7 @@ export const AuthForm = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState(0);
   const { signIn, signUp } = useAuth();
 
   const validatePassword = (password: string) => {
@@ -158,79 +159,52 @@ export const AuthForm = () => {
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
+              <SecurityValidation schema={secureEmailSchema} value={email} />
             </div>
             
             {!isForgotPassword && (
               <>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </Button>
-                  </div>
-                  {isSignUp && (
-                    <p className="text-sm text-muted-foreground">
-                      Password must be at least 8 characters with lowercase, uppercase, and digits
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <SecureInput
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  showStrengthMeter={isSignUp}
+                  onStrengthChange={setPasswordStrength}
+                  maskTimeout={5000}
+                  preventClipboard={true}
+                />
+                <SecurityValidation schema={securePasswordSchema} value={password} />
+              </div>
                 
                 {isSignUp && (
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        className="pr-10"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      >
-                        {showConfirmPassword ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </Button>
-                    </div>
+                    <SecureInput
+                      id="confirmPassword"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      preventClipboard={true}
+                    />
                   </div>
                 )}
               </>
             )}
             
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Loading...' : 
-                isForgotPassword ? 'Send Reset Email' :
-                isSignUp ? 'Sign Up' : 'Sign In'
-              }
-            </Button>
+            <AnimatedButton 
+              type="submit" 
+              className="w-full" 
+              disabled={loading || (isSignUp && passwordStrength < 50)}
+              loading={loading}
+              animation="glow"
+              haptic={true}
+            >
+              {isForgotPassword ? 'Send Reset Email' :
+               isSignUp ? 'Sign Up' : 'Sign In'}
+            </AnimatedButton>
           </form>
           )}
           
