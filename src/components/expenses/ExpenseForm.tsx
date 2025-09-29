@@ -19,8 +19,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const expenseSchema = z.object({
-  expense_date: z.date({ required_error: 'Expense date is required' }),
-  payment_date: z.date().optional(),
+  payment_date: z.date({ required_error: 'Payment date is required' }),
+  payment_period: z.date({ required_error: 'Payment period is required' }),
   category_id: z.string().min(1, 'Category is required'),
   source_id: z.string().min(1, 'Source is required'),
   payment_method_id: z.string().optional(),
@@ -61,16 +61,16 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
   const form = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
-      expense_date: new Date(),
       payment_date: new Date(),
+      payment_period: new Date(),
     },
   });
 
   useEffect(() => {
     if (expense) {
       form.reset({
-        expense_date: new Date(expense.expense_date),
-        payment_date: expense.payment_date ? new Date(expense.payment_date) : new Date(),
+        payment_date: new Date(expense.payment_date),
+        payment_period: new Date(expense.payment_period),
         category_id: expense.category_id || '',
         source_id: expense.source_id || '',
         payment_method_id: expense.payment_method_id || '',
@@ -150,8 +150,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
       
       const expenseData = {
         ...data,
-        expense_date: data.expense_date.toISOString().split('T')[0],
-        payment_date: data.payment_date ? data.payment_date.toISOString().split('T')[0] : data.expense_date.toISOString().split('T')[0],
+        payment_date: data.payment_date.toISOString().split('T')[0],
+        payment_period: data.payment_period.toISOString().split('T')[0],
         status: 'paid' as const,
         receipt_url: receiptUrl || undefined,
       };
@@ -181,10 +181,10 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="expense_date"
+                name="payment_date"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Expense Date</FormLabel>
+                    <FormLabel>Payment Date</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -222,10 +222,10 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
 
               <FormField
                 control={form.control}
-                name="payment_date"
+                name="payment_period"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Payment Date (Optional)</FormLabel>
+                    <FormLabel>Payment Period</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -237,9 +237,9 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
                             )}
                           >
                             {field.value ? (
-                              format(field.value, "PPP")
+                              format(field.value, "MMMM yyyy")
                             ) : (
-                              <span>Pick a date</span>
+                              <span>Select month/year</span>
                             )}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
@@ -249,7 +249,13 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
                         <Calendar
                           mode="single"
                           selected={field.value}
-                          onSelect={field.onChange}
+                          onSelect={(date) => {
+                            if (date) {
+                              // Set to first day of selected month
+                              const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+                              field.onChange(firstDayOfMonth);
+                            }
+                          }}
                           initialFocus
                           className="p-3 pointer-events-auto"
                         />

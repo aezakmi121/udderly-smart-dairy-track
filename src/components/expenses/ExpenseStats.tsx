@@ -16,41 +16,39 @@ export const ExpenseStats: React.FC<ExpenseStatsProps> = ({ expenses, selectedDa
 
   // Daily expenses (when a specific date is selected)
   const dailyExpenses = selectedDate ? expenses.filter(expense => {
-    const expenseDate = new Date(expense.expense_date);
+    const paymentDate = new Date(expense.payment_date);
     const selected = new Date(selectedDate);
-    return expenseDate.toDateString() === selected.toDateString();
+    return paymentDate.toDateString() === selected.toDateString();
   }) : [];
 
   const totalDaily = dailyExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
 
-  // This Month (based on expense_date)
+  // This Month Accrual (based on payment_period)
   const currentMonthExpenses = expenses.filter(expense => {
-    const expenseDate = new Date(expense.expense_date);
-    return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
+    const periodDate = new Date(expense.payment_period);
+    return periodDate.getMonth() === currentMonth && periodDate.getFullYear() === currentYear;
   });
 
   const lastMonthExpenses = expenses.filter(expense => {
-    const expenseDate = new Date(expense.expense_date);
-    return expenseDate.getMonth() === lastMonth && expenseDate.getFullYear() === lastMonthYear;
+    const periodDate = new Date(expense.payment_period);
+    return periodDate.getMonth() === lastMonth && periodDate.getFullYear() === lastMonthYear;
   });
 
   const totalCurrentMonth = currentMonthExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
   const totalLastMonth = lastMonthExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
   const monthlyChange = totalLastMonth === 0 ? 0 : ((totalCurrentMonth - totalLastMonth) / totalLastMonth) * 100;
 
-  // Accrual (expenses incurred this month - based on expense_date)
+  // Accrual (expenses for this period - based on payment_period)
   const accrualAmount = totalCurrentMonth;
   const accrualChange = monthlyChange;
 
   // Cashflow (expenses paid this month - based on payment_date)
   const currentMonthPayments = expenses.filter(expense => {
-    if (!expense.payment_date) return false;
     const paymentDate = new Date(expense.payment_date);
     return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear;
   });
 
   const lastMonthPayments = expenses.filter(expense => {
-    if (!expense.payment_date) return false;
     const paymentDate = new Date(expense.payment_date);
     return paymentDate.getMonth() === lastMonth && paymentDate.getFullYear() === lastMonthYear;
   });

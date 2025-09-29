@@ -35,7 +35,7 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
   // Filter expenses by selected date
   const filteredExpenses = useMemo(() => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    return expenses.filter(expense => expense.expense_date === dateStr);
+    return expenses.filter(expense => expense.payment_date === dateStr);
   }, [expenses, selectedDate]);
 
   const getStatusColor = (status: string) => {
@@ -58,7 +58,7 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     
     const exportData = filteredExpenses.map(expense => ({
-      date: expense.expense_date,
+      date: expense.payment_date,
       category: expense.expense_categories?.name || 'N/A',
       source: expense.expense_sources?.name || 'N/A',
       vendor: expense.vendor_name || 'N/A',

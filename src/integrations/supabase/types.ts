@@ -451,14 +451,14 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
-          expense_date: string
           id: string
           invoice_number: string | null
           is_recurring: boolean
           notes: string | null
           paid_by: string | null
-          payment_date: string | null
+          payment_date: string
           payment_method_id: string | null
+          payment_period: string
           receipt_url: string | null
           recurring_frequency: string | null
           source_id: string | null
@@ -473,14 +473,14 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
-          expense_date: string
           id?: string
           invoice_number?: string | null
           is_recurring?: boolean
           notes?: string | null
           paid_by?: string | null
-          payment_date?: string | null
+          payment_date: string
           payment_method_id?: string | null
+          payment_period?: string
           receipt_url?: string | null
           recurring_frequency?: string | null
           source_id?: string | null
@@ -495,14 +495,14 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
-          expense_date?: string
           id?: string
           invoice_number?: string | null
           is_recurring?: boolean
           notes?: string | null
           paid_by?: string | null
-          payment_date?: string | null
+          payment_date?: string
           payment_method_id?: string | null
+          payment_period?: string
           receipt_url?: string | null
           recurring_frequency?: string | null
           source_id?: string | null

@@ -51,9 +51,9 @@ export const ExpenseReports = () => {
         return acc;
       }, {} as any);
 
-      // Monthly trends
+      // Monthly trends (based on payment_period for accrual)
       const monthlyTrends = data.reduce((acc, record) => {
-        const month = record.expense_date.substring(0, 7); // YYYY-MM
+        const month = record.payment_period.substring(0, 7); // YYYY-MM
         if (!acc[month]) {
           acc[month] = { month, amount: 0, count: 0 };
         }
@@ -117,7 +117,8 @@ export const ExpenseReports = () => {
     ];
     
     const exportData = expenseAnalytics.rawData.map(record => ({
-      expense_date: record.expense_date,
+      payment_date: record.payment_date,
+      payment_period: record.payment_period,
       description: record.description || '',
       category: record.expense_categories?.name || 'N/A',
       source: record.expense_sources?.name || 'N/A',
@@ -125,7 +126,6 @@ export const ExpenseReports = () => {
       amount: record.amount,
       status: record.status,
       payment_method: record.payment_methods?.name || 'N/A',
-      payment_date: record.payment_date || '',
       notes: record.notes || ''
     }));
 

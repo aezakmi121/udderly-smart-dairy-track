@@ -30,8 +30,8 @@ export interface PaidByPerson {
 
 export interface Expense {
   id: string;
-  expense_date: string;
-  payment_date?: string;
+  payment_date: string;
+  payment_period: string;
   amount: number;
   description?: string;
   paid_by?: string;
@@ -78,7 +78,7 @@ export const useExpenseManagement = () => {
         let query = supabase
           .from('expenses')
           .select(`
-            id, expense_date, payment_date, amount, description, 
+            id, payment_date, payment_period, amount, description, 
             paid_by, vendor_name, status, is_recurring, 
             recurring_frequency, tags, notes, category_id, 
             source_id, payment_method_id, created_by, 
@@ -87,13 +87,13 @@ export const useExpenseManagement = () => {
             expense_sources(id, name),
             payment_methods(id, name)
           `)
-          .order('expense_date', { ascending: false });
+          .order('payment_date', { ascending: false });
 
         if (filters?.startDate) {
-          query = query.gte('expense_date', filters.startDate);
+          query = query.gte('payment_date', filters.startDate);
         }
         if (filters?.endDate) {
-          query = query.lte('expense_date', filters.endDate);
+          query = query.lte('payment_date', filters.endDate);
         }
         if (filters?.categoryIds?.length) {
           query = query.in('category_id', filters.categoryIds);
