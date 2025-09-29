@@ -240,7 +240,7 @@ Generated on ${new Date().toLocaleDateString()}`;
 
 Generated on ${new Date().toLocaleDateString()}`;
   } else {
-    return `*Expense ${data.reportType || ''} Report*
+    const message = `*Expense ${data.reportType || ''} Report*
 📅 Period: ${data.fromDate} to ${data.toDate}
 
 📊 *Summary:*
@@ -249,8 +249,26 @@ Generated on ${new Date().toLocaleDateString()}`;
 📋 Total Records: ${data.recordsCount}
 ${data.reportType ? `📊 Type: ${data.reportType}` : ''}
 
-Generated on ${new Date().toLocaleDateString()}`;
+${data.sourceBreakdown ? generateSourceBreakdown(data.sourceBreakdown) : ''}`;
+    
+    return message;
   }
+};
+
+const generateSourceBreakdown = (sourceBreakdown: any[]) => {
+  let breakdown = '\n🏢 *Source-wise Breakdown:*\n';
+  
+  sourceBreakdown.forEach(source => {
+    breakdown += `\n📍 *${source.name}* - Rs.${source.amount.toFixed(2)}\n`;
+    
+    if (source.categories && source.categories.length > 0) {
+      source.categories.forEach((category: any) => {
+        breakdown += `   • ${category.name}: Rs.${category.amount.toFixed(2)}\n`;
+      });
+    }
+  });
+  
+  return breakdown;
 };
 
 export const generateIndividualFarmerPDF = (data: {

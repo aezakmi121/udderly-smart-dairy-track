@@ -25,6 +25,7 @@ interface ExpenseAnalytics {
   categoryBreakdown: Array<{ name: string; amount: number; count: number; percentage: number }>;
   monthlyTrends: Array<{ month: string; amount: number; count: number }>;
   paymentMethodBreakdown: Array<{ name: string; amount: number; count: number }>;
+  sourceBreakdown: Array<{ name: string; amount: number; count: number; categories: Array<{ name: string; amount: number; count: number }> }>;
   rawData: any[];
 }
 
@@ -130,6 +131,39 @@ export const ExpenseReportsNew = () => {
         return acc;
       }, {} as any);
 
+      // Source breakdown with categories
+      const sourceData = data.reduce((acc, record) => {
+        const source = record.expense_sources?.name || 'Not Specified';
+        const category = record.expense_categories?.name || 'Uncategorized';
+        
+        if (!acc[source]) {
+          acc[source] = { name: source, amount: 0, count: 0, categories: {} };
+        }
+        
+        acc[source].amount += Number(record.amount);
+        acc[source].count += 1;
+        
+        if (!acc[source].categories[category]) {
+          acc[source].categories[category] = { name: category, amount: 0, count: 0 };
+        }
+        
+        acc[source].categories[category].amount += Number(record.amount);
+        acc[source].categories[category].count += 1;
+        
+        return acc;
+      }, {} as any);
+
+      const sourceBreakdown = Object.values(sourceData).map((source: any) => ({
+        name: source.name,
+        amount: Math.round(source.amount * 100) / 100,
+        count: source.count,
+        categories: Object.values(source.categories).map((cat: any) => ({
+          name: cat.name,
+          amount: Math.round(cat.amount * 100) / 100,
+          count: cat.count
+        }))
+      }));
+
       return {
         totalExpenses: Math.round(totalExpenses * 100) / 100,
         averagePerMonth: Math.round(averagePerMonth * 100) / 100,
@@ -142,6 +176,7 @@ export const ExpenseReportsNew = () => {
         })),
         monthlyTrends: monthlyTrendsArray,
         paymentMethodBreakdown: Object.values(paymentMethodData),
+        sourceBreakdown,
         rawData: data
       };
     },
@@ -225,7 +260,8 @@ export const ExpenseReportsNew = () => {
       totalExpenses: expenseAnalytics.totalExpenses,
       averagePerMonth: expenseAnalytics.averagePerMonth,
       recordsCount: expenseAnalytics.recordsCount,
-      reportType: reportType === 'accrual' ? 'Accrual' : 'Cashflow'
+      reportType: reportType === 'accrual' ? 'Accrual' : 'Cashflow',
+      sourceBreakdown: expenseAnalytics.sourceBreakdown
     });
     
     const encodedMessage = encodeURIComponent(message);
