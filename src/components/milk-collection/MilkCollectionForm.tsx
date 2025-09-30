@@ -12,6 +12,9 @@ import { useMilkRateSettings } from '@/hooks/useMilkRateSettings';
 import { useRateMatrix } from '@/hooks/useRateMatrix';
 import { useAppSetting } from '@/hooks/useAppSettings';
 import { Badge } from '@/components/ui/badge';
+import { useServerValidation } from '@/hooks/useServerValidation';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 
 interface MilkCollectionFormProps {
   onSubmit: (data: any) => void;
@@ -22,7 +25,8 @@ interface MilkCollectionFormProps {
 }
 
 export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit, isLoading, initialData, selectedDate, selectedSession }) => {
-  
+  const { validateData, isValidating, validationErrors } = useServerValidation();
+  const { toast } = useToast();
   
   const { register, handleSubmit, setValue, watch, reset } = useForm({
     defaultValues: initialData ? {
@@ -142,7 +146,32 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
     }
   }, [initialData, selectedDate, selectedSession, setValue]);
 
-  const handleFormSubmit = (data: any) => {
+  const handleFormSubmit = async (data: any) => {
+    // Server-side validation
+    const validationResult = await validateData(
+      {
+        quantity: Number(data.quantity),
+        fat_percentage: Number(data.fat_percentage),
+        snf_percentage: Number(data.snf_percentage),
+        remarks: data.remarks || ''
+      },
+      [
+        { field: 'quantity', type: 'number', required: true, min: 0.1, max: 1000 },
+        { field: 'fat_percentage', type: 'number', required: true, min: 0, max: 20 },
+        { field: 'snf_percentage', type: 'number', required: true, min: 0, max: 20 },
+        { field: 'remarks', type: 'string', maxLength: 500 }
+      ]
+    );
+
+    if (!validationResult.valid) {
+      toast({
+        title: "Validation Error",
+        description: "Please check the form for errors",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Exclude farmer_code since it's not a database column - only farmer_id is stored
     const { farmer_code, ...dbData } = data;
     
@@ -172,6 +201,19 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Object.keys(validationErrors).length > 0 && (
+            <div className="md:col-span-2">
+              <Alert variant="destructive">
+                <AlertDescription>
+                  {Object.entries(validationErrors).map(([field, errors]) => (
+                    <div key={field}>
+                      <strong>{field}:</strong> {errors.join(', ')}
+                    </div>
+                  ))}
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
           <div>
             <Label htmlFor="farmer_code">Farmer Code</Label>
             <Input
@@ -328,8 +370,8 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
           </div>
 
           <div className="md:col-span-2">
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (initialData ? 'Updating...' : 'Recording...') : (initialData ? 'Update Collection' : 'Record Collection')}
+            <Button type="submit" disabled={isLoading || isValidating}>
+              {isValidating ? 'Validating...' : isLoading ? (initialData ? 'Updating...' : 'Recording...') : (initialData ? 'Update Collection' : 'Record Collection')}
             </Button>
           </div>
         </form>

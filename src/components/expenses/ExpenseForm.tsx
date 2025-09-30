@@ -17,6 +17,8 @@ import { cn } from '@/lib/utils';
 import { useExpenseManagement, type Expense } from '@/hooks/useExpenseManagement';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useServerValidation } from '@/hooks/useServerValidation';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const expenseSchema = z.object({
   payment_date: z.date({ required_error: 'Payment date is required' }),
@@ -43,6 +45,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
   const [uploading, setUploading] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(expense?.receipt_url || null);
+  const { validateData, isValidating, validationErrors } = useServerValidation();
   
   const { 
     useCategories, 
@@ -146,6 +149,31 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
 
   const onSubmit = async (data: ExpenseFormData) => {
     try {
+      // Server-side validation
+      const validationResult = await validateData(
+        {
+          amount: data.amount,
+          vendor_name: data.vendor_name || '',
+          description: data.description || '',
+          paid_by: data.paid_by
+        },
+        [
+          { field: 'amount', type: 'number', required: true, min: 0.01 },
+          { field: 'vendor_name', type: 'string', maxLength: 200 },
+          { field: 'description', type: 'string', maxLength: 1000 },
+          { field: 'paid_by', type: 'string', required: true, maxLength: 100 }
+        ]
+      );
+
+      if (!validationResult.valid) {
+        toast({
+          title: "Validation Error",
+          description: "Please check the form for errors",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const receiptUrl = await uploadReceipt();
       
       const expenseData = {
@@ -178,6 +206,17 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {Object.keys(validationErrors).length > 0 && (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  {Object.entries(validationErrors).map(([field, errors]) => (
+                    <div key={field}>
+                      <strong>{field}:</strong> {errors.join(', ')}
+                    </div>
+                  ))}
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -480,9 +519,9 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
               </Button>
               <Button 
                 type="submit" 
-                disabled={createExpense.isPending || updateExpense.isPending || uploading}
+                disabled={createExpense.isPending || updateExpense.isPending || uploading || isValidating}
               >
-                {uploading ? 'Uploading...' : expense ? 'Update Expense' : 'Create Expense'}
+                {isValidating ? 'Validating...' : uploading ? 'Uploading...' : expense ? 'Update Expense' : 'Create Expense'}
               </Button>
             </div>
           </form>

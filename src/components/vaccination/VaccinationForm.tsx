@@ -12,6 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
 import { useVaccinationCows } from '@/hooks/useCows';
 import { useVaccination } from '@/hooks/useVaccination';
+import { useServerValidation } from '@/hooks/useServerValidation';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 
 interface VaccinationFormProps {
   onSubmit: (data: any) => void;
@@ -21,6 +24,8 @@ interface VaccinationFormProps {
 export const VaccinationForm: React.FC<VaccinationFormProps> = ({ onSubmit, isLoading }) => {
   const [selectedCows, setSelectedCows] = React.useState<string[]>([]);
   const [showCowSelection, setShowCowSelection] = React.useState(false);
+  const { validateData, isValidating, validationErrors } = useServerValidation();
+  const { toast } = useToast();
   
   const { register, handleSubmit, setValue, watch, reset } = useForm({
     defaultValues: {
@@ -55,9 +60,36 @@ export const VaccinationForm: React.FC<VaccinationFormProps> = ({ onSubmit, isLo
     }
   }, [selectedSchedule, vaccinationDate, schedules, setValue]);
 
-  const handleFormSubmit = (data: any) => {
+  const handleFormSubmit = async (data: any) => {
     if (selectedCows.length === 0) {
-      alert('Please select at least one cow for vaccination.');
+      toast({
+        title: "Selection Required",
+        description: "Please select at least one cow for vaccination.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Server-side validation
+    const validationResult = await validateData(
+      {
+        batch_number: data.batch_number || '',
+        administered_by: data.administered_by || '',
+        notes: data.notes || ''
+      },
+      [
+        { field: 'batch_number', type: 'string', maxLength: 100 },
+        { field: 'administered_by', type: 'string', maxLength: 100 },
+        { field: 'notes', type: 'string', maxLength: 1000 }
+      ]
+    );
+
+    if (!validationResult.valid) {
+      toast({
+        title: "Validation Error",
+        description: "Please check the form for errors",
+        variant: "destructive",
+      });
       return;
     }
     
@@ -93,6 +125,17 @@ export const VaccinationForm: React.FC<VaccinationFormProps> = ({ onSubmit, isLo
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="grid grid-cols-1 gap-4">
+          {Object.keys(validationErrors).length > 0 && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                {Object.entries(validationErrors).map(([field, errors]) => (
+                  <div key={field}>
+                    <strong>{field}:</strong> {errors.join(', ')}
+                  </div>
+                ))}
+              </AlertDescription>
+            </Alert>
+          )}
           {/* Multiple Cow Selection */}
           <div>
             <Label>Selected Cows ({selectedCows.length})</Label>
@@ -199,8 +242,8 @@ export const VaccinationForm: React.FC<VaccinationFormProps> = ({ onSubmit, isLo
           </div>
 
           <div>
-            <Button type="submit" disabled={isLoading || selectedCows.length === 0}>
-              {isLoading ? 'Adding...' : `Add Vaccination Records (${selectedCows.length} cows)`}
+            <Button type="submit" disabled={isLoading || isValidating || selectedCows.length === 0}>
+              {isValidating ? 'Validating...' : isLoading ? 'Adding...' : `Add Vaccination Records (${selectedCows.length} cows)`}
             </Button>
           </div>
         </form>

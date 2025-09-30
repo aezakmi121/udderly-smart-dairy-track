@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useWeightLogCows } from '@/hooks/useCows';
+import { useServerValidation } from '@/hooks/useServerValidation';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 
 interface WeightLogFormProps {
   onSubmit: (data: any) => void;
@@ -28,6 +31,8 @@ export const WeightLogForm: React.FC<WeightLogFormProps> = ({ onSubmit, isLoadin
   const { cows } = useWeightLogCows();
   const heartGirth = watch('heart_girth');
   const bodyLength = watch('body_length');
+  const { validateData, isValidating, validationErrors } = useServerValidation();
+  const { toast } = useToast();
 
   // Reset form dates when component mounts
   React.useEffect(() => {
@@ -41,8 +46,32 @@ export const WeightLogForm: React.FC<WeightLogFormProps> = ({ onSubmit, isLoadin
     return '0';
   };
 
-  const handleFormSubmit = (data: any) => {
+  const handleFormSubmit = async (data: any) => {
     const calculatedWeight = calculateWeight();
+
+    // Server-side validation
+    const validationResult = await validateData(
+      {
+        heart_girth: Number(data.heart_girth),
+        body_length: Number(data.body_length),
+        notes: data.notes || ''
+      },
+      [
+        { field: 'heart_girth', type: 'number', required: true, min: 50, max: 500 },
+        { field: 'body_length', type: 'number', required: true, min: 50, max: 500 },
+        { field: 'notes', type: 'string', maxLength: 1000 }
+      ]
+    );
+
+    if (!validationResult.valid) {
+      toast({
+        title: "Validation Error",
+        description: "Please check the form for errors",
+        variant: "destructive",
+      });
+      return;
+    }
+
     onSubmit({
       ...data,
       heart_girth: Number(data.heart_girth),
@@ -59,6 +88,19 @@ export const WeightLogForm: React.FC<WeightLogFormProps> = ({ onSubmit, isLoadin
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Object.keys(validationErrors).length > 0 && (
+            <div className="md:col-span-2">
+              <Alert variant="destructive">
+                <AlertDescription>
+                  {Object.entries(validationErrors).map(([field, errors]) => (
+                    <div key={field}>
+                      <strong>{field}:</strong> {errors.join(', ')}
+                    </div>
+                  ))}
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
           <div>
             <Label htmlFor="cow_id">Cow</Label>
             <Select onValueChange={(value) => setValue('cow_id', value)}>
@@ -119,8 +161,8 @@ export const WeightLogForm: React.FC<WeightLogFormProps> = ({ onSubmit, isLoadin
           </div>
 
           <div className="md:col-span-2">
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Adding...' : 'Add Weight Log'}
+            <Button type="submit" disabled={isLoading || isValidating}>
+              {isValidating ? 'Validating...' : isLoading ? 'Adding...' : 'Add Weight Log'}
             </Button>
           </div>
         </form>

@@ -9,6 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useActiveCows } from '@/hooks/useCows';
 import { useBreeds } from '@/hooks/useBreeds';
+import { useServerValidation } from '@/hooks/useServerValidation';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Calf {
   id: string;
@@ -43,6 +45,7 @@ export const CalfForm: React.FC<CalfFormProps> = ({
   const { toast } = useToast();
   const { cows } = useActiveCows();
   const { breeds } = useBreeds();
+  const { validateData, isValidating, validationErrors } = useServerValidation();
 
   // Update selectedGender when selectedCalf changes (for editing)
   useEffect(() => {
@@ -91,11 +94,47 @@ export const CalfForm: React.FC<CalfFormProps> = ({
       image_url: selectedCalf?.image_url || null
     };
 
+    // Server-side validation
+    const validationResult = await validateData(
+      {
+        calf_number: calfData.calf_number || '',
+        date_of_birth: calfData.date_of_birth,
+        birth_weight: calfData.birth_weight || 0,
+        notes: calfData.notes || ''
+      },
+      [
+        { field: 'calf_number', type: 'string', maxLength: 50 },
+        { field: 'date_of_birth', type: 'date', required: true },
+        { field: 'birth_weight', type: 'number', min: 0, max: 200 },
+        { field: 'notes', type: 'string', maxLength: 1000 }
+      ]
+    );
+
+    if (!validationResult.valid) {
+      toast({
+        title: "Validation Error",
+        description: "Please check the form for errors",
+        variant: "destructive",
+      });
+      return;
+    }
+
     onSubmit(calfData);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {Object.keys(validationErrors).length > 0 && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            {Object.entries(validationErrors).map(([field, errors]) => (
+              <div key={field}>
+                <strong>{field}:</strong> {errors.join(', ')}
+              </div>
+            ))}
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="calf_number">Calf Number</Label>
@@ -239,8 +278,8 @@ export const CalfForm: React.FC<CalfFormProps> = ({
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading}>
-          {selectedCalf ? 'Update' : 'Add'} Calf
+        <Button type="submit" disabled={isLoading || isValidating}>
+          {isValidating ? 'Validating...' : isLoading ? 'Saving...' : selectedCalf ? 'Update Calf' : 'Add Calf'}
         </Button>
       </div>
     </form>
