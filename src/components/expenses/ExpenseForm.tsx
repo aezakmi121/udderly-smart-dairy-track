@@ -45,7 +45,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
   const [uploading, setUploading] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(expense?.receipt_url || null);
-  const { validateData, isValidating, validationErrors } = useServerValidation();
+  const { validateData, isValidating, validationErrors } = useServerValidation({ onlyValidateCriticalFields: true });
   
   const { 
     useCategories, 

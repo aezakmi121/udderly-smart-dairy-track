@@ -25,7 +25,7 @@ interface MilkCollectionFormProps {
 }
 
 export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit, isLoading, initialData, selectedDate, selectedSession }) => {
-  const { validateData, isValidating, validationErrors } = useServerValidation();
+  const { validateData, isValidating, validationErrors } = useServerValidation({ onlyValidateCriticalFields: true });
   const { toast } = useToast();
   
   const { register, handleSubmit, setValue, watch, reset } = useForm({

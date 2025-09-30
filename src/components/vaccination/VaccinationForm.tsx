@@ -24,7 +24,7 @@ interface VaccinationFormProps {
 export const VaccinationForm: React.FC<VaccinationFormProps> = ({ onSubmit, isLoading }) => {
   const [selectedCows, setSelectedCows] = React.useState<string[]>([]);
   const [showCowSelection, setShowCowSelection] = React.useState(false);
-  const { validateData, isValidating, validationErrors } = useServerValidation();
+  const { validateData, isValidating, validationErrors } = useServerValidation({ onlyValidateCriticalFields: true });
   const { toast } = useToast();
   
   const { register, handleSubmit, setValue, watch, reset } = useForm({

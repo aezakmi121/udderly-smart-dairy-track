@@ -31,7 +31,7 @@ export const WeightLogForm: React.FC<WeightLogFormProps> = ({ onSubmit, isLoadin
   const { cows } = useWeightLogCows();
   const heartGirth = watch('heart_girth');
   const bodyLength = watch('body_length');
-  const { validateData, isValidating, validationErrors } = useServerValidation();
+  const { validateData, isValidating, validationErrors } = useServerValidation({ onlyValidateCriticalFields: true });
   const { toast } = useToast();
 
   // Reset form dates when component mounts

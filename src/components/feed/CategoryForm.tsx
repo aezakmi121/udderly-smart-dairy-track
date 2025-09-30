@@ -1,11 +1,18 @@
 
 import React from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+const categorySchema = z.object({
+  name: z.string().min(1, 'Category name is required').max(100, 'Name too long'),
+  description: z.string().max(500, 'Description too long').optional()
+});
 
 interface CategoryFormProps {
   selectedCategory?: any;
@@ -14,7 +21,8 @@ interface CategoryFormProps {
 }
 
 export const CategoryForm: React.FC<CategoryFormProps> = ({ selectedCategory, onSubmit, isLoading }) => {
-  const { register, handleSubmit, reset } = useForm({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    resolver: zodResolver(categorySchema),
     defaultValues: {
       name: selectedCategory?.name || '',
       description: selectedCategory?.description || ''
@@ -36,9 +44,10 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ selectedCategory, on
           <div>
             <Label htmlFor="name">Category Name</Label>
             <Input
-              {...register('name', { required: true })}
+              {...register('name')}
               placeholder="Category name"
             />
+            {errors.name?.message && <p className="text-sm text-destructive mt-1">{String(errors.name.message)}</p>}
           </div>
 
           <div>
@@ -47,6 +56,7 @@ export const CategoryForm: React.FC<CategoryFormProps> = ({ selectedCategory, on
               {...register('description')}
               placeholder="Category description"
             />
+            {errors.description?.message && <p className="text-sm text-destructive mt-1">{String(errors.description.message)}</p>}
           </div>
 
           <Button type="submit" disabled={isLoading}>

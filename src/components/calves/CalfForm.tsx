@@ -45,7 +45,7 @@ export const CalfForm: React.FC<CalfFormProps> = ({
   const { toast } = useToast();
   const { cows } = useActiveCows();
   const { breeds } = useBreeds();
-  const { validateData, isValidating, validationErrors } = useServerValidation();
+  const { validateData, isValidating, validationErrors } = useServerValidation({ onlyValidateCriticalFields: true });
 
   // Update selectedGender when selectedCalf changes (for editing)
   useEffect(() => {

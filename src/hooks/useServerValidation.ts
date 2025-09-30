@@ -21,6 +21,7 @@ export interface ValidationResult {
 interface ValidationOptions {
   skipServerValidation?: boolean; // Skip server validation for better performance
   debounceMs?: number; // Debounce validation calls
+  onlyValidateCriticalFields?: boolean; // Only validate security-critical fields (amounts, emails, URLs)
 }
 
 // Simple cache for validation results to reduce server calls
@@ -41,11 +42,27 @@ export const useServerValidation = (options: ValidationOptions = {}) => {
       return { valid: true, errors: {} };
     }
 
+    // Filter to only critical fields if option is set
+    let validationRules = rules;
+    if (options.onlyValidateCriticalFields) {
+      validationRules = rules.filter(rule => 
+        rule.type === 'number' || // Amounts, quantities
+        rule.type === 'email' ||  // Email addresses
+        rule.type === 'url' ||    // URLs
+        rule.pattern             // Custom patterns (usually security-related)
+      );
+      
+      // If no critical fields, skip validation
+      if (validationRules.length === 0) {
+        return { valid: true, errors: {} };
+      }
+    }
+
     setIsValidating(true);
     setValidationErrors({});
 
     // Generate cache key
-    const cacheKey = JSON.stringify({ data, rules });
+    const cacheKey = JSON.stringify({ data, rules: validationRules });
     
     // Check cache first
     const cached = validationCache.get(cacheKey);
@@ -59,7 +76,7 @@ export const useServerValidation = (options: ValidationOptions = {}) => {
 
     try {
       const { data: result, error } = await supabase.functions.invoke('validate-input', {
-        body: { data, rules }
+        body: { data, rules: validationRules }
       });
 
       if (error) throw error;
@@ -94,7 +111,7 @@ export const useServerValidation = (options: ValidationOptions = {}) => {
     } finally {
       setIsValidating(false);
     }
-  }, [options.skipServerValidation]);
+  }, [options.skipServerValidation, options.onlyValidateCriticalFields]);
 
   const validateDataDebounced = useCallback((
     data: Record<string, any>,
