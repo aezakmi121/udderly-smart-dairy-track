@@ -313,7 +313,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select category" />
@@ -338,7 +338,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Source</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select source" />
@@ -389,7 +389,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Payment Method</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select payment method" />
@@ -430,7 +430,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Paid By</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select who paid" />
