@@ -209,13 +209,22 @@ export const useExpenseManagement = () => {
   // Update expense
   const updateExpense = useMutation({
     mutationFn: async ({ id, ...expense }: Partial<Expense> & { id: string }) => {
+      console.log('Update mutation called with ID:', id);
+      console.log('Update data:', expense);
+      
       const { data, error } = await supabase
         .from('expenses')
         .update(expense)
         .eq('id', id)
         .select()
         .single();
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
+      
+      console.log('Update successful, returned data:', data);
       return data;
     },
     onSuccess: () => {
@@ -223,6 +232,7 @@ export const useExpenseManagement = () => {
       toast({ title: 'Expense updated successfully!' });
     },
     onError: (error) => {
+      console.error('Update mutation error:', error);
       toast({ 
         title: 'Failed to update expense', 
         description: error.message,

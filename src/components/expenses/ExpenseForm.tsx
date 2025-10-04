@@ -149,6 +149,9 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
 
   const onSubmit = async (data: ExpenseFormData) => {
     try {
+      console.log('Form data:', data);
+      console.log('Existing expense:', expense);
+      
       // Server-side validation
       const validationResult = await validateData(
         {
@@ -190,9 +193,13 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
         receipt_url: receiptUrl || null,
       };
       
+      console.log('Expense data to save:', expenseData);
+      
       if (expense) {
+        console.log('Updating expense with ID:', expense.id);
         await updateExpense.mutateAsync({ id: expense.id, ...expenseData });
       } else {
+        console.log('Creating new expense');
         await createExpense.mutateAsync(expenseData as any);
       }
       onClose();
