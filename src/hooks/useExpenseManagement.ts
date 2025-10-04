@@ -83,9 +83,9 @@ export const useExpenseManagement = () => {
             recurring_frequency, tags, notes, category_id, 
             source_id, payment_method_id, created_by, 
             created_at, updated_at,
-            expense_categories!category_id(id, name),
-            expense_sources!source_id(id, name),
-            payment_methods!payment_method_id(id, name)
+            expense_categories!fk_expenses_category(id, name),
+            expense_sources!fk_expenses_source(id, name),
+            payment_methods!fk_expenses_payment_method(id, name)
           `)
           .order('payment_date', { ascending: false });
 
