@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { format } from 'date-fns';
-import { MoreHorizontal, Edit, Trash2, Filter, Download, Calendar } from 'lucide-react';
+import { Filter, Download, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MobileDataTable } from '@/components/common/MobileDataTable';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -78,107 +77,65 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
   const columns = [
     {
       key: 'category',
-      header: 'Category',
       label: 'Category',
-      accessorKey: 'expense_categories.name',
-      cell: ({ row }: { row: any }) => (
+      render: (value: any, row: Expense) => (
         <div className="font-medium">
-          {row.original.expense_categories?.name || 'N/A'}
+          {row.expense_categories?.name || '-'}
         </div>
       ),
     },
     {
       key: 'source',
-      header: 'Source',
       label: 'Source',
-      accessorKey: 'expense_sources.name',
-      cell: ({ row }: { row: any }) => (
+      render: (value: any, row: Expense) => (
         <div className="text-muted-foreground">
-          {row.original.expense_sources?.name || 'N/A'}
+          {row.expense_sources?.name || '-'}
+        </div>
+      ),
+    },
+    {
+      key: 'vendor_name',
+      label: 'Vendor',
+      render: (value: any, row: Expense) => (
+        <div className="text-muted-foreground">
+          {row.vendor_name || '-'}
         </div>
       ),
     },
     {
       key: 'description',
-      header: 'Description',
       label: 'Description',
-      accessorKey: 'description',
-      cell: ({ row }: { row: any }) => (
+      render: (value: any, row: Expense) => (
         <div className="max-w-[200px] truncate">
-          {row.original.description || 'No description'}
-        </div>
-      ),
-    },
-    {
-      key: 'vendor',
-      header: 'Vendor',
-      label: 'Vendor',
-      accessorKey: 'vendor_name',
-      cell: ({ row }: { row: any }) => (
-        <div className="text-muted-foreground">
-          {row.original.vendor_name || 'N/A'}
+          {row.description || 'No description'}
         </div>
       ),
     },
     {
       key: 'amount',
-      header: 'Amount',
       label: 'Amount',
-      accessorKey: 'amount',
-      cell: ({ row }: { row: any }) => (
+      render: (value: any, row: Expense) => (
         <div className="font-semibold">
-          ₹{Number(row.original.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+          ₹{Number(row.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
         </div>
       ),
     },
     {
       key: 'status',
-      header: 'Status',
       label: 'Status',
-      accessorKey: 'status',
-      cell: ({ row }: { row: any }) => (
-        <Badge className={getStatusColor(row.original.status)}>
-          {row.original.status}
+      render: (value: any, row: Expense) => (
+        <Badge className={getStatusColor(row.status)}>
+          {row.status}
         </Badge>
       ),
     },
     {
       key: 'paid_by',
-      header: 'Paid By',
       label: 'Paid By',
-      accessorKey: 'paid_by',
-      cell: ({ row }: { row: any }) => (
+      render: (value: any, row: Expense) => (
         <div className="text-muted-foreground">
-          {row.original.paid_by || 'N/A'}
+          {row.paid_by || '-'}
         </div>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      label: 'Actions',
-      id: 'actions',
-      cell: ({ row }: { row: any }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(row.original)}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => deleteExpense.mutate(row.original.id)}
-              className="text-red-600"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       ),
     },
   ];

@@ -78,14 +78,10 @@ export const useExpenseManagement = () => {
         let query = supabase
           .from('expenses')
           .select(`
-            id, payment_date, payment_period, amount, description, 
-            paid_by, vendor_name, receipt_url, status, is_recurring, 
-            recurring_frequency, tags, notes, category_id, 
-            source_id, payment_method_id, created_by, 
-            created_at, updated_at,
-            expense_categories!fk_expenses_category(id, name),
-            expense_sources!fk_expenses_source(id, name),
-            payment_methods!fk_expenses_payment_method(id, name)
+            *,
+            expense_categories!fk_expenses_category(id, name, is_active),
+            expense_sources!fk_expenses_source(id, name, is_active),
+            payment_methods!fk_expenses_payment_method(id, name, is_active)
           `)
           .order('payment_date', { ascending: false });
 
