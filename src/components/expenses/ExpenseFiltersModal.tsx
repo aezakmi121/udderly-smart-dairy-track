@@ -30,6 +30,8 @@ export const ExpenseFiltersModal: React.FC<ExpenseFiltersModalProps> = ({
   const { data: sources = [] } = useSources();
 
   const [localFilters, setLocalFilters] = useState<ExpenseFilters>(filters);
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [endDateOpen, setEndDateOpen] = useState(false);
 
   useEffect(() => {
     setLocalFilters(filters);
@@ -97,7 +99,7 @@ export const ExpenseFiltersModal: React.FC<ExpenseFiltersModalProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>From Date</Label>
-                <Popover>
+                <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -114,10 +116,13 @@ export const ExpenseFiltersModal: React.FC<ExpenseFiltersModalProps> = ({
                     <Calendar
                       mode="single"
                       selected={localFilters.startDate ? new Date(localFilters.startDate) : undefined}
-                      onSelect={(date) => setLocalFilters({
-                        ...localFilters,
-                        startDate: date ? format(date, 'yyyy-MM-dd') : undefined,
-                      })}
+                      onSelect={(date) => {
+                        setLocalFilters({
+                          ...localFilters,
+                          startDate: date ? format(date, 'yyyy-MM-dd') : undefined,
+                        });
+                        setStartDateOpen(false);
+                      }}
                       initialFocus
                       className="p-3 pointer-events-auto"
                     />
@@ -126,7 +131,7 @@ export const ExpenseFiltersModal: React.FC<ExpenseFiltersModalProps> = ({
               </div>
               <div className="space-y-2">
                 <Label>To Date</Label>
-                <Popover>
+                <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -143,10 +148,13 @@ export const ExpenseFiltersModal: React.FC<ExpenseFiltersModalProps> = ({
                     <Calendar
                       mode="single"
                       selected={localFilters.endDate ? new Date(localFilters.endDate) : undefined}
-                      onSelect={(date) => setLocalFilters({
-                        ...localFilters,
-                        endDate: date ? format(date, 'yyyy-MM-dd') : undefined,
-                      })}
+                      onSelect={(date) => {
+                        setLocalFilters({
+                          ...localFilters,
+                          endDate: date ? format(date, 'yyyy-MM-dd') : undefined,
+                        });
+                        setEndDateOpen(false);
+                      }}
                       initialFocus
                       className="p-3 pointer-events-auto"
                     />

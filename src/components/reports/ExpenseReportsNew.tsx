@@ -206,7 +206,7 @@ export const ExpenseReportsNew = () => {
       
       const exportData = expenseAnalytics.rawData.map(record => ({
         payment_date: record.payment_date,
-        payment_period: record.payment_period,
+        payment_period: format(new Date(record.payment_period), 'MMMM yyyy'),
         description: record.description || '',
         category: record.expense_categories?.name || 'N/A',
         source: record.expense_sources?.name || 'N/A',
