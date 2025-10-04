@@ -200,6 +200,7 @@ export const ExpenseReportsNew = () => {
         'amount',
         'status',
         'payment_method',
+        'paid_by',
         'notes'
       ];
       
@@ -213,6 +214,7 @@ export const ExpenseReportsNew = () => {
         amount: record.amount,
         status: record.status,
         payment_method: record.payment_methods?.name || 'N/A',
+        paid_by: record.paid_by || 'N/A',
         notes: record.notes || ''
       }));
 
