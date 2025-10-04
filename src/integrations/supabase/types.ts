@@ -533,6 +533,27 @@ export type Database = {
             referencedRelation: "expense_sources"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_expenses_category"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_expenses_payment_method"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_expenses_source"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "expense_sources"
+            referencedColumns: ["id"]
+          },
         ]
       }
       farmers: {

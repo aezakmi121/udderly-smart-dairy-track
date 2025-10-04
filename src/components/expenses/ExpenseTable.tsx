@@ -143,6 +143,17 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
       ),
     },
     {
+      key: 'paid_by',
+      header: 'Paid By',
+      label: 'Paid By',
+      accessorKey: 'paid_by',
+      cell: ({ row }: { row: any }) => (
+        <div className="text-muted-foreground">
+          {row.original.paid_by || 'N/A'}
+        </div>
+      ),
+    },
+    {
       key: 'actions',
       header: 'Actions',
       label: 'Actions',
