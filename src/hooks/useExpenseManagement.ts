@@ -79,7 +79,7 @@ export const useExpenseManagement = () => {
           .from('expenses')
           .select(`
             id, payment_date, payment_period, amount, description, 
-            paid_by, vendor_name, status, is_recurring, 
+            paid_by, vendor_name, receipt_url, status, is_recurring, 
             recurring_frequency, tags, notes, category_id, 
             source_id, payment_method_id, created_by, 
             created_at, updated_at,

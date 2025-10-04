@@ -58,7 +58,6 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     
     const exportData = filteredExpenses.map(expense => ({
-      date: expense.payment_date,
       category: expense.expense_categories?.name || 'N/A',
       source: expense.expense_sources?.name || 'N/A',
       vendor: expense.vendor_name || 'N/A',
@@ -66,29 +65,17 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
       amount: expense.amount,
       status: expense.status,
       paid_by: expense.paid_by || 'N/A',
-      payment_date: expense.payment_date || 'N/A',
     }));
 
     const headers = [
-      'date', 'category', 'source', 'vendor', 'description', 
-      'amount', 'status', 'paid_by', 'payment_date'
+      'category', 'source', 'vendor', 'description', 
+      'amount', 'status', 'paid_by'
     ];
 
     exportToCSV(exportData, `expenses-${dateStr}`, headers);
   };
 
   const columns = [
-    {
-      key: 'expense_date',
-      header: 'Date',
-      label: 'Date',
-      accessorKey: 'expense_date',
-      cell: ({ row }: { row: any }) => (
-        <div className="font-medium">
-          {format(new Date(row.original.expense_date), 'MMM dd, yyyy')}
-        </div>
-      ),
-    },
     {
       key: 'category',
       header: 'Category',
@@ -153,20 +140,6 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
         <Badge className={getStatusColor(row.original.status)}>
           {row.original.status}
         </Badge>
-      ),
-    },
-    {
-      key: 'payment_date',
-      header: 'Payment Date',
-      label: 'Payment Date',
-      accessorKey: 'payment_date',
-      cell: ({ row }: { row: any }) => (
-        <div className="text-muted-foreground">
-          {row.original.payment_date 
-            ? format(new Date(row.original.payment_date), 'MMM dd, yyyy')
-            : 'Not paid'
-          }
-        </div>
       ),
     },
     {
