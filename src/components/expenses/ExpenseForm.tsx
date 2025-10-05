@@ -180,8 +180,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
       const receiptUrl = await uploadReceipt();
       
       const expenseData = {
-        payment_date: data.payment_date.toISOString().split('T')[0],
-        payment_period: data.payment_period.toISOString().split('T')[0],
+        payment_date: format(data.payment_date, 'yyyy-MM-dd'),
+        payment_period: format(data.payment_period, 'yyyy-MM-dd'),
         category_id: data.category_id,
         source_id: data.source_id,
         payment_method_id: data.payment_method_id || null,
