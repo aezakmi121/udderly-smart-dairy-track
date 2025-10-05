@@ -181,7 +181,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
       
       const expenseData = {
         payment_date: format(data.payment_date, 'yyyy-MM-dd'),
-        payment_period: format(data.payment_period, 'yyyy-MM-dd'),
+        // Format payment_period ensuring we get the correct month/year without timezone shift
+        payment_period: `${data.payment_period.getUTCFullYear()}-${String(data.payment_period.getUTCMonth() + 1).padStart(2, '0')}-01`,
         category_id: data.category_id,
         source_id: data.source_id,
         payment_method_id: data.payment_method_id || null,
@@ -303,8 +304,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ expense, onClose }) =>
                           selected={field.value}
                           onSelect={(date) => {
                             if (date) {
-                              // Set to first day of selected month
-                              const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+                              // Set to first day of selected month in UTC to avoid timezone issues
+                              const firstDayOfMonth = new Date(Date.UTC(date.getFullYear(), date.getMonth(), 1));
                               field.onChange(firstDayOfMonth);
                             }
                           }}
