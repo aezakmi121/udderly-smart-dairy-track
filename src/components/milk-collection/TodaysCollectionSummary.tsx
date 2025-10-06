@@ -39,10 +39,9 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
   selectedDate,
   isLoading,
 }) => {
-  // Skeleton for loading state
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         <Card><CardContent className="h-24 animate-pulse" /></Card>
         <Card><CardContent className="h-24 animate-pulse" /></Card>
         <Card><CardContent className="h-24 animate-pulse" /></Card>
@@ -50,10 +49,8 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
     );
   }
 
-  // Helper: coerce number
   const N = (v: any) => (v == null || v === "" || isNaN(Number(v)) ? 0 : Number(v));
 
-  // If dailyStats provided, prefer it; else compute from collections (for the selected date)
   let morning: SessionTotals = { quantity: 0, amount: 0, count: 0, avgRate: 0 };
   let evening: SessionTotals = { quantity: 0, amount: 0, count: 0, avgRate: 0 };
   let total: SessionTotals   = { quantity: 0, amount: 0, count: 0, avgRate: 0 };
@@ -97,7 +94,7 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Morning</CardTitle>
