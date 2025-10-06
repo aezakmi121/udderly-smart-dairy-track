@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Calendar, Plus } from 'lucide-react';
+import { Calendar, Plus, Trash2, Edit } from 'lucide-react';
 import { MilkCollectionModal } from './MilkCollectionModal';
 import { MilkCollectionTable } from './MilkCollectionTable';
 import { MilkCollectionFilters } from './MilkCollectionFilters';
 import { TodaysCollectionSummary } from './TodaysCollectionSummary';
+import { BulkEditCollectionModal } from './BulkEditCollectionModal';
 import { useMilkCollection } from '@/hooks/useMilkCollection';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { formatDate } from '@/lib/dateUtils';
@@ -21,6 +22,8 @@ export const MilkCollectionManagement = () => {
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editingCollection, setEditingCollection] = React.useState<any>(null);
   const [filterMode, setFilterMode] = React.useState<'date' | 'range'>('date');
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const [bulkEditModalOpen, setBulkEditModalOpen] = React.useState(false);
   
   const { 
     collections, 
@@ -28,7 +31,9 @@ export const MilkCollectionManagement = () => {
     isLoading, 
     addCollectionMutation, 
     updateCollectionMutation,
-    deleteCollectionMutation 
+    deleteCollectionMutation,
+    bulkDeleteMutation,
+    bulkUpdateMutation
   } = useMilkCollection(filterMode === 'date' ? selectedDate : undefined);
   
   const { canEdit, isAdmin } = useUserPermissions();
@@ -115,6 +120,32 @@ export const MilkCollectionManagement = () => {
     setEditingCollection(null);
   };
 
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    
+    if (confirm(`Are you sure you want to delete ${selectedIds.length} collection record${selectedIds.length !== 1 ? 's' : ''}?`)) {
+      bulkDeleteMutation.mutate(selectedIds, {
+        onSuccess: () => {
+          setSelectedIds([]);
+        }
+      });
+    }
+  };
+
+  const handleBulkEdit = (data: { collection_date: string; session: 'morning' | 'evening' }) => {
+    if (selectedIds.length === 0) return;
+    
+    bulkUpdateMutation.mutate(
+      { ids: selectedIds, updates: data },
+      {
+        onSuccess: () => {
+          setSelectedIds([]);
+          setBulkEditModalOpen(false);
+        }
+      }
+    );
+  };
+
   if (!canEdit.milkCollection) {
     return (
       <div className="space-y-6">
@@ -195,6 +226,46 @@ export const MilkCollectionManagement = () => {
         />
       )}
 
+      {/* Bulk Actions Toolbar */}
+      {selectedIds.length > 0 && (
+        <Card className="bg-primary/5 border-primary/20">
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
+                {selectedIds.length} record{selectedIds.length !== 1 ? 's' : ''} selected
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBulkEditModalOpen(true)}
+                  disabled={!canModify}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Bulk Edit
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  disabled={!canModify}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Selected
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedIds([])}
+                >
+                  Clear Selection
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Collection Records Table */}
       <Card>
         <CardHeader>
@@ -213,6 +284,8 @@ export const MilkCollectionManagement = () => {
             canDelete={canModify}
             onEdit={handleEditCollection}
             onDelete={handleDeleteCollection}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
           />
         </CardContent>
       </Card>
@@ -227,6 +300,15 @@ export const MilkCollectionManagement = () => {
         title={editingCollection ? 'Edit Collection Record' : 'Add Collection Record'}
         selectedDate={selectedDate}
         selectedSession={selectedSession}
+      />
+
+      {/* Bulk Edit Modal */}
+      <BulkEditCollectionModal
+        open={bulkEditModalOpen}
+        onOpenChange={setBulkEditModalOpen}
+        onSubmit={handleBulkEdit}
+        isLoading={bulkUpdateMutation.isPending}
+        selectedCount={selectedIds.length}
       />
     </div>
   );

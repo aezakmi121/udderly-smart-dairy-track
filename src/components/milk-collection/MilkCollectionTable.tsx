@@ -1,8 +1,8 @@
-
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, Edit } from 'lucide-react';
 import { formatDate } from '@/lib/dateUtils';
 
@@ -13,6 +13,8 @@ interface MilkCollectionTableProps {
   canDelete?: boolean;
   onEdit?: (collection: any) => void;
   onDelete?: (id: string) => void;
+  selectedIds?: string[];
+  onSelectionChange?: (ids: string[]) => void;
 }
 
 export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({ 
@@ -21,7 +23,9 @@ export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({
   canEdit = false,
   canDelete = false,
   onEdit,
-  onDelete 
+  onDelete,
+  selectedIds = [],
+  onSelectionChange
 }) => {
   if (isLoading) {
     return <div className="text-center py-4">Loading milk collections...</div>;
@@ -43,11 +47,44 @@ export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({
     }
   };
 
+  const handleSelectAll = (checked: boolean) => {
+    if (onSelectionChange) {
+      if (checked) {
+        onSelectionChange(collections.map(c => c.id));
+      } else {
+        onSelectionChange([]);
+      }
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    if (onSelectionChange) {
+      if (checked) {
+        onSelectionChange([...selectedIds, id]);
+      } else {
+        onSelectionChange(selectedIds.filter(selectedId => selectedId !== id));
+      }
+    }
+  };
+
+  const allSelected = collections.length > 0 && selectedIds.length === collections.length;
+  const someSelected = selectedIds.length > 0 && selectedIds.length < collections.length;
+
   return (
     <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
+            {onSelectionChange && (
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={handleSelectAll}
+                  aria-label="Select all"
+                  className={someSelected ? "data-[state=checked]:bg-primary/50" : ""}
+                />
+              </TableHead>
+            )}
             <TableHead className="whitespace-nowrap">Farmer</TableHead>
             <TableHead className="whitespace-nowrap">Date</TableHead>
             <TableHead className="whitespace-nowrap">Session</TableHead>
@@ -63,6 +100,15 @@ export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({
         <TableBody>
           {collections.map((collection) => (
             <TableRow key={collection.id}>
+              {onSelectionChange && (
+                <TableCell>
+                  <Checkbox
+                    checked={selectedIds.includes(collection.id)}
+                    onCheckedChange={(checked) => handleSelectOne(collection.id, checked as boolean)}
+                    aria-label={`Select ${collection.farmers?.name || 'collection'}`}
+                  />
+                </TableCell>
+              )}
               <TableCell className="whitespace-nowrap">
                 <div>
                   <div className="font-medium">{collection.farmers?.name || 'N/A'}</div>

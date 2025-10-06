@@ -170,6 +170,52 @@ export const useMilkCollection = (selectedDate?: string) => {
     }
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('milk_collections')
+        .delete()
+        .in('id', ids);
+      
+      if (error) throw error;
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['milk-collections'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-collection-stats'] });
+      toast({ title: `${ids.length} collection record${ids.length !== 1 ? 's' : ''} deleted successfully!` });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Failed to delete collection records", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  const bulkUpdateMutation = useMutation({
+    mutationFn: async ({ ids, updates }: { ids: string[]; updates: { collection_date?: string; session?: 'morning' | 'evening' } }) => {
+      const { error } = await supabase
+        .from('milk_collections')
+        .update(updates)
+        .in('id', ids);
+      
+      if (error) throw error;
+    },
+    onSuccess: (_, { ids }) => {
+      queryClient.invalidateQueries({ queryKey: ['milk-collections'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-collection-stats'] });
+      toast({ title: `${ids.length} collection record${ids.length !== 1 ? 's' : ''} updated successfully!` });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Failed to update collection records", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
   return {
     collections,
     farmers,
@@ -177,6 +223,8 @@ export const useMilkCollection = (selectedDate?: string) => {
     isLoading,
     addCollectionMutation,
     updateCollectionMutation,
-    deleteCollectionMutation
+    deleteCollectionMutation,
+    bulkDeleteMutation,
+    bulkUpdateMutation
   };
 };
