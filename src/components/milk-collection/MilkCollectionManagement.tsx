@@ -37,30 +37,29 @@ export const MilkCollectionManagement = () => {
   } = useMilkCollection(filterMode === 'date' ? selectedDate : undefined);
   
   const { canEdit, isAdmin } = useUserPermissions();
-  const { log: milkingLog } = useMilkingLog(selectedDate, selectedSession);
-  const { toast } = useToast();
+  const toast = useToast();
+  const { data: logsData } = useMilkingLog(selectedDate);
+  
+  // Determine if we can modify (lock past dates unless admin)
+  const canModify = React.useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return isAdmin || selectedDate === todayStr;
+  }, [isAdmin, selectedDate]);
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const isToday = selectedDate === todayStr;
-  const isUnlocked = !!(milkingLog && !milkingLog.milking_start_time && !milkingLog.milking_end_time);
-  const canModify = isAdmin || isToday || isUnlocked;
-
-  // Filter collections by date range and session when in range mode
   const filteredCollections = React.useMemo(() => {
-    let filtered = collections || [];
-    
-    if (filterMode === 'range' && (dateRange.from || dateRange.to)) {
-      filtered = filtered.filter(collection => {
-        const collectionDate = collection.collection_date;
-        if (dateRange.from && collectionDate < dateRange.from) return false;
-        if (dateRange.to && collectionDate > dateRange.to) return false;
-        return true;
-      });
+    if (!collections || isLoading) return [];
+    let filtered = collections;
+    if (filterMode === 'date') {
+      filtered = collections.filter(c => c.collection_date === selectedDate && c.session === selectedSession);
+    } else {
+      if (dateRange.from) {
+        filtered = filtered.filter(c => c.collection_date >= dateRange.from);
+      }
+      if (dateRange.to) {
+        filtered = filtered.filter(c => c.collection_date <= dateRange.to);
+      }
+      filtered = filtered.filter(c => c.session === selectedSession);
     }
-    
-    // Apply session filter only for the table display, not for summary cards
-    filtered = filtered.filter(collection => collection.session === selectedSession);
-    
     return filtered;
   }, [collections, dateRange, filterMode, selectedSession]);
 
@@ -80,7 +79,7 @@ export const MilkCollectionManagement = () => {
 
   const handleAddCollection = (data: any) => {
     if (!canModify) {
-      toast({ title: 'Editing locked', description: "Only today's collections allowed unless an admin unlocks this date.", variant: 'destructive' });
+      toast({ title: 'Editing locked', description: "Only today'... unless an admin unlocks this date.", variant: 'destructive' });
       return;
     }
     if (editingCollection) {
@@ -91,123 +90,119 @@ export const MilkCollectionManagement = () => {
   };
 
   const handleEditCollection = (collection: any) => {
+    if (!canModify) {
+      toast({ title: 'Editing locked', description: "Only today'... unless an admin unlocks this date.", variant: 'destructive' });
+      return;
+    }
     setEditingCollection(collection);
     setModalOpen(true);
   };
 
   const handleDeleteCollection = (id: string) => {
-    deleteCollectionMutation.mutate(id);
-  };
-
-  const handleDateRangeChange = (range: { from: string; to: string }) => {
-    setDateRange(range);
-    setFilterMode('range');
-  };
-
-  const handleClearFilters = () => {
-    setDateRange({ from: '', to: '' });
-    setFilterMode('date');
-  };
-
-  const handleDateChange = (date: string) => {
-    setSelectedDate(date);
-    setFilterMode('date');
-    setDateRange({ from: '', to: '' });
-  };
-
-  const handleModalClose = () => {
-    setModalOpen(false);
-    setEditingCollection(null);
-  };
-
-  const handleBulkDelete = () => {
-    if (selectedIds.length === 0) return;
-    
-    if (confirm(`Are you sure you want to delete ${selectedIds.length} collection record${selectedIds.length !== 1 ? 's' : ''}?`)) {
-      bulkDeleteMutation.mutate(selectedIds, {
-        onSuccess: () => {
-          setSelectedIds([]);
-        }
-      });
+    if (!canModify) {
+      toast({ title: 'Editing locked', description: "Only today'... unless an admin unlocks this date.", variant: 'destructive' });
+      return;
+    }
+    if (confirm('Are you sure you want to delete this collection record?')) {
+      deleteCollectionMutation.mutate(id);
     }
   };
 
-  const handleBulkEdit = (data: { collection_date: string; session: 'morning' | 'evening' }) => {
-    if (selectedIds.length === 0) return;
-    
-    bulkUpdateMutation.mutate(
-      { ids: selectedIds, updates: data },
-      {
-        onSuccess: () => {
-          setSelectedIds([]);
-          setBulkEditModalOpen(false);
-        }
+  const handleBulkDelete = () => {
+    if (!canModify) {
+      toast({ title: 'Editing locked', description: "Only today'... unless an admin unlocks this date.", variant: 'destructive' });
+      return;
+    }
+    if (selectedIds.length > 0) {
+      if (confirm(`Delete ${selectedIds.length} selected records?`)) {
+        bulkDeleteMutation.mutate(selectedIds);
+        setSelectedIds([]);
       }
-    );
+    }
   };
 
-  if (!canEdit.milkCollection) {
-    return (
-      <div className="space-y-6">
-        <div className="text-center py-8">
-          <h2 className="text-2xl font-bold text-gray-600">Access Restricted</h2>
-          <p className="text-gray-500 mt-2">You don't have permission to access milk collection management.</p>
-        </div>
-      </div>
-    );
-  }
+  const handleBulkEdit = (data: { date: string; session: 'morning' | 'evening' }) => {
+    if (!canModify) {
+      toast({ title: 'Editing locked', description: "Only today'... unless an admin unlocks this date.", variant: 'destructive' });
+      return;
+    }
+    if (selectedIds.length > 0) {
+      bulkUpdateMutation.mutate({ ids: selectedIds, date: data.date, session: data.session });
+      setSelectedIds([]);
+      setBulkEditModalOpen(false);
+    }
+  };
+
+  const handleDateChange = (val: string) => {
+    setSelectedDate(val);
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Milk Collection</h1>
-          <p className="text-muted-foreground">Record and manage milk collections from farmers.</p>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold">Milk Collection</h2>
+          <p className="text-sm text-muted-foreground">
+            {filterMode === 'date' ? `Date: ${formatDate(selectedDate)}` : 
+             `Range: ${dateRange.from ? formatDate(dateRange.from) : '—'} → ${dateRange.to ? formatDate(dateRange.to) : '—'}`}
+          </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <MilkCollectionFilters
-            dateRange={dateRange}
-            onDateRangeChange={handleDateRangeChange}
-            onClearFilters={handleClearFilters}
-          />
-          <Button className="w-full sm:w-auto" onClick={() => setModalOpen(true)} disabled={!canModify} title={!canModify ? 'Only today allowed unless unlocked by admin' : undefined}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Record
-          </Button>
-        </div>
-      </div>
 
-      {/* Date and Session Selection */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="flex items-center gap-4">
-          <Label htmlFor="selectedDate">Select Date:</Label>
-          <Input
-            id="selectedDate"
-            type="date"
-            value={selectedDate}
-            onChange={(e) => handleDateChange(e.target.value)}
-            className="w-40"
-          />
-        </div>
-        <div>
-          <Label htmlFor="session-selector">Session</Label>
-          <div className="flex gap-2 mt-2">
-            <Button
-              type="button"
-              variant={selectedSession === 'morning' ? 'default' : 'outline'}
-              onClick={() => setSelectedSession('morning')}
-              className="w-28"
-            >
-              Morning
-            </Button>
-            <Button
-              type="button"
-              variant={selectedSession === 'evening' ? 'default' : 'outline'}
-              onClick={() => setSelectedSession('evening')}
-              className="w-28"
-            >
-              Evening
-            </Button>
+        <div className="flex items-end gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="filter-mode">View</Label>
+            <div className="flex gap-2">
+              <Button 
+                type="button"
+                variant={filterMode === 'date' ? 'default' : 'outline'}
+                onClick={() => setFilterMode('date')}
+                className="w-28"
+              >
+                Single Date
+              </Button>
+              <Button 
+                type="button"
+                variant={filterMode === 'range' ? 'default' : 'outline'}
+                onClick={() => setFilterMode('range')}
+                className="w-28"
+              >
+                Date Range
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="selectedDate">Date</Label>
+            <Input
+              id="selectedDate"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => handleDateChange(e.target.value)}
+              className="w-40"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="session-selector">Session</Label>
+            <div className="flex gap-2 mt-2">
+              <Button
+                type="button"
+                variant={selectedSession === 'morning' ? 'default' : 'outline'}
+                onClick={() => setSelectedSession('morning')}
+                className="w-28"
+              >
+                Morning
+              </Button>
+              <Button
+                type="button"
+                variant={selectedSession === 'evening' ? 'default' : 'outline'}
+                onClick={() => setSelectedSession('evening')}
+                className="w-28"
+              >
+                Evening
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -223,6 +218,7 @@ export const MilkCollectionManagement = () => {
           canDelete={canModify}
           onEdit={handleEditCollection}
           onDelete={handleDeleteCollection}
+          mode="cards-only"
         />
       )}
 
@@ -231,34 +227,17 @@ export const MilkCollectionManagement = () => {
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="py-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">
-                {selectedIds.length} record{selectedIds.length !== 1 ? 's' : ''} selected
+              <span className="text-sm">
+                {selectedIds.length} selected
               </span>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setBulkEditModalOpen(true)}
-                  disabled={!canModify}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
+                <Button variant="outline" size="sm" onClick={() => setBulkEditModalOpen(true)}>
+                  <Edit className="h-4 w-4 mr-1" />
                   Bulk Edit
                 </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleBulkDelete}
-                  disabled={!canModify}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                  <Trash2 className="h-4 w-4 mr-1" />
                   Delete Selected
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedIds([])}
-                >
-                  Clear Selection
                 </Button>
               </div>
             </div>
@@ -266,40 +245,36 @@ export const MilkCollectionManagement = () => {
         </Card>
       )}
 
-      {/* Collection Records Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {filterMode === 'date' 
-              ? `Collection Records - ${formatDate(selectedDate)}`
-              : 'Filtered Collection Records'
-            }
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <MilkCollectionTable 
-            collections={filteredCollections}
-            isLoading={isLoading}
-            canEdit={canModify}
-            canDelete={canModify}
-            onEdit={handleEditCollection}
-            onDelete={handleDeleteCollection}
-            selectedIds={selectedIds}
-            onSelectionChange={setSelectedIds}
-          />
-        </CardContent>
-      </Card>
+      {/* Filters */}
+      <MilkCollectionFilters
+        filterMode={filterMode}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+      />
 
-      {/* Add/Edit Modal */}
-      <MilkCollectionModal 
-        onSubmit={handleAddCollection}
-        isLoading={addCollectionMutation.isPending || updateCollectionMutation.isPending}
-        open={modalOpen}
-        onOpenChange={handleModalClose}
-        initialData={editingCollection}
-        title={editingCollection ? 'Edit Collection Record' : 'Add Collection Record'}
+      {/* Records Table */}
+      <MilkCollectionTable
+        collections={filteredCollections}
+        isLoading={isLoading}
+        canEdit={canModify}
+        canDelete={canModify}
+        onEdit={handleEditCollection}
+        onDelete={handleDeleteCollection}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
         selectedDate={selectedDate}
         selectedSession={selectedSession}
+      />
+
+      {/* Add / Edit Modal */}
+      <MilkCollectionModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onSubmit={handleAddCollection}
+        isLoading={addCollectionMutation.isPending || updateCollectionMutation.isPending}
+        initialData={editingCollection}
+        session={selectedSession}
+        date={selectedDate}
       />
 
       {/* Bulk Edit Modal */}
