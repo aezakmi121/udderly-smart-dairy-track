@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +15,7 @@ interface TodaysCollectionSummaryProps {
   canDelete?: boolean;
   onEdit?: (collection: any) => void;
   onDelete?: (id: string) => void;
+  mode?: 'full' | 'cards-only';
 }
 
 export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = ({ 
@@ -26,7 +26,8 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
   canEdit = false,
   canDelete = false,
   onEdit,
-  onDelete
+  onDelete,
+  mode = 'full'
 }) => {
   // Add safety check for collections
   if (!collections) {
@@ -51,7 +52,7 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
   const morningCollections = allCollectionsForDate.filter(c => c.session === 'morning');
   const eveningCollections = allCollectionsForDate.filter(c => c.session === 'evening');
 
-  // Calculate session totals first
+  // Compute safe totals (quantity/amount/count/avgRate)
   const morningTotals = {
     quantity: morningCollections.reduce((sum, c) => sum + Number(c.quantity || 0), 0),
     amount: morningCollections.reduce((sum, c) => sum + Number(c.total_amount || 0), 0),
@@ -73,7 +74,6 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
     get avgRate() { return this.quantity > 0 ? this.amount / this.quantity : 0; }
   };
 
-
   const handleEdit = (collection: any) => {
     if (onEdit) {
       onEdit(collection);
@@ -86,21 +86,9 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
     }
   };
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Collection Summary - {formatDate(selectedDate)}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-4">Loading collections...</div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-4">
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -151,6 +139,8 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
         </Card>
       </div>
 
+      {/* Detailed per-session tables (shown only in 'full' mode) */}
+      {mode === 'full' && (
       <Card>
         <CardHeader>
           <CardTitle>Collections by Session</CardTitle>
@@ -173,7 +163,7 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
                       {morningCollections.length} collections
                     </span>
                   </h4>
-                    <Table>
+                  <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Farmer</TableHead>
@@ -181,7 +171,7 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
                         <TableHead>Fat %</TableHead>
                         <TableHead>SNF %</TableHead>
                         <TableHead>Rate</TableHead>
-                        <TableHead>Amount</TableHead>
+                        <TableHead>Total Amount</TableHead>
                         {(canEdit || canDelete) && <TableHead>Actions</TableHead>}
                       </TableRow>
                     </TableHeader>
@@ -248,7 +238,7 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
                         <TableHead>Fat %</TableHead>
                         <TableHead>SNF %</TableHead>
                         <TableHead>Rate</TableHead>
-                        <TableHead>Amount</TableHead>
+                        <TableHead>Total Amount</TableHead>
                         {(canEdit || canDelete) && <TableHead>Actions</TableHead>}
                       </TableRow>
                     </TableHeader>
@@ -302,6 +292,7 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 };
