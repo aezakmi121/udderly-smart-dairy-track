@@ -1,298 +1,141 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Edit, Trash2 } from 'lucide-react';
-import { formatDate } from '@/lib/dateUtils';
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface TodaysCollectionSummaryProps {
-  collections: any[];
-  dailyStats?: any;
-  selectedDate: string;
-  isLoading: boolean;
-  canEdit?: boolean;
-  canDelete?: boolean;
-  onEdit?: (collection: any) => void;
-  onDelete?: (id: string) => void;
-  mode?: 'full' | 'cards-only';
+interface SessionTotals {
+  quantity: number;
+  amount: number;
+  count: number;
+  avgRate: number;
 }
 
-export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = ({ 
-  collections, 
+interface DailyStatsShape {
+  morning?: Partial<SessionTotals>;
+  evening?: Partial<SessionTotals>;
+  total?: Partial<SessionTotals>;
+}
+
+interface CollectionRow {
+  id: string;
+  collection_date: string; // "YYYY-MM-DD"
+  session: "morning" | "evening";
+  quantity: number | string;
+  total_amount: number | string;
+  rate_per_liter?: number | string;
+  fat_percentage?: number | string;
+  snf_percentage?: number | string;
+  farmers?: { name?: string; farmer_code?: string };
+}
+
+interface TodaysCollectionSummaryProps {
+  collections: CollectionRow[];
+  dailyStats?: DailyStatsShape;
+  selectedDate: string; // "YYYY-MM-DD"
+  isLoading: boolean;
+}
+
+export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = ({
+  collections,
   dailyStats,
   selectedDate,
   isLoading,
-  canEdit = false,
-  canDelete = false,
-  onEdit,
-  onDelete,
-  mode = 'full'
 }) => {
-  // Add safety check for collections
-  if (!collections) {
+  // Skeleton for loading state
+  if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Collection Summary - {formatDate(selectedDate)}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-4">No collection data available...</div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card><CardContent className="h-24 animate-pulse" /></Card>
+        <Card><CardContent className="h-24 animate-pulse" /></Card>
+        <Card><CardContent className="h-24 animate-pulse" /></Card>
+      </div>
     );
   }
 
-  // ALWAYS filter by selected date and get ALL sessions - independent of any session filter
-  const allCollectionsForDate = collections.filter(
-    collection => collection.collection_date === selectedDate
-  );
+  // Helper: coerce number
+  const N = (v: any) => (v == null || v === "" || isNaN(Number(v)) ? 0 : Number(v));
 
-  // Separate into sessions for summary cards (always show both regardless of any session filter)
-  const morningCollections = allCollectionsForDate.filter(c => c.session === 'morning');
-  const eveningCollections = allCollectionsForDate.filter(c => c.session === 'evening');
+  // If dailyStats provided, prefer it; else compute from collections (for the selected date)
+  let morning: SessionTotals = { quantity: 0, amount: 0, count: 0, avgRate: 0 };
+  let evening: SessionTotals = { quantity: 0, amount: 0, count: 0, avgRate: 0 };
+  let total: SessionTotals   = { quantity: 0, amount: 0, count: 0, avgRate: 0 };
 
-  // Compute safe totals (quantity/amount/count/avgRate)
-  const morningTotals = {
-    quantity: morningCollections.reduce((sum, c) => sum + Number(c.quantity || 0), 0),
-    amount: morningCollections.reduce((sum, c) => sum + Number(c.total_amount || 0), 0),
-    count: morningCollections.length,
-    get avgRate() { return this.quantity > 0 ? this.amount / this.quantity : 0; }
-  };
-  
-  const eveningTotals = {
-    quantity: eveningCollections.reduce((sum, c) => sum + Number(c.quantity || 0), 0),
-    amount: eveningCollections.reduce((sum, c) => sum + Number(c.total_amount || 0), 0),
-    count: eveningCollections.length,
-    get avgRate() { return this.quantity > 0 ? this.amount / this.quantity : 0; }
-  };
-  
-  const dayTotals = {
-    quantity: allCollectionsForDate.reduce((sum, c) => sum + Number(c.quantity || 0), 0),
-    amount: allCollectionsForDate.reduce((sum, c) => sum + Number(c.total_amount || 0), 0),
-    count: allCollectionsForDate.length,
-    get avgRate() { return this.quantity > 0 ? this.amount / this.quantity : 0; }
-  };
+  if (dailyStats) {
+    morning.quantity = N(dailyStats.morning?.quantity);
+    morning.amount   = N(dailyStats.morning?.amount);
+    morning.count    = N(dailyStats.morning?.count);
+    morning.avgRate  = morning.quantity > 0 ? morning.amount / morning.quantity : 0;
 
-  const handleEdit = (collection: any) => {
-    if (onEdit) {
-      onEdit(collection);
-    }
-  };
+    evening.quantity = N(dailyStats.evening?.quantity);
+    evening.amount   = N(dailyStats.evening?.amount);
+    evening.count    = N(dailyStats.evening?.count);
+    evening.avgRate  = evening.quantity > 0 ? evening.amount / evening.quantity : 0;
 
-  const handleDelete = (id: string) => {
-    if (onDelete && confirm('Are you sure you want to delete this collection record?')) {
-      onDelete(id);
-    }
-  };
+    total.quantity   = N(dailyStats.total?.quantity);
+    total.amount     = N(dailyStats.total?.amount);
+    total.count      = N(dailyStats.total?.count);
+    total.avgRate    = total.quantity > 0 ? total.amount / total.quantity : 0;
+  } else {
+    const rowsForDate = (collections || []).filter(
+      (c) => c.collection_date === selectedDate
+    );
+    const m = rowsForDate.filter((c) => c.session === "morning");
+    const e = rowsForDate.filter((c) => c.session === "evening");
+
+    morning.quantity = m.reduce((s, r) => s + N(r.quantity), 0);
+    morning.amount   = m.reduce((s, r) => s + N(r.total_amount), 0);
+    morning.count    = m.length;
+    morning.avgRate  = morning.quantity > 0 ? morning.amount / morning.quantity : 0;
+
+    evening.quantity = e.reduce((s, r) => s + N(r.quantity), 0);
+    evening.amount   = e.reduce((s, r) => s + N(r.total_amount), 0);
+    evening.count    = e.length;
+    evening.avgRate  = evening.quantity > 0 ? evening.amount / evening.quantity : 0;
+
+    total.quantity   = morning.quantity + evening.quantity;
+    total.amount     = morning.amount + evening.amount;
+    total.count      = rowsForDate.length;
+    total.avgRate    = total.quantity > 0 ? total.amount / total.quantity : 0;
+  }
 
   return (
-    <div className="space-y-4">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center justify-between">
-              Morning Session
-              <Badge variant="secondary">{morningTotals.count}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              <div className="text-2xl font-bold">{(morningTotals?.quantity || 0).toFixed(1)}L</div>
-              <div className="text-sm text-green-600 font-semibold">₹{(morningTotals?.amount || 0).toFixed(2)}</div>
-              <div className="text-xs text-muted-foreground">Avg Rate: ₹{(morningTotals?.avgRate || 0).toFixed(2)}/L</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center justify-between">
-              Evening Session
-              <Badge variant="secondary">{eveningTotals.count}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              <div className="text-2xl font-bold">{(eveningTotals?.quantity || 0).toFixed(1)}L</div>
-              <div className="text-sm text-green-600 font-semibold">₹{(eveningTotals?.amount || 0).toFixed(2)}</div>
-              <div className="text-xs text-muted-foreground">Avg Rate: ₹{(eveningTotals?.avgRate || 0).toFixed(2)}/L</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center justify-between">
-              Total Today
-              <Badge variant="default">{dayTotals.count}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1">
-              <div className="text-2xl font-bold">{(dayTotals?.quantity || 0).toFixed(1)}L</div>
-              <div className="text-sm text-green-600 font-semibold">₹{(dayTotals?.amount || 0).toFixed(2)}</div>
-              <div className="text-xs text-muted-foreground">Avg Rate: ₹{(dayTotals?.avgRate || 0).toFixed(2)}/L</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Detailed per-session tables (shown only in 'full' mode) */}
-      {mode === 'full' && (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <Card>
-        <CardHeader>
-          <CardTitle>Collections by Session</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {formatDate(selectedDate)}
-          </p>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Morning</CardTitle>
         </CardHeader>
-        <CardContent>
-          {allCollectionsForDate.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No collections recorded for this date yet.
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {morningCollections.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
-                    <Badge variant="outline">Morning Session</Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {morningCollections.length} collections
-                    </span>
-                  </h4>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Farmer</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Fat %</TableHead>
-                        <TableHead>SNF %</TableHead>
-                        <TableHead>Rate</TableHead>
-                        <TableHead>Total Amount</TableHead>
-                        {(canEdit || canDelete) && <TableHead>Actions</TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {morningCollections.map((collection) => (
-                        <TableRow key={collection.id}>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{collection.farmers?.name || 'N/A'}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {collection.farmers?.farmer_code || 'N/A'}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>{collection.quantity}L</TableCell>
-                          <TableCell>{collection.fat_percentage}%</TableCell>
-                          <TableCell>{collection.snf_percentage}%</TableCell>
-                          <TableCell>₹{collection.rate_per_liter}</TableCell>
-                          <TableCell className="font-semibold">₹{collection.total_amount}</TableCell>
-                          {(canEdit || canDelete) && (
-                            <TableCell>
-                              <div className="flex gap-1">
-                                {canEdit && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleEdit(collection)}
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                  </Button>
-                                )}
-                                {canDelete && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleDelete(collection.id)}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-
-              {eveningCollections.length > 0 && (
-                <div>
-                  <h4 className="font-semibold mb-3 flex items-center gap-2">
-                    <Badge variant="outline">Evening Session</Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {eveningCollections.length} collections
-                    </span>
-                  </h4>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Farmer</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Fat %</TableHead>
-                        <TableHead>SNF %</TableHead>
-                        <TableHead>Rate</TableHead>
-                        <TableHead>Total Amount</TableHead>
-                        {(canEdit || canDelete) && <TableHead>Actions</TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {eveningCollections.map((collection) => (
-                        <TableRow key={collection.id}>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{collection.farmers?.name || 'N/A'}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {collection.farmers?.farmer_code || 'N/A'}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>{collection.quantity}L</TableCell>
-                          <TableCell>{collection.fat_percentage}%</TableCell>
-                          <TableCell>{collection.snf_percentage}%</TableCell>
-                          <TableCell>₹{collection.rate_per_liter}</TableCell>
-                          <TableCell className="font-semibold">₹{collection.total_amount}</TableCell>
-                          {(canEdit || canDelete) && (
-                            <TableCell>
-                              <div className="flex gap-1">
-                                {canEdit && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleEdit(collection)}
-                                  >
-                                    <Edit className="h-3 w-3" />
-                                  </Button>
-                                )}
-                                {canDelete && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleDelete(collection.id)}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
-          )}
+        <CardContent className="space-y-1">
+          <div className="text-2xl font-bold">{morning.quantity.toFixed(1)} L</div>
+          <div className="text-sm font-semibold">₹{morning.amount.toFixed(2)}</div>
+          <div className="text-xs text-muted-foreground">
+            Avg Rate: ₹{morning.avgRate.toFixed(2)}/L • {morning.count} entries
+          </div>
         </CardContent>
       </Card>
-      )}
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Evening</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <div className="text-2xl font-bold">{evening.quantity.toFixed(1)} L</div>
+          <div className="text-sm font-semibold">₹{evening.amount.toFixed(2)}</div>
+          <div className="text-xs text-muted-foreground">
+            Avg Rate: ₹{evening.avgRate.toFixed(2)}/L • {evening.count} entries
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Total Today</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <div className="text-2xl font-bold">{total.quantity.toFixed(1)} L</div>
+          <div className="text-sm font-semibold">₹{total.amount.toFixed(2)}</div>
+          <div className="text-xs text-muted-foreground">
+            Avg Rate: ₹{total.avgRate.toFixed(2)}/L • {total.count} entries
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
