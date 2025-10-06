@@ -7,17 +7,12 @@ import { Plus, Trash2, Edit } from "lucide-react";
 
 import { MilkCollectionModal } from "./MilkCollectionModal";
 import { MilkCollectionTable } from "./MilkCollectionTable";
-// ⬇️ No range filters import anymore
-// import { MilkCollectionFilters } from "./MilkCollectionFilters";
-
 import { TodaysCollectionSummary } from "./TodaysCollectionSummary";
 import { BulkEditCollectionModal } from "./BulkEditCollectionModal";
 
 import { useMilkCollection } from "@/hooks/useMilkCollection";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { useToast } from "@/hooks/use-toast";
-
-// If you have a date formatting util, import it; otherwise use a simple fallback
 import { formatDate } from "@/lib/dateUtils";
 
 export const MilkCollectionManagement: React.FC = () => {
@@ -34,7 +29,6 @@ export const MilkCollectionManagement: React.FC = () => {
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
   const [bulkEditModalOpen, setBulkEditModalOpen] = React.useState(false);
 
-  // Pass the selectedDate so the hook can hydrate dailyStats for that day (if supported)
   const {
     collections,
     dailyStats,
@@ -49,13 +43,11 @@ export const MilkCollectionManagement: React.FC = () => {
   const { isAdmin } = useUserPermissions();
   const toast = useToast();
 
-  // Only editable for today unless admin
   const canModify = React.useMemo(() => {
     const todayStr = new Date().toISOString().split("T")[0];
     return isAdmin || selectedDate === todayStr;
   }, [isAdmin, selectedDate]);
 
-  // Filter by the single selected date + selected session
   const filteredCollections = React.useMemo(() => {
     if (!collections || isLoading) return [];
     return collections.filter(
@@ -64,7 +56,6 @@ export const MilkCollectionManagement: React.FC = () => {
     );
   }, [collections, isLoading, selectedDate, selectedSession]);
 
-  // Close modal after successful add/update
   React.useEffect(() => {
     if (
       (addCollectionMutation.isSuccess || updateCollectionMutation.isSuccess) &&
@@ -85,7 +76,8 @@ export const MilkCollectionManagement: React.FC = () => {
     if (!canModify) {
       toast({
         title: "Editing locked",
-        description: "Only today's records are editable unless an admin unlocks.",
+        description:
+          "Only today's records are editable unless an admin unlocks.",
         variant: "destructive",
       });
       return;
@@ -101,7 +93,8 @@ export const MilkCollectionManagement: React.FC = () => {
     if (!canModify) {
       toast({
         title: "Editing locked",
-        description: "Only today's records are editable unless an admin unlocks.",
+        description:
+          "Only today's records are editable unless an admin unlocks.",
         variant: "destructive",
       });
       return;
@@ -114,7 +107,8 @@ export const MilkCollectionManagement: React.FC = () => {
     if (!canModify) {
       toast({
         title: "Editing locked",
-        description: "Only today's records are editable unless an admin unlocks.",
+        description:
+          "Only today's records are editable unless an admin unlocks.",
         variant: "destructive",
       });
       return;
@@ -128,7 +122,8 @@ export const MilkCollectionManagement: React.FC = () => {
     if (!canModify) {
       toast({
         title: "Editing locked",
-        description: "Only today's records are editable unless an admin unlocks.",
+        description:
+          "Only today's records are editable unless an admin unlocks.",
         variant: "destructive",
       });
       return;
@@ -143,73 +138,80 @@ export const MilkCollectionManagement: React.FC = () => {
     if (!canModify) {
       toast({
         title: "Editing locked",
-        description: "Only today's records are editable unless an admin unlocks.",
+        description:
+          "Only today's records are editable unless an admin unlocks.",
         variant: "destructive",
       });
       return;
     }
     if (selectedIds.length > 0) {
-      bulkUpdateMutation.mutate({ ids: selectedIds, date: data.date, session: data.session });
+      bulkUpdateMutation.mutate({
+        ids: selectedIds,
+        date: data.date,
+        session: data.session,
+      });
       setSelectedIds([]);
       setBulkEditModalOpen(false);
     }
   };
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div className="space-y-1">
-          <h2 className="text-xl font-semibold">Milk Collection</h2>
-          <p className="text-sm text-muted-foreground">
-            Date: {formatDate ? formatDate(selectedDate) : selectedDate}
-          </p>
+    <div className="space-y-4 max-w-full overflow-x-hidden">
+      {/* Title */}
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold">Milk Collection</h2>
+        <p className="text-sm text-muted-foreground">
+          Date: {formatDate ? formatDate(selectedDate) : selectedDate}
+        </p>
+      </div>
+
+      {/* Controls (STACKED on mobile) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Date */}
+        <div className="w-full">
+          <Label htmlFor="selectedDate">Date</Label>
+          <Input
+            id="selectedDate"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="w-full md:w-48"
+          />
         </div>
 
-        <div className="flex items-end gap-3">
-          <div className="space-y-2">
-            <Label htmlFor="selectedDate">Date</Label>
-            <Input
-              id="selectedDate"
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-40"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="session-selector">Session</Label>
-            <div className="flex gap-2 mt-2">
-              <Button
-                type="button"
-                variant={selectedSession === "morning" ? "default" : "outline"}
-                onClick={() => setSelectedSession("morning")}
-                className="w-28"
-              >
-                Morning
-              </Button>
-              <Button
-                type="button"
-                variant={selectedSession === "evening" ? "default" : "outline"}
-                onClick={() => setSelectedSession("evening")}
-                className="w-28"
-              >
-                Evening
-              </Button>
-            </div>
-          </div>
-
-          <div className="ml-auto">
-            <Button onClick={() => setModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Collection
+        {/* Session */}
+        <div className="w-full">
+          <Label htmlFor="session-selector">Session</Label>
+          <div className="grid grid-cols-2 gap-2 mt-2 w-full">
+            <Button
+              type="button"
+              variant={selectedSession === "morning" ? "default" : "outline"}
+              onClick={() => setSelectedSession("morning")}
+              className="w-full"
+            >
+              Morning
+            </Button>
+            <Button
+              type="button"
+              variant={selectedSession === "evening" ? "default" : "outline"}
+              onClick={() => setSelectedSession("evening")}
+              className="w-full"
+            >
+              Evening
             </Button>
           </div>
         </div>
+
+        {/* Add button */}
+        <div className="w-full md:flex md:items-end md:justify-end">
+          <Button className="w-full md:w-auto" onClick={() => setModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Collection
+          </Button>
+        </div>
       </div>
 
-      {/* Summary Cards (single date) */}
+      {/* Summary Cards (stacked on mobile) */}
       <TodaysCollectionSummary
         collections={collections || []}
         dailyStats={dailyStats}
@@ -217,18 +219,28 @@ export const MilkCollectionManagement: React.FC = () => {
         isLoading={isLoading}
       />
 
-      {/* Bulk Actions Toolbar */}
+      {/* Bulk Actions Toolbar (STACKED on mobile) */}
       {selectedIds.length > 0 && (
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="py-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <span className="text-sm">{selectedIds.length} selected</span>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setBulkEditModalOpen(true)}>
+              <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full md:w-auto"
+                  onClick={() => setBulkEditModalOpen(true)}
+                >
                   <Edit className="h-4 w-4 mr-1" />
                   Bulk Edit
                 </Button>
-                <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="w-full md:w-auto"
+                  onClick={handleBulkDelete}
+                >
                   <Trash2 className="h-4 w-4 mr-1" />
                   Delete Selected
                 </Button>
@@ -238,7 +250,7 @@ export const MilkCollectionManagement: React.FC = () => {
         </Card>
       )}
 
-      {/* Records Table (filters: selected date + session) */}
+      {/* Records Table (filtered by date + session) */}
       <MilkCollectionTable
         collections={filteredCollections}
         isLoading={isLoading}
