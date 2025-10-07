@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { format } from 'date-fns';
-import { Filter, Download, Calendar } from 'lucide-react';
+import { Filter, Download, Calendar, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MobileDataTable } from '@/components/common/MobileDataTable';
+import { MobileDataTable, type CustomAction } from '@/components/common/MobileDataTable';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { ExpenseFiltersModal } from './ExpenseFiltersModal';
+import { ReceiptViewModal } from './ReceiptViewModal';
 import { useExpenseManagement, type Expense, type ExpenseFilters } from '@/hooks/useExpenseManagement';
 import { useReportExports } from '@/hooks/useReportExports';
 
@@ -28,6 +29,7 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
 }) => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [viewingReceipt, setViewingReceipt] = useState<Expense | null>(null);
   const { deleteExpense } = useExpenseManagement();
   const { exportToCSV } = useReportExports();
 
@@ -73,6 +75,15 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
 
     exportToCSV(exportData, `expenses-${dateStr}`, headers);
   };
+
+  const customActions: CustomAction<Expense>[] = [
+    {
+      label: 'View Receipt',
+      icon: <Eye className="mr-2 h-4 w-4" />,
+      onClick: (expense) => setViewingReceipt(expense),
+      show: (expense) => !!expense.receipt_url,
+    },
+  ];
 
   const columns = [
     {
@@ -205,6 +216,7 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
         isLoading={isLoading}
         onEdit={onEdit}
         onDelete={(expense) => deleteExpense.mutate(expense.id)}
+        customActions={customActions}
         mobileCardView={true}
       />
 
@@ -214,6 +226,15 @@ export const ExpenseTable: React.FC<ExpenseTableProps> = ({
           onOpenChange={setShowFilters}
           filters={filters}
           onFiltersChange={onFiltersChange}
+        />
+      )}
+
+      {viewingReceipt && (
+        <ReceiptViewModal
+          open={!!viewingReceipt}
+          onOpenChange={(open) => !open && setViewingReceipt(null)}
+          receiptUrl={viewingReceipt.receipt_url}
+          expenseDescription={viewingReceipt.description || 'No description'}
         />
       )}
     </div>

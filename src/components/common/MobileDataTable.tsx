@@ -18,12 +18,21 @@ export interface ColumnConfig<T = any> {
   mobilePrimary?: boolean; // Show as primary on mobile cards
 }
 
+export interface CustomAction<T = any> {
+  label: string;
+  icon: React.ReactNode;
+  onClick: (row: T) => void;
+  className?: string;
+  show?: (row: T) => boolean;
+}
+
 interface MobileDataTableProps<T = any> {
   data: T[];
   columns: ColumnConfig<T>[];
   isLoading?: boolean;
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
+  customActions?: CustomAction<T>[];
   emptyMessage?: string;
   className?: string;
   mobileCardView?: boolean; // Force card view on mobile
@@ -35,6 +44,7 @@ export const MobileDataTable = <T extends { id: string }>({
   isLoading,
   onEdit,
   onDelete,
+  customActions = [],
   emptyMessage = "No data found",
   className = "",
   mobileCardView = true
@@ -98,7 +108,7 @@ export const MobileDataTable = <T extends { id: string }>({
                 </div>
                 
                 {/* Actions dropdown for mobile */}
-                {(onEdit || onDelete) && (
+                {(onEdit || onDelete || customActions.length > 0) && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -106,6 +116,19 @@ export const MobileDataTable = <T extends { id: string }>({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {customActions.map((action, index) => {
+                        if (action.show && !action.show(row)) return null;
+                        return (
+                          <DropdownMenuItem 
+                            key={index} 
+                            onClick={() => action.onClick(row)}
+                            className={action.className}
+                          >
+                            {action.icon}
+                            {action.label}
+                          </DropdownMenuItem>
+                        );
+                      })}
                       {onEdit && (
                         <DropdownMenuItem onClick={() => onEdit(row)}>
                           <Edit className="mr-2 h-4 w-4" />
@@ -147,7 +170,7 @@ export const MobileDataTable = <T extends { id: string }>({
                   {column.label}
                 </TableHead>
               ))}
-              {(onEdit || onDelete) && (
+              {(onEdit || onDelete || customActions.length > 0) && (
                 <TableHead className="w-[100px] whitespace-nowrap">Actions</TableHead>
               )}
             </TableRow>
@@ -163,29 +186,42 @@ export const MobileDataTable = <T extends { id: string }>({
                     }
                   </TableCell>
                 ))}
-                {(onEdit || onDelete) && (
+                {(onEdit || onDelete || customActions.length > 0) && (
                   <TableCell className="whitespace-nowrap">
-                    <div className="flex gap-1">
-                      {onEdit && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onEdit(row)}
-                        >
-                          <Edit className="h-4 w-4" />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                      )}
-                      {onDelete && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onDelete(row)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {customActions.map((action, index) => {
+                          if (action.show && !action.show(row)) return null;
+                          return (
+                            <DropdownMenuItem 
+                              key={index} 
+                              onClick={() => action.onClick(row)}
+                              className={action.className}
+                            >
+                              {action.icon}
+                              {action.label}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                        {onEdit && (
+                          <DropdownMenuItem onClick={() => onEdit(row)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {onDelete && (
+                          <DropdownMenuItem onClick={() => onDelete(row)} className="text-red-600">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 )}
               </TableRow>
