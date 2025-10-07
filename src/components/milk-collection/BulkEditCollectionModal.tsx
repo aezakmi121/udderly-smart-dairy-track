@@ -35,7 +35,7 @@ export const BulkEditCollectionModal: React.FC<BulkEditCollectionModalProps> = (
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md w-[95vw]">
         <DialogHeader>
           <DialogTitle>Bulk Edit Collections</DialogTitle>
           <DialogDescription>
@@ -50,41 +50,45 @@ export const BulkEditCollectionModal: React.FC<BulkEditCollectionModalProps> = (
               id="collection_date"
               type="date"
               {...register('collection_date', { required: true })}
+              className="w-full"
             />
           </div>
 
           <div className="space-y-2">
             <Label>Session</Label>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
+                size="sm"
                 variant={selectedSession === 'morning' ? 'default' : 'outline'}
                 onClick={() => setValue('session', 'morning')}
-                className="flex-1"
+                className="w-full"
               >
                 Morning
               </Button>
               <Button
                 type="button"
+                size="sm"
                 variant={selectedSession === 'evening' ? 'default' : 'outline'}
                 onClick={() => setValue('session', 'evening')}
-                className="flex-1"
+                className="w-full"
               >
                 Evening
               </Button>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
+          <div className="flex flex-col md:flex-row justify-end gap-2 pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
+              className="w-full md:w-auto"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className="w-full md:w-auto">
               {isLoading ? 'Updating...' : `Update ${selectedCount} Record${selectedCount !== 1 ? 's' : ''}`}
             </Button>
           </div>

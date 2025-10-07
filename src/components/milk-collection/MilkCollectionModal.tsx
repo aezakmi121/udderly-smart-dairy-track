@@ -37,14 +37,20 @@ export const MilkCollectionModal: React.FC<MilkCollectionModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-2xl bg-white">
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {initialData ? 'Update milk collection record' : 'Record milk collection from farmers'}
           </DialogDescription>
         </DialogHeader>
-        <MilkCollectionForm onSubmit={handleSubmit} isLoading={isLoading} initialData={initialData} selectedDate={selectedDate} selectedSession={selectedSession} />
+        <MilkCollectionForm 
+          onSubmit={handleSubmit} 
+          isLoading={isLoading} 
+          initialData={initialData} 
+          selectedDate={selectedDate} 
+          selectedSession={selectedSession} 
+        />
       </DialogContent>
     </Dialog>
   );

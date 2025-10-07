@@ -41,7 +41,7 @@ export const MilkCollectionManagement: React.FC = () => {
   } = useMilkCollection(selectedDate);
 
   const { isAdmin } = useUserPermissions();
-  const toast = useToast();
+  const { toast } = useToast();
 
   const canModify = React.useMemo(() => {
     const todayStr = new Date().toISOString().split("T")[0];
@@ -134,7 +134,7 @@ export const MilkCollectionManagement: React.FC = () => {
     }
   };
 
-  const handleBulkEdit = (data: { date: string; session: "morning" | "evening" }) => {
+  const handleBulkEdit = (data: { collection_date: string; session: "morning" | "evening" }) => {
     if (!canModify) {
       toast({
         title: "Editing locked",
@@ -147,8 +147,10 @@ export const MilkCollectionManagement: React.FC = () => {
     if (selectedIds.length > 0) {
       bulkUpdateMutation.mutate({
         ids: selectedIds,
-        date: data.date,
-        session: data.session,
+        updates: {
+          collection_date: data.collection_date,
+          session: data.session,
+        }
       });
       setSelectedIds([]);
       setBulkEditModalOpen(false);
@@ -156,7 +158,7 @@ export const MilkCollectionManagement: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 max-w-full overflow-x-hidden">
+    <div className="space-y-4 w-full max-w-full overflow-x-hidden px-2 md:px-0">
       {/* Title */}
       <div className="space-y-1">
         <h2 className="text-xl font-semibold">Milk Collection</h2>
@@ -166,36 +168,38 @@ export const MilkCollectionManagement: React.FC = () => {
       </div>
 
       {/* Controls (STACKED on mobile) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">
         {/* Date */}
-        <div className="w-full">
-          <Label htmlFor="selectedDate">Date</Label>
+        <div className="w-full min-w-0">
+          <Label htmlFor="selectedDate" className="text-sm">Date</Label>
           <Input
             id="selectedDate"
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-full md:w-48"
+            className="w-full"
           />
         </div>
 
         {/* Session */}
-        <div className="w-full">
-          <Label htmlFor="session-selector">Session</Label>
+        <div className="w-full min-w-0">
+          <Label htmlFor="session-selector" className="text-sm">Session</Label>
           <div className="grid grid-cols-2 gap-2 mt-2 w-full">
             <Button
               type="button"
+              size="sm"
               variant={selectedSession === "morning" ? "default" : "outline"}
               onClick={() => setSelectedSession("morning")}
-              className="w-full"
+              className="w-full text-xs md:text-sm"
             >
               Morning
             </Button>
             <Button
               type="button"
+              size="sm"
               variant={selectedSession === "evening" ? "default" : "outline"}
               onClick={() => setSelectedSession("evening")}
-              className="w-full"
+              className="w-full text-xs md:text-sm"
             >
               Evening
             </Button>
@@ -203,10 +207,10 @@ export const MilkCollectionManagement: React.FC = () => {
         </div>
 
         {/* Add button */}
-        <div className="w-full md:flex md:items-end md:justify-end">
+        <div className="w-full min-w-0 md:flex md:items-end md:justify-end">
           <Button className="w-full md:w-auto" onClick={() => setModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Add Collection
+            <span className="truncate">Add Collection</span>
           </Button>
         </div>
       </div>
@@ -260,8 +264,6 @@ export const MilkCollectionManagement: React.FC = () => {
         onDelete={handleDeleteCollection}
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
-        selectedDate={selectedDate}
-        selectedSession={selectedSession}
       />
 
       {/* Add / Edit Modal */}
@@ -271,8 +273,8 @@ export const MilkCollectionManagement: React.FC = () => {
         onSubmit={handleAddCollection}
         isLoading={addCollectionMutation.isPending || updateCollectionMutation.isPending}
         initialData={editingCollection}
-        session={selectedSession}
-        date={selectedDate}
+        selectedDate={selectedDate}
+        selectedSession={selectedSession}
       />
 
       {/* Bulk Edit Modal */}

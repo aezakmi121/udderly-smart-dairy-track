@@ -195,11 +195,11 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   };
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle>Record Milk Collection</CardTitle>
+    <Card className="mb-6 border-0 shadow-none">
+      <CardHeader className="px-0 pt-0">
+        <CardTitle className="text-lg">Record Milk Collection</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-0 pb-0">
         <form onSubmit={handleSubmit(handleFormSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.keys(validationErrors).length > 0 && (
             <div className="md:col-span-2">
@@ -214,7 +214,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
               </Alert>
             </div>
           )}
-          <div>
+          <div className="md:col-span-2">
             <Label htmlFor="farmer_code">Farmer Code</Label>
             <Input
               type="text"
