@@ -39,6 +39,11 @@ export const TodaysCollectionSummary: React.FC<TodaysCollectionSummaryProps> = (
   selectedDate,
   isLoading,
 }) => {
+  console.log('TodaysCollectionSummary - collections:', collections);
+  console.log('TodaysCollectionSummary - dailyStats:', dailyStats);
+  console.log('TodaysCollectionSummary - selectedDate:', selectedDate);
+  console.log('TodaysCollectionSummary - isLoading:', isLoading);
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
