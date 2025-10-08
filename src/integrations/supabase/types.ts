@@ -1075,6 +1075,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          expo_push_token: string | null
           fcm_token: string | null
           full_name: string
           id: string
@@ -1084,6 +1085,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          expo_push_token?: string | null
           fcm_token?: string | null
           full_name: string
           id: string
@@ -1093,6 +1095,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          expo_push_token?: string | null
           fcm_token?: string | null
           full_name?: string
           id?: string
