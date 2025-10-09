@@ -10,7 +10,7 @@ import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { SessionUnlock } from './SessionUnlock';
 import { AlertSettings } from './AlertSettings';
 import { MilkingSessionSettings } from './MilkingSessionSettings';
-import { ExpoPushTest } from './ExpoPushTest';
+import { FCMPushTest } from './ExpoPushTest';
 
 export const SettingsManagement = () => {
   const { isAdmin } = useUserPermissions();
@@ -112,8 +112,8 @@ export const SettingsManagement = () => {
             <CollapsibleContent>
               <CardContent className="space-y-6">
                 <div>
-                  <h3 className="text-md font-semibold mb-3">Expo Push Notifications Test</h3>
-                  <ExpoPushTest />
+                  <h3 className="text-md font-semibold mb-3">FCM Push Notifications Test</h3>
+                  <FCMPushTest />
                 </div>
                 
                 <div className="border-t pt-6">

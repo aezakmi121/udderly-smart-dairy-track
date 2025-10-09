@@ -7,32 +7,44 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Send } from 'lucide-react';
 
-export const ExpoPushTest: React.FC = () => {
+export const FCMPushTest: React.FC = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('Test Notification');
   const [body, setBody] = useState('This is a test notification from your web app!');
   const [testToken, setTestToken] = useState('');
+  const [useCurrentUser, setUseCurrentUser] = useState(true);
 
   const sendTestNotification = async () => {
-    if (!testToken.trim()) {
-      toast({
-        title: 'Token Required',
-        description: 'Please enter an Expo push token to test',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('expo-push', {
-        body: {
-          tokens: [testToken],
-          title,
-          body,
-          data: { test: true },
-        },
+      let requestBody: any = { title, body, data: { test: true } };
+
+      if (useCurrentUser) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast({
+            title: 'Not Authenticated',
+            description: 'You must be logged in to test',
+            variant: 'destructive',
+          });
+          return;
+        }
+        requestBody.userId = user.id;
+      } else {
+        if (!testToken.trim()) {
+          toast({
+            title: 'Token Required',
+            description: 'Please enter an FCM token to test',
+            variant: 'destructive',
+          });
+          return;
+        }
+        requestBody.tokens = [testToken];
+      }
+
+      const { data, error } = await supabase.functions.invoke('send-push-notification', {
+        body: requestBody,
       });
 
       if (error) throw error;
@@ -56,17 +68,34 @@ export const ExpoPushTest: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="expo-token">Expo Push Token</Label>
-        <Input
-          id="expo-token"
-          placeholder="ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]"
-          value={testToken}
-          onChange={(e) => setTestToken(e.target.value)}
-        />
-        <p className="text-xs text-muted-foreground">
-          Get this token from your mobile app after registering for push notifications
-        </p>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="use-current-user"
+            checked={useCurrentUser}
+            onChange={(e) => setUseCurrentUser(e.target.checked)}
+            className="rounded"
+          />
+          <Label htmlFor="use-current-user" className="cursor-pointer">
+            Send to my device (uses your FCM token)
+          </Label>
+        </div>
       </div>
+
+      {!useCurrentUser && (
+        <div className="space-y-2">
+          <Label htmlFor="fcm-token">FCM Token</Label>
+          <Input
+            id="fcm-token"
+            placeholder="Enter FCM device token"
+            value={testToken}
+            onChange={(e) => setTestToken(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Get this token from your app after registering for FCM push notifications
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="notif-title">Title</Label>
