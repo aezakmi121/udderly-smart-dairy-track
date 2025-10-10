@@ -346,3 +346,148 @@ export const generateIndividualFarmerPDF = (data: {
   
   return doc;
 };
+
+export const generateIndividualCowPerformancePDF = (data: {
+  cow: any;
+  productionHistory: Array<{ month: string; avgYield: number; totalYield: number }>;
+  recentProduction: { last7Days: number; last30Days: number };
+  breedingHistory: any[];
+  vaccinationHistory: any[];
+  weightLogs: any[];
+}) => {
+  const doc = new jsPDF();
+  
+  // Header
+  doc.setFontSize(20);
+  doc.text('Individual Cow Performance Report', 105, 20, { align: 'center' });
+  
+  // Cow Details
+  doc.setFontSize(12);
+  doc.text(`Cow Number: ${data.cow.cow_number}`, 20, 35);
+  doc.text(`Breed: ${data.cow.breed || 'N/A'}`, 20, 45);
+  doc.text(`Status: ${data.cow.status}`, 120, 35);
+  doc.text(`Lactation #: ${data.cow.lactation_number || 1}`, 120, 45);
+  
+  // Performance Metrics
+  doc.setFontSize(14);
+  doc.text('Performance Metrics', 20, 60);
+  doc.setFontSize(10);
+  doc.text(`Lifetime Yield: ${Number(data.cow.lifetime_yield || 0).toFixed(2)} L`, 20, 70);
+  doc.text(`Current Month: ${Number(data.cow.current_month_yield || 0).toFixed(2)} L`, 20, 80);
+  doc.text(`Peak Yield: ${Number(data.cow.peak_yield || 0).toFixed(2)} L`, 20, 90);
+  doc.text(`Days in Milk: ${data.cow.daysInMilk || 0}`, 120, 70);
+  doc.text(`Avg Daily (7d): ${data.recentProduction.last7Days.toFixed(2)} L`, 120, 80);
+  doc.text(`Avg Daily (30d): ${data.recentProduction.last30Days.toFixed(2)} L`, 120, 90);
+  
+  // Production History Table
+  if (data.productionHistory.length > 0) {
+    const productionData = data.productionHistory.map(item => [
+      item.month,
+      item.totalYield.toFixed(2),
+      item.avgYield.toFixed(2)
+    ]);
+    
+    doc.autoTable({
+      head: [['Month', 'Total Yield (L)', 'Avg Daily (L)']],
+      body: productionData,
+      startY: 105,
+      styles: { fontSize: 9 },
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185] }
+    });
+  }
+  
+  // Breeding History
+  if (data.breedingHistory.length > 0) {
+    const breedingData = data.breedingHistory.slice(0, 5).map(ai => [
+      formatDate(ai.ai_date),
+      `Service #${ai.service_number}`,
+      ai.pd_result || 'Pending',
+      ai.technician_name || 'N/A'
+    ]);
+    
+    const startY = data.productionHistory.length > 0 ? (doc as any).lastAutoTable.finalY + 15 : 105;
+    doc.setFontSize(12);
+    doc.text('Recent AI Services', 20, startY);
+    
+    doc.autoTable({
+      head: [['Date', 'Service', 'Result', 'Technician']],
+      body: breedingData,
+      startY: startY + 5,
+      styles: { fontSize: 9 },
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185] }
+    });
+  }
+  
+  // Vaccination History
+  if (data.vaccinationHistory.length > 0) {
+    const vaccinationData = data.vaccinationHistory.slice(0, 5).map(vax => [
+      formatDate(vax.vaccination_date),
+      vax.vaccination_schedules?.vaccine_name || 'N/A',
+      formatDate(vax.next_due_date),
+      vax.batch_number || 'N/A'
+    ]);
+    
+    const startY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setFontSize(12);
+    doc.text('Recent Vaccinations', 20, startY);
+    
+    doc.autoTable({
+      head: [['Vaccination Date', 'Vaccine', 'Next Due', 'Batch']],
+      body: vaccinationData,
+      startY: startY + 5,
+      styles: { fontSize: 9 },
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185] }
+    });
+  }
+  
+  // Weight Logs
+  if (data.weightLogs.length > 0) {
+    const weightData = data.weightLogs.slice(0, 5).map(log => [
+      formatDate(log.log_date),
+      Number(log.calculated_weight).toFixed(2) + ' kg',
+      Number(log.heart_girth).toFixed(2) + ' cm',
+      Number(log.body_length).toFixed(2) + ' cm'
+    ]);
+    
+    let startY = 105;
+    if ((doc as any).lastAutoTable?.finalY) {
+      startY = (doc as any).lastAutoTable.finalY + 15;
+    }
+    
+    // Check if we need a new page
+    if (startY > 250) {
+      doc.addPage();
+      startY = 20;
+    }
+    
+    doc.setFontSize(12);
+    doc.text('Weight History', 20, startY);
+    
+    doc.autoTable({
+      head: [['Date', 'Weight', 'Heart Girth', 'Body Length']],
+      body: weightData,
+      startY: startY + 5,
+      styles: { fontSize: 9 },
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185] }
+    });
+  }
+  
+  // Footer
+  doc.setFontSize(8);
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.text(
+      `Report generated on ${new Date().toLocaleDateString()} - Page ${i} of ${pageCount}`,
+      105,
+      285,
+      { align: 'center' }
+    );
+  }
+  
+  doc.save(`cow_${data.cow.cow_number}_performance_report.pdf`);
+};
