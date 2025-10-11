@@ -62,25 +62,141 @@ export const generateMilkProductionPDF = (data: {
   avgProduction: number;
   avgFat: number;
   avgSNF: number;
+  dailyAverage?: number;
+  peakDay?: { date: string; quantity: number };
+  periodChange?: number;
+  sessionBreakdown?: Array<{ session: string; quantity: number; records: number }>;
+  topPerformers?: Array<{ cowNumber: string; totalQuantity: number; avgQuantity: number }>;
+  bottomPerformers?: Array<{ cowNumber: string; totalQuantity: number; avgQuantity: number }>;
   dailyData: Array<{ date: string; quantity: number; avgFat: number; avgSNF: number }>;
 }) => {
   const doc = new jsPDF();
+  let yPos = 20;
   
   // Header
   doc.setFontSize(20);
-  doc.text('Milk Production Report', 20, 20);
+  doc.text('Comprehensive Milk Production Report', 20, yPos);
+  yPos += 10;
   
   // Date range
   doc.setFontSize(12);
-  doc.text(`Period: ${formatDate(data.fromDate)} to ${formatDate(data.toDate)}`, 20, 35);
+  doc.text(`Period: ${formatDate(data.fromDate)} to ${formatDate(data.toDate)}`, 20, yPos);
+  yPos += 15;
   
   // Summary stats
-  doc.text(`Total Production: ${data.totalProduction.toFixed(2)} L`, 20, 50);
-  doc.text(`Average Daily Production: ${data.avgProduction.toFixed(2)} L`, 20, 60);
-  doc.text(`Average Fat: ${data.avgFat.toFixed(2)}%`, 20, 70);
-  doc.text(`Average SNF: ${data.avgSNF.toFixed(2)}%`, 20, 80);
+  doc.setFontSize(11);
+  doc.text(`Total Production: ${data.totalProduction.toFixed(2)} L`, 20, yPos);
+  yPos += 7;
+  doc.text(`Daily Average: ${(data.dailyAverage || data.avgProduction).toFixed(2)} L`, 20, yPos);
+  yPos += 7;
+  
+  if (data.periodChange !== undefined) {
+    const changeText = data.periodChange >= 0 ? `+${data.periodChange}%` : `${data.periodChange}%`;
+    doc.text(`Period Change: ${changeText} vs previous period`, 20, yPos);
+    yPos += 7;
+  }
+  
+  if (data.peakDay?.date) {
+    doc.text(`Peak Day: ${data.peakDay.quantity.toFixed(2)} L on ${formatDate(data.peakDay.date)}`, 20, yPos);
+    yPos += 7;
+  }
+  
+  doc.text(`Average Fat: ${data.avgFat.toFixed(2)}%`, 20, yPos);
+  yPos += 7;
+  doc.text(`Average SNF: ${data.avgSNF.toFixed(2)}%`, 20, yPos);
+  yPos += 15;
+  
+  // Session breakdown
+  if (data.sessionBreakdown && data.sessionBreakdown.length > 0) {
+    doc.setFontSize(14);
+    doc.text('Session Breakdown', 20, yPos);
+    yPos += 5;
+    
+    const sessionTable = data.sessionBreakdown.map(s => [
+      s.session,
+      s.quantity.toFixed(2),
+      s.records.toString(),
+      (s.quantity / s.records).toFixed(2)
+    ]);
+    
+    doc.autoTable({
+      startY: yPos,
+      head: [['Session', 'Total (L)', 'Records', 'Avg per Record']],
+      body: sessionTable,
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185] }
+    });
+    
+    yPos = (doc as any).lastAutoTable.finalY + 10;
+  }
+  
+  // Top performers
+  if (data.topPerformers && data.topPerformers.length > 0) {
+    if (yPos > 240) {
+      doc.addPage();
+      yPos = 20;
+    }
+    
+    doc.setFontSize(14);
+    doc.text('Top 5 Performing Cows', 20, yPos);
+    yPos += 5;
+    
+    const topTable = data.topPerformers.map((cow, idx) => [
+      `#${idx + 1}`,
+      cow.cowNumber,
+      cow.totalQuantity.toFixed(2),
+      cow.avgQuantity.toFixed(2)
+    ]);
+    
+    doc.autoTable({
+      startY: yPos,
+      head: [['Rank', 'Cow Number', 'Total (L)', 'Avg/Session']],
+      body: topTable,
+      theme: 'grid',
+      headStyles: { fillColor: [34, 197, 94] }
+    });
+    
+    yPos = (doc as any).lastAutoTable.finalY + 10;
+  }
+  
+  // Bottom performers
+  if (data.bottomPerformers && data.bottomPerformers.length > 0) {
+    if (yPos > 240) {
+      doc.addPage();
+      yPos = 20;
+    }
+    
+    doc.setFontSize(14);
+    doc.text('Bottom 5 Performers (Need Attention)', 20, yPos);
+    yPos += 5;
+    
+    const bottomTable = data.bottomPerformers.map(cow => [
+      cow.cowNumber,
+      cow.totalQuantity.toFixed(2),
+      cow.avgQuantity.toFixed(2)
+    ]);
+    
+    doc.autoTable({
+      startY: yPos,
+      head: [['Cow Number', 'Total (L)', 'Avg/Session']],
+      body: bottomTable,
+      theme: 'grid',
+      headStyles: { fillColor: [251, 146, 60] }
+    });
+    
+    yPos = (doc as any).lastAutoTable.finalY + 10;
+  }
   
   // Daily breakdown table
+  if (yPos > 200) {
+    doc.addPage();
+    yPos = 20;
+  }
+  
+  doc.setFontSize(14);
+  doc.text('Daily Production Details', 20, yPos);
+  yPos += 5;
+  
   const tableData = data.dailyData.length > 0 
     ? data.dailyData.map(item => [
         formatDate(item.date),
@@ -91,7 +207,7 @@ export const generateMilkProductionPDF = (data: {
     : [['No data available', '-', '-', '-']];
   
   doc.autoTable({
-    startY: 95,
+    startY: yPos,
     head: [['Date', 'Production (L)', 'Avg Fat (%)', 'Avg SNF (%)']],
     body: tableData,
     theme: 'grid',

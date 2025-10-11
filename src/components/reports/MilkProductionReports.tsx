@@ -29,7 +29,7 @@ export const MilkProductionReports = () => {
         .from('milk_production')
         .select(`
           *,
-          cows!cow_id (cow_number, lactation_number, last_calving_date)
+          cows!cow_id (cow_number, lactation_number, last_calving_date, breed)
         `)
         .gte('production_date', fromDate)
         .lte('production_date', toDate)
@@ -42,6 +42,27 @@ export const MilkProductionReports = () => {
       const avgProduction = data.length > 0 ? totalProduction / data.length : 0;
       const avgFat = data.length > 0 ? data.reduce((sum, r) => sum + (Number(r.fat_percentage) || 0), 0) / data.length : 0;
       const avgSNF = data.length > 0 ? data.reduce((sum, r) => sum + (Number(r.snf_percentage) || 0), 0) / data.length : 0;
+      
+      // Find peak production day
+      const peakDay = data.reduce((max, record) => {
+        return Number(record.quantity) > (max.quantity || 0) ? 
+          { date: record.production_date, quantity: Number(record.quantity) } : max;
+      }, { date: '', quantity: 0 });
+      
+      // Calculate previous period comparison
+      const dateRange = new Date(toDate).getTime() - new Date(fromDate).getTime();
+      const prevFromDate = format(new Date(new Date(fromDate).getTime() - dateRange), 'yyyy-MM-dd');
+      const prevToDate = format(new Date(new Date(fromDate).getTime() - 1), 'yyyy-MM-dd');
+      
+      const { data: prevData } = await supabase
+        .from('milk_production')
+        .select('quantity')
+        .gte('production_date', prevFromDate)
+        .lte('production_date', prevToDate);
+        
+      const prevTotalProduction = prevData?.reduce((sum, record) => sum + Number(record.quantity), 0) || 0;
+      const periodChange = prevTotalProduction > 0 ? 
+        ((totalProduction - prevTotalProduction) / prevTotalProduction * 100) : 0;
 
       // Session breakdown
       const sessionData = data.reduce((acc, record) => {
@@ -128,7 +149,7 @@ export const MilkProductionReports = () => {
         return acc;
       }, {} as any);
 
-      const topPerformers = Object.values(cowPerformance)
+      const allPerformers = Object.values(cowPerformance)
         .map((cow: any) => {
           const daysInMilk = cow.lastCalvingDate ? 
             Math.floor((new Date().getTime() - new Date(cow.lastCalvingDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
@@ -144,8 +165,10 @@ export const MilkProductionReports = () => {
             daysInMilk
           };
         })
-        .sort((a, b) => b.totalQuantity - a.totalQuantity)
-        .slice(0, 10);
+        .sort((a, b) => b.totalQuantity - a.totalQuantity);
+        
+      const topPerformers = allPerformers.slice(0, 5);
+      const bottomPerformers = allPerformers.slice(-5).reverse();
 
       // Lactation analysis
       const lactationData = data.reduce((acc, record) => {
@@ -161,6 +184,33 @@ export const MilkProductionReports = () => {
         
         return acc;
       }, {} as any);
+      
+      // Breed analysis
+      const breedData = data.reduce((acc, record) => {
+        const breed = record.cows?.breed || 'Unknown';
+        
+        if (!acc[breed]) {
+          acc[breed] = { name: breed, quantity: 0, records: 0 };
+        }
+        
+        acc[breed].quantity += Number(record.quantity);
+        acc[breed].records += 1;
+        
+        return acc;
+      }, {} as any);
+      
+      // Session performance comparison
+      const sessionComparison = Object.values(sessionData).map((s: any) => ({
+        ...s,
+        avgPerSession: s.records > 0 ? Math.round((s.quantity / s.records) * 100) / 100 : 0
+      }));
+      
+      const bestSession = sessionComparison.reduce((best, current) => 
+        current.quantity > best.quantity ? current : best, sessionComparison[0] || {});
+      
+      // Days with low production (below average)
+      const dailyAvg = totalProduction / processedDailyTrends.length;
+      const lowProductionDays = processedDailyTrends.filter(day => day.quantity < dailyAvg * 0.8);
 
       return {
         totalProduction: Math.round(totalProduction * 100) / 100,
@@ -168,10 +218,18 @@ export const MilkProductionReports = () => {
         avgFat: Math.round(avgFat * 100) / 100,
         avgSNF: Math.round(avgSNF * 100) / 100,
         recordsCount: data.length,
-        sessionBreakdown: Object.values(sessionData),
+        sessionBreakdown: Object.values(sessionData) as Array<{ session: string; quantity: number; records: number }>,
         dailyTrends: processedDailyTrends,
         topPerformers,
-        lactationBreakdown: Object.values(lactationData),
+        bottomPerformers,
+        lactationBreakdown: Object.values(lactationData) as Array<{ name: string; quantity: number; records: number }>,
+        breedBreakdown: Object.values(breedData) as Array<{ name: string; quantity: number; records: number }>,
+        sessionComparison,
+        bestSession,
+        lowProductionDays,
+        peakDay,
+        periodChange: Math.round(periodChange * 100) / 100,
+        dailyAverage: Math.round(dailyAvg * 100) / 100,
         rawData: data
       };
     },
@@ -246,11 +304,17 @@ export const MilkProductionReports = () => {
       avgProduction: productionAnalytics.avgProduction,
       avgFat: productionAnalytics.avgFat,
       avgSNF: productionAnalytics.avgSNF,
+      dailyAverage: productionAnalytics.dailyAverage,
+      peakDay: productionAnalytics.peakDay,
+      periodChange: productionAnalytics.periodChange,
+      sessionBreakdown: productionAnalytics.sessionBreakdown,
+      topPerformers: productionAnalytics.topPerformers,
+      bottomPerformers: productionAnalytics.bottomPerformers,
       dailyData: productionAnalytics.dailyTrends
     };
     
     const doc = generateMilkProductionPDF(pdfData);
-    doc.save(`milk_production_report_${fromDate}_to_${toDate}.pdf`);
+    doc.save(`milk_production_comprehensive_${fromDate}_to_${toDate}.pdf`);
     toast({ title: "PDF downloaded successfully!" });
   };
 
@@ -328,6 +392,11 @@ export const MilkProductionReports = () => {
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Total Production</p>
                     <p className="text-2xl font-bold">{productionAnalytics.totalProduction} L</p>
+                    {productionAnalytics.periodChange !== undefined && (
+                      <p className={`text-xs mt-1 ${productionAnalytics.periodChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {productionAnalytics.periodChange >= 0 ? '+' : ''}{productionAnalytics.periodChange}% vs prev period
+                      </p>
+                    )}
                   </div>
                   <Droplets className="h-8 w-8 text-muted-foreground" />
                 </div>
@@ -338,8 +407,13 @@ export const MilkProductionReports = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Average Production</p>
-                    <p className="text-2xl font-bold">{productionAnalytics.avgProduction} L</p>
+                    <p className="text-sm font-medium text-muted-foreground">Daily Average</p>
+                    <p className="text-2xl font-bold">{productionAnalytics.dailyAverage} L</p>
+                    {productionAnalytics.peakDay?.date && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Peak: {productionAnalytics.peakDay.quantity}L on {format(new Date(productionAnalytics.peakDay.date), 'dd MMM')}
+                      </p>
+                    )}
                   </div>
                   <TrendingUp className="h-8 w-8 text-muted-foreground" />
                 </div>
@@ -370,50 +444,97 @@ export const MilkProductionReports = () => {
               </CardContent>
             </Card>
           </div>
+          
+          {/* Session Performance Insight */}
+          {productionAnalytics.bestSession && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-primary" />
+                  <p className="text-sm">
+                    <span className="font-semibold">{productionAnalytics.bestSession.session}</span> session performed best with{' '}
+                    <span className="font-semibold">{Math.round(productionAnalytics.bestSession.quantity)} L</span> total production
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Low Production Alert */}
+          {productionAnalytics.lowProductionDays && productionAnalytics.lowProductionDays.length > 0 && (
+            <Card className="bg-orange-50 border-orange-200">
+              <CardContent className="p-4">
+                <p className="text-sm text-orange-800">
+                  <span className="font-semibold">⚠️ Alert:</span> {productionAnalytics.lowProductionDays.length} days had production 
+                  below 80% of average ({productionAnalytics.dailyAverage}L). Check: {productionAnalytics.lowProductionDays.slice(0, 3).map(d => format(new Date(d.date), 'dd MMM')).join(', ')}
+                  {productionAnalytics.lowProductionDays.length > 3 && ` and ${productionAnalytics.lowProductionDays.length - 3} more`}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Session Wise Production */}
             <Card>
               <CardHeader>
-                <CardTitle>Session Wise Production</CardTitle>
+                <CardTitle>Session Breakdown</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={productionAnalytics.sessionBreakdown}>
+                  <BarChart data={productionAnalytics.sessionComparison}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="session" />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="quantity" fill="#3b82f6" />
+                    <Bar dataKey="quantity" fill="#3b82f6" name="Total (L)" />
+                    <Bar dataKey="avgPerSession" fill="#10b981" name="Avg per Session" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            {/* Lactation Analysis */}
+            {/* Breed Analysis */}
             <Card>
               <CardHeader>
-                <CardTitle>Lactation Analysis</CardTitle>
+                <CardTitle>Production by Breed</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={productionAnalytics.lactationBreakdown}
+                      data={productionAnalytics.breedBreakdown}
                       cx="50%"
                       cy="50%"
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="quantity"
-                      label={({ name, value }) => `${name}: ${value}L`}
+                      label={({ name, value }) => `${name}: ${Math.round(value)}L`}
                     >
-                      {productionAnalytics.lactationBreakdown.map((entry, index) => (
+                      {productionAnalytics.breedBreakdown.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip />
                   </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            
+            {/* Lactation Analysis */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Production by Lactation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={productionAnalytics.lactationBreakdown}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="quantity" fill="#8b5cf6" />
+                  </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -440,10 +561,81 @@ export const MilkProductionReports = () => {
             </CardContent>
           </Card>
 
-          {/* Top Performing Cows */}
+          {/* Cow Performance Analysis */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Top Performing Cows */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-green-600">🏆 Top 5 Performers</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Rank</TableHead>
+                        <TableHead>Cow</TableHead>
+                        <TableHead>Total (L)</TableHead>
+                        <TableHead>Avg/Session</TableHead>
+                        <TableHead>Sessions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {productionAnalytics.topPerformers.map((cow, index) => (
+                        <TableRow key={index} className="bg-green-50">
+                          <TableCell className="font-bold text-green-600">#{index + 1}</TableCell>
+                          <TableCell className="font-medium">{cow.cowNumber}</TableCell>
+                          <TableCell className="font-semibold">{cow.totalQuantity}</TableCell>
+                          <TableCell>{cow.avgQuantity}</TableCell>
+                          <TableCell>{cow.records}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Bottom Performing Cows */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-orange-600">⚠️ Bottom 5 Performers</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Cow</TableHead>
+                        <TableHead>Total (L)</TableHead>
+                        <TableHead>Avg/Session</TableHead>
+                        <TableHead>Days in Milk</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {productionAnalytics.bottomPerformers.map((cow, index) => (
+                        <TableRow key={index} className="bg-orange-50">
+                          <TableCell className="font-medium">{cow.cowNumber}</TableCell>
+                          <TableCell>{cow.totalQuantity}</TableCell>
+                          <TableCell>{cow.avgQuantity}</TableCell>
+                          <TableCell>{cow.daysInMilk}</TableCell>
+                          <TableCell>
+                            <span className="text-xs text-orange-600">Needs attention</span>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Detailed Performance Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Top Performing Cows</CardTitle>
+              <CardTitle>Detailed Cow Performance</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -461,18 +653,20 @@ export const MilkProductionReports = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {productionAnalytics.topPerformers.map((cow, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium">{cow.cowNumber}</TableCell>
-                        <TableCell>{cow.totalQuantity}</TableCell>
-                        <TableCell>{cow.avgQuantity}</TableCell>
-                        <TableCell>{cow.records}</TableCell>
-                        <TableCell>{cow.avgFat}</TableCell>
-                        <TableCell>{cow.avgSNF}</TableCell>
-                        <TableCell>{cow.lactationNumber}</TableCell>
-                        <TableCell>{cow.daysInMilk}</TableCell>
-                      </TableRow>
-                    ))}
+                    {[...productionAnalytics.topPerformers, ...productionAnalytics.bottomPerformers]
+                      .sort((a, b) => b.totalQuantity - a.totalQuantity)
+                      .map((cow, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-medium">{cow.cowNumber}</TableCell>
+                          <TableCell>{cow.totalQuantity}</TableCell>
+                          <TableCell>{cow.avgQuantity}</TableCell>
+                          <TableCell>{cow.records}</TableCell>
+                          <TableCell>{cow.avgFat}</TableCell>
+                          <TableCell>{cow.avgSNF}</TableCell>
+                          <TableCell>{cow.lactationNumber}</TableCell>
+                          <TableCell>{cow.daysInMilk}</TableCell>
+                        </TableRow>
+                      ))}
                   </TableBody>
                 </Table>
               </div>

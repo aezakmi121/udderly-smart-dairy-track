@@ -24,7 +24,13 @@ export const IndividualCowPerformance = () => {
         .order('cow_number');
       
       if (error) throw error;
-      return data;
+      
+      // Sort numerically instead of alphabetically
+      return data?.sort((a, b) => {
+        const numA = parseInt(a.cow_number.replace(/\D/g, '')) || 0;
+        const numB = parseInt(b.cow_number.replace(/\D/g, '')) || 0;
+        return numA - numB;
+      });
     }
   });
 
