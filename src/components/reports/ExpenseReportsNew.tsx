@@ -235,11 +235,23 @@ export const ExpenseReportsNew = () => {
       const pdfData = {
         fromDate,
         toDate,
+        reportType,
         totalExpenses: expenseAnalytics.totalExpenses,
         averagePerMonth: expenseAnalytics.averagePerMonth,
         recordsCount: expenseAnalytics.recordsCount,
         categoryBreakdown: expenseAnalytics.categoryBreakdown,
-        monthlyTrends: expenseAnalytics.monthlyTrends
+        monthlyTrends: expenseAnalytics.monthlyTrends,
+        transactions: expenseAnalytics.rawData.map(record => ({
+          date: reportType === 'accrual' ? record.payment_period : record.payment_date,
+          amount: record.amount,
+          category: record.expense_categories?.name || 'Uncategorized',
+          source: record.expense_sources?.name || 'Not Specified',
+          paymentMethod: record.payment_methods?.name || 'Not Specified',
+          vendor: record.vendor_name || 'N/A',
+          paidBy: record.paid_by || 'N/A',
+          description: record.description || 'N/A',
+          receiptUrl: record.receipt_url || null
+        }))
       };
       
       const doc = generateExpenseReportPDF(pdfData);

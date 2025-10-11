@@ -276,28 +276,62 @@ export const generatePayoutPDF = (data: {
 export const generateExpenseReportPDF = (data: {
   fromDate: string;
   toDate: string;
+  reportType?: string;
   totalExpenses: number;
   averagePerMonth: number;
   recordsCount: number;
   categoryBreakdown: Array<{ name: string; amount: number; percentage: number }>;
   monthlyTrends: Array<{ month: string; amount: number }>;
+  transactions?: Array<{
+    date: string;
+    amount: number;
+    category: string;
+    source: string;
+    paymentMethod: string;
+    vendor: string;
+    paidBy: string;
+    description: string;
+    receiptUrl: string | null;
+  }>;
 }) => {
   const doc = new jsPDF();
+  let yPos = 20;
   
   // Header
   doc.setFontSize(20);
-  doc.text('Expense Report', 20, 20);
+  doc.text('Expense Report', 20, yPos);
+  yPos += 10;
+  
+  // Report type
+  if (data.reportType) {
+    doc.setFontSize(10);
+    doc.text(`Report Type: ${data.reportType === 'accrual' ? 'Accrual Accounting' : 'Cashflow Accounting'}`, 20, yPos);
+    yPos += 5;
+  }
   
   // Date range
   doc.setFontSize(12);
-  doc.text(`Period: ${formatDate(data.fromDate)} to ${formatDate(data.toDate)}`, 20, 35);
+  doc.text(`Period: ${formatDate(data.fromDate)} to ${formatDate(data.toDate)}`, 20, yPos);
+  yPos += 15;
   
   // Summary stats
-  doc.text(`Total Expenses: Rs.${data.totalExpenses.toFixed(2)}`, 20, 50);
-  doc.text(`Average per Month: Rs.${data.averagePerMonth.toFixed(2)}`, 20, 60);
-  doc.text(`Total Records: ${data.recordsCount}`, 20, 70);
+  doc.setFontSize(14);
+  doc.text('Summary', 20, yPos);
+  yPos += 10;
+  
+  doc.setFontSize(11);
+  doc.text(`Total Expenses: Rs.${data.totalExpenses.toFixed(2)}`, 20, yPos);
+  yPos += 7;
+  doc.text(`Average per Month: Rs.${data.averagePerMonth.toFixed(2)}`, 20, yPos);
+  yPos += 7;
+  doc.text(`Total Records: ${data.recordsCount}`, 20, yPos);
+  yPos += 12;
   
   // Category breakdown table
+  doc.setFontSize(14);
+  doc.text('Category Breakdown', 20, yPos);
+  yPos += 5;
+  
   const categoryData = data.categoryBreakdown.length > 0 
     ? data.categoryBreakdown.map(item => [
         item.name,
@@ -307,27 +341,119 @@ export const generateExpenseReportPDF = (data: {
     : [['No data available', '-', '-']];
   
   doc.autoTable({
-    startY: 85,
+    startY: yPos,
     head: [['Category', 'Amount (Rs.)', 'Percentage']],
     body: categoryData,
     theme: 'grid',
     headStyles: { fillColor: [41, 128, 185] }
   });
   
+  yPos = (doc as any).lastAutoTable.finalY + 15;
+  
   // Monthly trends table
-  if (data.monthlyTrends.length > 0) {
+  if (data.monthlyTrends && data.monthlyTrends.length > 0) {
+    // Check if we need a new page
+    if (yPos > 230) {
+      doc.addPage();
+      yPos = 20;
+    }
+    
+    doc.setFontSize(14);
+    doc.text('Monthly Trends', 20, yPos);
+    yPos += 5;
+    
     const monthlyData = data.monthlyTrends.map(item => [
       item.month,
       `Rs.${item.amount.toFixed(2)}`
     ]);
     
     doc.autoTable({
-      startY: 150, // Fixed position instead of using lastAutoTable
+      startY: yPos,
       head: [['Month', 'Amount (Rs.)']],
       body: monthlyData,
       theme: 'grid',
       headStyles: { fillColor: [41, 128, 185] }
     });
+    
+    yPos = (doc as any).lastAutoTable.finalY + 15;
+  }
+  
+  // Detailed transaction breakdown
+  if (data.transactions && data.transactions.length > 0) {
+    // Add new page for transactions
+    doc.addPage();
+    yPos = 20;
+    
+    doc.setFontSize(16);
+    doc.text('Detailed Transaction Breakdown', 20, yPos);
+    yPos += 10;
+    
+    const transactionData = data.transactions.map(txn => {
+      const row = [
+        formatDate(txn.date),
+        `Rs.${txn.amount.toFixed(2)}`,
+        txn.category,
+        txn.source,
+        txn.paymentMethod,
+        txn.vendor,
+        txn.paidBy,
+        txn.description.length > 30 ? txn.description.substring(0, 27) + '...' : txn.description
+      ];
+      
+      // Add receipt indicator
+      if (txn.receiptUrl) {
+        row.push('View');
+      } else {
+        row.push('-');
+      }
+      
+      return row;
+    });
+    
+    doc.autoTable({
+      startY: yPos,
+      head: [['Date', 'Amount', 'Category', 'Source', 'Payment', 'Vendor', 'Paid By', 'Description', 'Receipt']],
+      body: transactionData,
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185] },
+      styles: { fontSize: 7, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 20 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 18 },
+        5: { cellWidth: 18 },
+        6: { cellWidth: 18 },
+        7: { cellWidth: 30 },
+        8: { cellWidth: 12 }
+      },
+      didDrawCell: (cellData: any) => {
+        // Add clickable link for receipts
+        if (cellData.column.index === 8 && cellData.cell.section === 'body') {
+          const receiptUrl = data.transactions?.[cellData.row.index]?.receiptUrl;
+          
+          if (receiptUrl) {
+            doc.setTextColor(0, 0, 255);
+            doc.textWithLink('View', cellData.cell.x + 2, cellData.cell.y + cellData.cell.height / 2, { url: receiptUrl });
+            doc.setTextColor(0, 0, 0);
+          }
+        }
+      }
+    });
+  }
+  
+  // Footer
+  doc.setFontSize(8);
+  const pageCount = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.text(
+      `Report generated on ${new Date().toLocaleDateString()} - Page ${i} of ${pageCount}`,
+      105,
+      285,
+      { align: 'center' }
+    );
   }
   
   return doc;
