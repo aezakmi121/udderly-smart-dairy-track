@@ -333,39 +333,85 @@ export const generateExpenseReportPDF = (data: {
   doc.text(`Total Transactions: ${data.recordsCount}`, 25, yPos);
   yPos += 15;
   
-  // Category breakdown table with distribution
+  // Category breakdown with pie chart
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
   doc.text('Category-wise Distribution', 20, yPos);
-  yPos += 5;
+  yPos += 10;
   
-  const categoryData = data.categoryBreakdown.length > 0 
-    ? data.categoryBreakdown.map(item => [
-        item.name,
-        `Rs.${item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        `${item.percentage.toFixed(1)}%`,
-        item.count.toString(),
-        '█'.repeat(Math.round(item.percentage / 5)) // Visual bar
-      ])
-    : [['No data available', '-', '-', '-', '-']];
-  
-  doc.autoTable({
-    startY: yPos,
-    head: [['Category', 'Amount (Rs.)', '%', 'Count', 'Distribution']],
-    body: categoryData,
-    theme: 'striped',
-    headStyles: { fillColor: [41, 128, 185], fontStyle: 'bold', fontSize: 10 },
-    styles: { fontSize: 9 },
-    columnStyles: {
-      0: { cellWidth: 45 },
-      1: { cellWidth: 40, halign: 'right' },
-      2: { cellWidth: 20, halign: 'center' },
-      3: { cellWidth: 20, halign: 'center' },
-      4: { cellWidth: 50, halign: 'left' }
-    }
-  });
-  
-  yPos = (doc as any).lastAutoTable.finalY + 15;
+  // Draw pie chart
+  if (data.categoryBreakdown.length > 0) {
+    const centerX = 60;
+    const centerY = yPos + 40;
+    const radius = 35;
+    const colors = [
+      [41, 128, 185],   // Blue
+      [231, 76, 60],    // Red
+      [46, 204, 113],   // Green
+      [241, 196, 15],   // Yellow
+      [155, 89, 182],   // Purple
+      [230, 126, 34],   // Orange
+      [52, 73, 94],     // Dark Blue
+      [149, 165, 166]   // Gray
+    ];
+    
+    let startAngle = 0;
+    
+    data.categoryBreakdown.forEach((item, index) => {
+      const angle = (item.percentage / 100) * 2 * Math.PI;
+      const color = colors[index % colors.length];
+      
+      doc.setFillColor(color[0], color[1], color[2]);
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(1);
+      
+      // Draw pie slice
+      doc.circle(centerX, centerY, radius, 'FD');
+      const endAngle = startAngle + angle;
+      
+      // Draw actual slice using lines
+      const x1 = centerX + radius * Math.cos(startAngle);
+      const y1 = centerY + radius * Math.sin(startAngle);
+      const x2 = centerX + radius * Math.cos(endAngle);
+      const y2 = centerY + radius * Math.sin(endAngle);
+      
+      // Create wedge
+      doc.setFillColor(color[0], color[1], color[2]);
+      const steps = 20;
+      const stepAngle = angle / steps;
+      doc.moveTo(centerX, centerY);
+      for (let i = 0; i <= steps; i++) {
+        const a = startAngle + i * stepAngle;
+        const x = centerX + radius * Math.cos(a);
+        const y = centerY + radius * Math.sin(a);
+        if (i === 0) {
+          doc.lines([[x - centerX, y - centerY]], centerX, centerY, [1, 1], 'F');
+        }
+      }
+      
+      startAngle = endAngle;
+    });
+    
+    // Draw legend on the right
+    let legendY = yPos + 10;
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    
+    data.categoryBreakdown.forEach((item, index) => {
+      const color = colors[index % colors.length];
+      
+      // Color box
+      doc.setFillColor(color[0], color[1], color[2]);
+      doc.rect(115, legendY - 3, 5, 5, 'F');
+      
+      // Legend text
+      doc.setTextColor(0, 0, 0);
+      doc.text(`${item.name}: ${item.percentage.toFixed(1)}% (Rs.${item.amount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })})`, 122, legendY);
+      legendY += 7;
+    });
+    
+    yPos = Math.max(centerY + radius + 15, legendY + 5);
+  }
   
   // Monthly trends table
   if (data.monthlyTrends && data.monthlyTrends.length > 0) {
@@ -480,12 +526,12 @@ export const generateExpenseReportPDF = (data: {
       
       yPos = (doc as any).lastAutoTable.finalY + 10;
       
-      // Add category distribution chart (simple text-based)
-      if (yPos < 240) {
-        doc.setFontSize(10);
+      // Add source distribution pie chart
+      if (yPos < 200) {
+        doc.setFontSize(11);
         doc.setFont(undefined, 'bold');
-        doc.text('Source Distribution:', 20, yPos);
-        yPos += 5;
+        doc.text('Source Distribution for ' + category, 20, yPos);
+        yPos += 10;
         
         // Calculate source breakdown for this category
         const sourceBreakdown = categoryTransactions.reduce((acc, txn) => {
@@ -496,13 +542,62 @@ export const generateExpenseReportPDF = (data: {
           return acc;
         }, {} as Record<string, number>);
         
+        const sourceData = Object.entries(sourceBreakdown).map(([source, amount]) => ({
+          name: source,
+          amount,
+          percentage: (amount / categoryTotal) * 100
+        }));
+        
+        // Draw mini pie chart
+        const centerX = 50;
+        const centerY = yPos + 30;
+        const radius = 25;
+        const colors = [
+          [41, 128, 185],   // Blue
+          [231, 76, 60],    // Red
+          [46, 204, 113],   // Green
+          [241, 196, 15],   // Yellow
+          [155, 89, 182]    // Purple
+        ];
+        
+        let startAngle = 0;
+        sourceData.forEach((item, index) => {
+          const angle = (item.percentage / 100) * 2 * Math.PI;
+          const color = colors[index % colors.length];
+          
+          doc.setFillColor(color[0], color[1], color[2]);
+          doc.setDrawColor(255, 255, 255);
+          doc.setLineWidth(0.5);
+          
+          // Draw wedge
+          const steps = 15;
+          const stepAngle = angle / steps;
+          for (let i = 0; i <= steps; i++) {
+            const a1 = startAngle + i * stepAngle;
+            const a2 = startAngle + (i + 1) * stepAngle;
+            const x1 = centerX + radius * Math.cos(a1);
+            const y1 = centerY + radius * Math.sin(a1);
+            const x2 = centerX + radius * Math.cos(a2);
+            const y2 = centerY + radius * Math.sin(a2);
+            
+            doc.triangle(centerX, centerY, x1, y1, x2, y2, 'FD');
+          }
+          
+          startAngle += angle;
+        });
+        
+        // Legend
+        let legendY = yPos + 10;
+        doc.setFontSize(8);
         doc.setFont(undefined, 'normal');
-        doc.setFontSize(9);
-        Object.entries(sourceBreakdown).forEach(([source, amount]) => {
-          const sourcePercentage = (amount / categoryTotal) * 100;
-          const bar = '█'.repeat(Math.round(sourcePercentage / 5));
-          doc.text(`${source}: Rs.${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (${sourcePercentage.toFixed(1)}%) ${bar}`, 25, yPos);
-          yPos += 5;
+        
+        sourceData.forEach((item, index) => {
+          const color = colors[index % colors.length];
+          doc.setFillColor(color[0], color[1], color[2]);
+          doc.rect(90, legendY - 3, 4, 4, 'F');
+          doc.setTextColor(0, 0, 0);
+          doc.text(`${item.name}: ${item.percentage.toFixed(1)}% (Rs.${item.amount.toLocaleString('en-IN', { minimumFractionDigits: 0 })})`, 96, legendY);
+          legendY += 6;
         });
       }
     });
