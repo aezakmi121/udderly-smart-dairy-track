@@ -71,17 +71,34 @@ export const ExpenseReportsNew = () => {
   const { data: expenseAnalytics, isLoading, error } = useQuery({
     queryKey: ['expense-analytics', reportType, fromDate, toDate],
     queryFn: async (): Promise<ExpenseAnalytics> => {
-      const { data, error } = await supabase
+      // For accrual, we need to check if the payment_period month falls within the date range
+      let query = supabase
         .from('expenses')
         .select(`
           *,
           expense_categories!expenses_category_id_fkey (name),
           expense_sources!expenses_source_id_fkey (name),
           payment_methods!expenses_payment_method_id_fkey (name)
-        `)
-        .gte(reportType === 'accrual' ? 'payment_period' : 'payment_date', fromDate)
-        .lte(reportType === 'accrual' ? 'payment_period' : 'payment_date', toDate)
-        .order(reportType === 'accrual' ? 'payment_period' : 'payment_date', { ascending: true });
+        `);
+
+      if (reportType === 'accrual') {
+        // For accrual, payment_period is stored as first day of month
+        // We need to get all records where the month falls within our date range
+        const fromMonth = fromDate.substring(0, 7); // YYYY-MM
+        const toMonth = toDate.substring(0, 7); // YYYY-MM
+        query = query
+          .gte('payment_period', `${fromMonth}-01`)
+          .lte('payment_period', `${toMonth}-01`)
+          .order('payment_period', { ascending: true });
+      } else {
+        // For cashflow, use exact payment_date
+        query = query
+          .gte('payment_date', fromDate)
+          .lte('payment_date', toDate)
+          .order('payment_date', { ascending: true });
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 

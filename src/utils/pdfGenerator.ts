@@ -280,7 +280,7 @@ export const generateExpenseReportPDF = (data: {
   totalExpenses: number;
   averagePerMonth: number;
   recordsCount: number;
-  categoryBreakdown: Array<{ name: string; amount: number; percentage: number }>;
+  categoryBreakdown: Array<{ name: string; amount: number; percentage: number; count: number }>;
   monthlyTrends: Array<{ month: string; amount: number }>;
   transactions?: Array<{
     date: string;
@@ -297,148 +297,213 @@ export const generateExpenseReportPDF = (data: {
   const doc = new jsPDF();
   let yPos = 20;
   
-  // Header
+  // Header - Page 1: Summary
   doc.setFontSize(20);
-  doc.text('Expense Report', 20, yPos);
-  yPos += 10;
+  doc.setFont(undefined, 'bold');
+  doc.text('Expense Report - Summary', 105, yPos, { align: 'center' });
+  yPos += 5;
   
-  // Report type
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'normal');
   if (data.reportType) {
-    doc.setFontSize(10);
-    doc.text(`Report Type: ${data.reportType === 'accrual' ? 'Accrual Accounting' : 'Cashflow Accounting'}`, 20, yPos);
+    doc.text(`Report Type: ${data.reportType === 'accrual' ? 'Accrual Accounting' : 'Cashflow Accounting'}`, 105, yPos, { align: 'center' });
     yPos += 5;
   }
   
-  // Date range
-  doc.setFontSize(12);
-  doc.text(`Period: ${formatDate(data.fromDate)} to ${formatDate(data.toDate)}`, 20, yPos);
+  doc.text(`Period: ${formatDate(data.fromDate)} to ${formatDate(data.toDate)}`, 105, yPos, { align: 'center' });
   yPos += 15;
   
-  // Summary stats
-  doc.setFontSize(14);
-  doc.text('Summary', 20, yPos);
-  yPos += 10;
+  // Summary stats box
+  doc.setDrawColor(41, 128, 185);
+  doc.setLineWidth(0.5);
+  doc.rect(15, yPos, 180, 35);
+  yPos += 8;
+  
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'bold');
+  doc.text('Financial Summary', 20, yPos);
+  yPos += 8;
   
   doc.setFontSize(11);
-  doc.text(`Total Expenses: Rs.${data.totalExpenses.toFixed(2)}`, 20, yPos);
+  doc.setFont(undefined, 'normal');
+  doc.text(`Total Expenses: Rs.${data.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 25, yPos);
   yPos += 7;
-  doc.text(`Average per Month: Rs.${data.averagePerMonth.toFixed(2)}`, 20, yPos);
+  doc.text(`Average per Month: Rs.${data.averagePerMonth.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 25, yPos);
   yPos += 7;
-  doc.text(`Total Records: ${data.recordsCount}`, 20, yPos);
-  yPos += 12;
+  doc.text(`Total Transactions: ${data.recordsCount}`, 25, yPos);
+  yPos += 15;
   
-  // Category breakdown table
+  // Category breakdown table with distribution
   doc.setFontSize(14);
-  doc.text('Category Breakdown', 20, yPos);
+  doc.setFont(undefined, 'bold');
+  doc.text('Category-wise Distribution', 20, yPos);
   yPos += 5;
   
   const categoryData = data.categoryBreakdown.length > 0 
     ? data.categoryBreakdown.map(item => [
         item.name,
-        `Rs.${item.amount.toFixed(2)}`,
-        `${item.percentage.toFixed(1)}%`
+        `Rs.${item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        `${item.percentage.toFixed(1)}%`,
+        item.count.toString(),
+        '█'.repeat(Math.round(item.percentage / 5)) // Visual bar
       ])
-    : [['No data available', '-', '-']];
+    : [['No data available', '-', '-', '-', '-']];
   
   doc.autoTable({
     startY: yPos,
-    head: [['Category', 'Amount (Rs.)', 'Percentage']],
+    head: [['Category', 'Amount (Rs.)', '%', 'Count', 'Distribution']],
     body: categoryData,
-    theme: 'grid',
-    headStyles: { fillColor: [41, 128, 185] }
+    theme: 'striped',
+    headStyles: { fillColor: [41, 128, 185], fontStyle: 'bold', fontSize: 10 },
+    styles: { fontSize: 9 },
+    columnStyles: {
+      0: { cellWidth: 45 },
+      1: { cellWidth: 40, halign: 'right' },
+      2: { cellWidth: 20, halign: 'center' },
+      3: { cellWidth: 20, halign: 'center' },
+      4: { cellWidth: 50, halign: 'left' }
+    }
   });
   
   yPos = (doc as any).lastAutoTable.finalY + 15;
   
   // Monthly trends table
   if (data.monthlyTrends && data.monthlyTrends.length > 0) {
-    // Check if we need a new page
-    if (yPos > 230) {
+    if (yPos > 220) {
       doc.addPage();
       yPos = 20;
     }
     
     doc.setFontSize(14);
-    doc.text('Monthly Trends', 20, yPos);
+    doc.setFont(undefined, 'bold');
+    doc.text('Monthly Expense Trends', 20, yPos);
     yPos += 5;
     
     const monthlyData = data.monthlyTrends.map(item => [
       item.month,
-      `Rs.${item.amount.toFixed(2)}`
+      `Rs.${item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     ]);
     
     doc.autoTable({
       startY: yPos,
       head: [['Month', 'Amount (Rs.)']],
       body: monthlyData,
-      theme: 'grid',
-      headStyles: { fillColor: [41, 128, 185] }
+      theme: 'striped',
+      headStyles: { fillColor: [41, 128, 185], fontStyle: 'bold' },
+      columnStyles: {
+        0: { cellWidth: 40 },
+        1: { cellWidth: 50, halign: 'right' }
+      }
     });
-    
-    yPos = (doc as any).lastAutoTable.finalY + 15;
   }
   
-  // Detailed transaction breakdown
+  // Category-wise detailed breakdown (New extended report)
   if (data.transactions && data.transactions.length > 0) {
-    // Add new page for transactions
-    doc.addPage();
-    yPos = 20;
+    // Group transactions by category
+    const categoryGroups = data.transactions.reduce((acc, txn) => {
+      if (!acc[txn.category]) {
+        acc[txn.category] = [];
+      }
+      acc[txn.category].push(txn);
+      return acc;
+    }, {} as Record<string, typeof data.transactions>);
     
-    doc.setFontSize(16);
-    doc.text('Detailed Transaction Breakdown', 20, yPos);
-    yPos += 10;
+    // Only show categories that have data
+    const categoriesWithData = Object.keys(categoryGroups).filter(cat => categoryGroups[cat].length > 0);
     
-    const transactionData = data.transactions.map(txn => {
-      const row = [
+    categoriesWithData.forEach((category, index) => {
+      // Add new page for each category
+      doc.addPage();
+      yPos = 20;
+      
+      const categoryTransactions = categoryGroups[category];
+      const categoryTotal = categoryTransactions.reduce((sum, txn) => sum + txn.amount, 0);
+      const categoryPercentage = (categoryTotal / data.totalExpenses) * 100;
+      
+      // Category header
+      doc.setFontSize(16);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(41, 128, 185);
+      doc.text(category, 20, yPos);
+      doc.setTextColor(0, 0, 0);
+      yPos += 5;
+      
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      doc.text(`Total: Rs.${categoryTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | ${categoryPercentage.toFixed(1)}% of total expenses | ${categoryTransactions.length} transactions`, 20, yPos);
+      yPos += 10;
+      
+      // Detailed transactions table for this category
+      const categoryTableData = categoryTransactions.map(txn => [
         formatDate(txn.date),
-        `Rs.${txn.amount.toFixed(2)}`,
-        txn.category,
+        `Rs.${txn.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         txn.source,
         txn.paymentMethod,
         txn.vendor,
         txn.paidBy,
-        txn.description.length > 30 ? txn.description.substring(0, 27) + '...' : txn.description
-      ];
+        txn.description.length > 35 ? txn.description.substring(0, 32) + '...' : txn.description,
+        '' // Empty for receipt link
+      ]);
       
-      // Add receipt indicator
-      if (txn.receiptUrl) {
-        row.push('View');
-      } else {
-        row.push('-');
-      }
-      
-      return row;
-    });
-    
-    doc.autoTable({
-      startY: yPos,
-      head: [['Date', 'Amount', 'Category', 'Source', 'Payment', 'Vendor', 'Paid By', 'Description', 'Receipt']],
-      body: transactionData,
-      theme: 'grid',
-      headStyles: { fillColor: [41, 128, 185] },
-      styles: { fontSize: 7, cellPadding: 2 },
-      columnStyles: {
-        0: { cellWidth: 20 },
-        1: { cellWidth: 20 },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 20 },
-        4: { cellWidth: 18 },
-        5: { cellWidth: 18 },
-        6: { cellWidth: 18 },
-        7: { cellWidth: 30 },
-        8: { cellWidth: 12 }
-      },
-      didDrawCell: (cellData: any) => {
-        // Add clickable link for receipts
-        if (cellData.column.index === 8 && cellData.cell.section === 'body') {
-          const receiptUrl = data.transactions?.[cellData.row.index]?.receiptUrl;
-          
-          if (receiptUrl) {
-            doc.setTextColor(0, 0, 255);
-            doc.textWithLink('View', cellData.cell.x + 2, cellData.cell.y + cellData.cell.height / 2, { url: receiptUrl });
-            doc.setTextColor(0, 0, 0);
+      doc.autoTable({
+        startY: yPos,
+        head: [['Date', 'Amount', 'Source', 'Payment', 'Vendor', 'Paid By', 'Description', 'Receipt']],
+        body: categoryTableData,
+        theme: 'grid',
+        headStyles: { fillColor: [41, 128, 185], fontStyle: 'bold', fontSize: 9 },
+        styles: { fontSize: 8, cellPadding: 2 },
+        columnStyles: {
+          0: { cellWidth: 22 },
+          1: { cellWidth: 25, halign: 'right' },
+          2: { cellWidth: 22 },
+          3: { cellWidth: 22 },
+          4: { cellWidth: 22 },
+          5: { cellWidth: 22 },
+          6: { cellWidth: 40 },
+          7: { cellWidth: 15, halign: 'center' }
+        },
+        didDrawCell: (cellData: any) => {
+          // Add clickable link for receipts
+          if (cellData.column.index === 7 && cellData.cell.section === 'body') {
+            const receiptUrl = categoryTransactions[cellData.row.index]?.receiptUrl;
+            
+            if (receiptUrl) {
+              const cellCenterY = cellData.cell.y + (cellData.cell.height / 2) + 2;
+              doc.setTextColor(0, 0, 255);
+              doc.setFontSize(8);
+              doc.textWithLink('View', cellData.cell.x + 3, cellCenterY, { url: receiptUrl });
+              doc.setTextColor(0, 0, 0);
+            }
           }
         }
+      });
+      
+      yPos = (doc as any).lastAutoTable.finalY + 10;
+      
+      // Add category distribution chart (simple text-based)
+      if (yPos < 240) {
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'bold');
+        doc.text('Source Distribution:', 20, yPos);
+        yPos += 5;
+        
+        // Calculate source breakdown for this category
+        const sourceBreakdown = categoryTransactions.reduce((acc, txn) => {
+          if (!acc[txn.source]) {
+            acc[txn.source] = 0;
+          }
+          acc[txn.source] += txn.amount;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(9);
+        Object.entries(sourceBreakdown).forEach(([source, amount]) => {
+          const sourcePercentage = (amount / categoryTotal) * 100;
+          const bar = '█'.repeat(Math.round(sourcePercentage / 5));
+          doc.text(`${source}: Rs.${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (${sourcePercentage.toFixed(1)}%) ${bar}`, 25, yPos);
+          yPos += 5;
+        });
       }
     });
   }
