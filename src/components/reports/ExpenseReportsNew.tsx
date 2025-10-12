@@ -1,20 +1,25 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, Area, AreaChart } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useReportExports } from '@/hooks/useReportExports';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { DollarSign, TrendingUp, CreditCard, Calendar, FileText, Download, Share, Loader2, AlertCircle } from 'lucide-react';
-import { generateExpenseReportPDF, generateWhatsAppMessage } from '@/utils/pdfGenerator';
+import { generateExpenseReportPDF, generateExpenseWhatsAppMessage } from '@/utils/expenseReportPDF';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { captureElementToDataURL, waitForChartRender } from '@/utils/chartCapture';
+import { prepCategoryData, fmtMonth } from '@/utils/format';
 
-const COLORS = ['#3b82f6', '#10b981', '#f97316', '#8b5cf6', '#ef4444', '#f59e0b', '#06b6d4', '#84cc16'];
+const CHART_COLORS = [
+  '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+  '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+];
 
 type ReportType = 'accrual' | 'cashflow';
 
@@ -38,6 +43,12 @@ export const ExpenseReportsNew = () => {
   
   const { exportToCSV } = useReportExports();
   const { toast } = useToast();
+
+  // Refs for chart capture
+  const categoryDonutRef = useRef<HTMLDivElement>(null);
+  const monthlyTrendsRef = useRef<HTMLDivElement>(null);
+  const paymentBarsRef = useRef<HTMLDivElement>(null);
+  const drilldownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // Auto-update date range when preset is selected
   const handleDateRangeChange = (range: string) => {
@@ -249,6 +260,45 @@ export const ExpenseReportsNew = () => {
     
     setIsExporting(true);
     try {
+      toast({ title: "Preparing charts...", description: "Please wait" });
+      
+      // Wait for charts to render
+      await waitForChartRender(500);
+      
+      // Capture category donut chart
+      let categoryDonutImage = '';
+      if (categoryDonutRef.current) {
+        categoryDonutImage = await captureElementToDataURL(categoryDonutRef.current, { scale: 2 });
+      }
+      
+      // Capture monthly trends chart
+      let monthlyTrendsImage = '';
+      if (monthlyTrendsRef.current) {
+        monthlyTrendsImage = await captureElementToDataURL(monthlyTrendsRef.current, { scale: 2 });
+      }
+      
+      // Capture payment bars chart
+      let paymentBarsImage = '';
+      if (paymentBarsRef.current) {
+        paymentBarsImage = await captureElementToDataURL(paymentBarsRef.current, { scale: 2 });
+      }
+      
+      // Capture drilldown charts (source distribution per category)
+      const drilldownImages: Array<{ category: string; image: string }> = [];
+      const categoriesWithData = expenseAnalytics.categoryBreakdown
+        .filter(cat => cat.amount > 0)
+        .sort((a, b) => b.amount - a.amount);
+      
+      for (const category of categoriesWithData) {
+        const ref = drilldownRefs.current[category.name];
+        if (ref) {
+          const image = await captureElementToDataURL(ref, { scale: 2 });
+          drilldownImages.push({ category: category.name, image });
+        }
+      }
+      
+      toast({ title: "Generating PDF...", description: "Almost done" });
+      
       const pdfData = {
         fromDate,
         toDate,
@@ -258,6 +308,8 @@ export const ExpenseReportsNew = () => {
         recordsCount: expenseAnalytics.recordsCount,
         categoryBreakdown: expenseAnalytics.categoryBreakdown,
         monthlyTrends: expenseAnalytics.monthlyTrends,
+        paymentMethods: expenseAnalytics.paymentMethodBreakdown,
+        sourceBreakdown: expenseAnalytics.sourceBreakdown,
         transactions: expenseAnalytics.rawData.map(record => ({
           date: reportType === 'accrual' ? record.payment_period : record.payment_date,
           amount: record.amount,
@@ -267,8 +319,14 @@ export const ExpenseReportsNew = () => {
           vendor: record.vendor_name || 'N/A',
           paidBy: record.paid_by || 'N/A',
           description: record.description || 'N/A',
-          receiptUrl: record.receipt_url || null
-        }))
+          status: record.status || 'N/A'
+        })),
+        images: {
+          categoryDonut: categoryDonutImage,
+          monthlyTrends: monthlyTrendsImage,
+          paymentBars: paymentBarsImage,
+          drilldowns: drilldownImages
+        }
       };
       
       const doc = generateExpenseReportPDF(pdfData);
@@ -276,7 +334,7 @@ export const ExpenseReportsNew = () => {
       toast({ title: "PDF downloaded successfully!" });
     } catch (error) {
       console.error('PDF generation error:', error);
-      toast({ title: "PDF generation failed", description: "Please try again", variant: "destructive" });
+      toast({ title: "PDF generation failed", description: String(error), variant: "destructive" });
     } finally {
       setIsExporting(false);
     }
@@ -285,19 +343,56 @@ export const ExpenseReportsNew = () => {
   const handleWhatsAppShare = () => {
     if (!expenseAnalytics) return;
     
-    const message = generateWhatsAppMessage('expenses', {
+    const message = generateExpenseWhatsAppMessage({
       fromDate,
       toDate,
       totalExpenses: expenseAnalytics.totalExpenses,
       averagePerMonth: expenseAnalytics.averagePerMonth,
       recordsCount: expenseAnalytics.recordsCount,
-      reportType: reportType === 'accrual' ? 'Accrual' : 'Cashflow',
+      reportType,
+      categoryBreakdown: expenseAnalytics.categoryBreakdown,
       sourceBreakdown: expenseAnalytics.sourceBreakdown
     });
     
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
   };
+
+  // Prepare category data with "Others" for small categories
+  const preparedCategoryData = useMemo(() => {
+    if (!expenseAnalytics) return [];
+    return prepCategoryData(expenseAnalytics.categoryBreakdown, { othersThresholdPct: 2 });
+  }, [expenseAnalytics]);
+
+  // Prepare source distribution for each category
+  const categorySourceData = useMemo(() => {
+    if (!expenseAnalytics) return {};
+    
+    const result: { [category: string]: Array<{ name: string; amount: number; percentage: number }> } = {};
+    
+    expenseAnalytics.categoryBreakdown.forEach(cat => {
+      const categoryTransactions = expenseAnalytics.rawData.filter(
+        txn => (txn.expense_categories?.name || 'Uncategorized') === cat.name
+      );
+      
+      const sourceData = categoryTransactions.reduce((acc, txn) => {
+        const source = txn.expense_sources?.name || 'Not Specified';
+        if (!acc[source]) {
+          acc[source] = 0;
+        }
+        acc[source] += Number(txn.amount);
+        return acc;
+      }, {} as Record<string, number>);
+      
+      result[cat.name] = Object.entries(sourceData).map(([name, amount]) => ({
+        name,
+        amount: Number(amount),
+        percentage: (Number(amount) / Number(cat.amount)) * 100
+      })).sort((a, b) => b.amount - a.amount);
+    });
+    
+    return result;
+  }, [expenseAnalytics]);
 
   if (error) {
     return (
@@ -502,7 +597,7 @@ export const ExpenseReportsNew = () => {
                       dataKey="amount"
                     >
                       {expenseAnalytics.categoryBreakdown.map((entry: any, index: number) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip formatter={(value: any) => [`₹${value.toLocaleString('en-IN')}`, 'Amount']} />
@@ -563,6 +658,132 @@ export const ExpenseReportsNew = () => {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Hidden Charts for PDF Export */}
+      {expenseAnalytics && (
+        <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '800px' }}>
+          {/* Category Donut with Legend and Center Total */}
+          <div ref={categoryDonutRef} style={{ width: '800px', height: '400px', backgroundColor: 'white', padding: '20px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={preparedCategoryData}
+                  cx="35%"
+                  cy="50%"
+                  innerRadius={72}
+                  outerRadius={110}
+                  dataKey="amount"
+                  label={false}
+                >
+                  {preparedCategoryData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(value: any) => [`₹${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 'Amount']} 
+                />
+                <Legend 
+                  layout="vertical" 
+                  align="right" 
+                  verticalAlign="middle"
+                  formatter={(value, entry: any) => {
+                    const percentage = entry.payload.percentage.toFixed(1);
+                    const amount = entry.payload.amount.toLocaleString('en-IN', { minimumFractionDigits: 0 });
+                    return `${value}: ${percentage}% (₹${amount})`;
+                  }}
+                />
+                <text x="35%" y="50%" textAnchor="middle" dominantBaseline="middle">
+                  <tspan x="35%" dy="-10" fontSize="14" fontWeight="bold">Total</tspan>
+                  <tspan x="35%" dy="20" fontSize="16" fontWeight="bold">₹{expenseAnalytics.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</tspan>
+                </text>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Monthly Trends Area Chart */}
+          <div ref={monthlyTrendsRef} style={{ width: '800px', height: '300px', backgroundColor: 'white', padding: '20px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={expenseAnalytics.monthlyTrends.map(trend => ({
+                ...trend,
+                monthLabel: fmtMonth(trend.month)
+              }))}>
+                <defs>
+                  <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#1f77b4" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#1f77b4" stopOpacity={0.1}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                <XAxis dataKey="monthLabel" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(value) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 0 })}`} />
+                <Tooltip formatter={(value: any) => [`₹${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 'Amount']} />
+                <Area type="monotone" dataKey="amount" stroke="#1f77b4" strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Payment Methods Bar Chart */}
+          <div ref={paymentBarsRef} style={{ width: '800px', height: '300px', backgroundColor: 'white', padding: '20px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={[...expenseAnalytics.paymentMethodBreakdown].sort((a, b) => b.amount - a.amount)}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(value) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 0 })}`} />
+                <Tooltip formatter={(value: any) => [`₹${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 'Amount']} />
+                <Bar dataKey="amount" fill="#1f77b4" radius={[8, 8, 0, 0]} label={{ position: 'top', formatter: (value: any) => `₹${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 0 })}` }} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Source Distribution Donuts per Category */}
+          {expenseAnalytics.categoryBreakdown.map((category) => {
+            const sourceData = categorySourceData[category.name] || [];
+            if (sourceData.length === 0) return null;
+
+            return (
+              <div 
+                key={category.name}
+                ref={(el) => { drilldownRefs.current[category.name] = el; }}
+                style={{ width: '800px', height: '350px', backgroundColor: 'white', padding: '20px' }}
+              >
+                <div style={{ marginBottom: '10px', fontSize: '18px', fontWeight: 'bold', color: '#2980b9' }}>
+                  {category.name}
+                </div>
+                <ResponsiveContainer width="100%" height="90%">
+                  <PieChart>
+                    <Pie
+                      data={sourceData}
+                      cx="35%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={90}
+                      dataKey="amount"
+                      label={false}
+                    >
+                      {sourceData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: any) => [`₹${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 'Amount']} 
+                    />
+                    <Legend 
+                      layout="vertical" 
+                      align="right" 
+                      verticalAlign="middle"
+                      formatter={(value, entry: any) => {
+                        const percentage = entry.payload.percentage.toFixed(1);
+                        const amount = entry.payload.amount.toLocaleString('en-IN', { minimumFractionDigits: 0 });
+                        return `${value}: ${percentage}% (₹${amount})`;
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

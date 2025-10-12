@@ -2,6 +2,12 @@ import { jsPDF } from 'jspdf';
 import { applyPlugin } from 'jspdf-autotable';
 import { formatDate } from '@/lib/dateUtils';
 
+// Re-export new expense report PDF generator
+export { 
+  generateExpenseReportPDF as generateExpenseReportPDFNew,
+  generateExpenseWhatsAppMessage 
+} from './expenseReportPDF';
+
 // Apply the autoTable plugin to jsPDF
 applyPlugin(jsPDF);
 
