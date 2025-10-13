@@ -13,7 +13,7 @@ import { DollarSign, TrendingUp, CreditCard, Calendar, FileText, Download, Share
 import { generateExpenseReportPDF, generateExpenseWhatsAppMessage } from '@/utils/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { captureElementToDataURL, waitForChartRender } from '@/utils/chartCapture';
+import { captureRecharts, waitForChartRender } from '@/utils/chartCapture';
 import { prepCategoryData, fmtMonth } from '@/utils/format';
 
 const CHART_COLORS = [
@@ -262,25 +262,25 @@ export const ExpenseReportsNew = () => {
     try {
       toast({ title: "Preparing charts...", description: "Please wait" });
       
-      // Wait for charts to render
-      await waitForChartRender(500);
+      // Wait longer for charts to render properly
+      await waitForChartRender(1000);
       
       // Capture category donut chart
       let categoryDonutImage = '';
       if (categoryDonutRef.current) {
-        categoryDonutImage = await captureElementToDataURL(categoryDonutRef.current, { scale: 2 });
+        categoryDonutImage = await captureRecharts(categoryDonutRef.current, { scale: 2, backgroundColor: '#ffffff' });
       }
       
       // Capture monthly trends chart
       let monthlyTrendsImage = '';
       if (monthlyTrendsRef.current) {
-        monthlyTrendsImage = await captureElementToDataURL(monthlyTrendsRef.current, { scale: 2 });
+        monthlyTrendsImage = await captureRecharts(monthlyTrendsRef.current, { scale: 2, backgroundColor: '#ffffff' });
       }
       
       // Capture payment bars chart
       let paymentBarsImage = '';
       if (paymentBarsRef.current) {
-        paymentBarsImage = await captureElementToDataURL(paymentBarsRef.current, { scale: 2 });
+        paymentBarsImage = await captureRecharts(paymentBarsRef.current, { scale: 2, backgroundColor: '#ffffff' });
       }
       
       // Capture drilldown charts (source distribution per category)
@@ -292,7 +292,7 @@ export const ExpenseReportsNew = () => {
       for (const category of categoriesWithData) {
         const ref = drilldownRefs.current[category.name];
         if (ref) {
-          const image = await captureElementToDataURL(ref, { scale: 2 });
+          const image = await captureRecharts(ref, { scale: 2, backgroundColor: '#ffffff' });
           drilldownImages.push({ category: category.name, image });
         }
       }
@@ -663,15 +663,15 @@ export const ExpenseReportsNew = () => {
 
       {/* Hidden Charts for PDF Export */}
       {expenseAnalytics && (
-        <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '800px' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '800px', opacity: 0, pointerEvents: 'none', zIndex: -1 }}>
           {/* Category Donut with Legend and Center Total */}
           <div ref={categoryDonutRef} style={{ width: '800px', height: '400px', backgroundColor: 'white', padding: '20px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={preparedCategoryData}
-                  cx="35%"
-                  cy="50%"
+                  cx={280}
+                  cy={200}
                   innerRadius={72}
                   outerRadius={110}
                   dataKey="amount"
@@ -694,9 +694,11 @@ export const ExpenseReportsNew = () => {
                     return `${value}: ${percentage}% (₹${amount})`;
                   }}
                 />
-                <text x="35%" y="50%" textAnchor="middle" dominantBaseline="middle">
-                  <tspan x="35%" dy="-10" fontSize="14" fontWeight="bold">Total</tspan>
-                  <tspan x="35%" dy="20" fontSize="16" fontWeight="bold">₹{expenseAnalytics.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</tspan>
+                <text x={280} y={190} textAnchor="middle" dominantBaseline="middle" style={{ fontSize: '14px', fontWeight: 'bold', fill: '#333' }}>
+                  Total
+                </text>
+                <text x={280} y={210} textAnchor="middle" dominantBaseline="middle" style={{ fontSize: '16px', fontWeight: 'bold', fill: '#000' }}>
+                  ₹{expenseAnalytics.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
                 </text>
               </PieChart>
             </ResponsiveContainer>
@@ -755,8 +757,8 @@ export const ExpenseReportsNew = () => {
                   <PieChart>
                     <Pie
                       data={sourceData}
-                      cx="35%"
-                      cy="50%"
+                      cx={280}
+                      cy={155}
                       innerRadius={60}
                       outerRadius={90}
                       dataKey="amount"
