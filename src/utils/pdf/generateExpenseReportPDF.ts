@@ -69,7 +69,7 @@ function drawHeaderFooter(
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.text(`Report Type: ${meta.reportType}`, pageWidth - 18, 14, { align: 'right' });
-    doc.text(`Range: ${meta.range}`, pageWidth - 18, 20, { align: 'right' });
+    doc.text(`Range: ${meta.range}`, pageWidth - 18, 24, { align: 'right' });
 
     doc.setFontSize(9);
     doc.setTextColor(128, 128, 128);
