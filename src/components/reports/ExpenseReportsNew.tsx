@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useReportExports } from '@/hooks/useReportExports';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { DollarSign, TrendingUp, CreditCard, Calendar, FileText, Download, Share, Loader2, AlertCircle } from 'lucide-react';
-import { generateExpenseReportPDF, generateExpenseWhatsAppMessage } from '@/utils/expenseReportPDF';
+import { generateExpenseReportPDF, generateExpenseWhatsAppMessage } from '@/utils/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { captureElementToDataURL, waitForChartRender } from '@/utils/chartCapture';
@@ -319,7 +319,8 @@ export const ExpenseReportsNew = () => {
           vendor: record.vendor_name || 'N/A',
           paidBy: record.paid_by || 'N/A',
           description: record.description || 'N/A',
-          status: record.status || 'N/A'
+          status: record.status || 'N/A',
+          receiptUrl: record.receipt_url || null
         })),
         images: {
           categoryDonut: categoryDonutImage,

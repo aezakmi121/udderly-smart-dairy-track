@@ -92,8 +92,52 @@ const inlineStyles = (source: SVGElement, target: SVGElement) => {
 };
 
 /**
+ * Wait for next animation frame (double RAF for Recharts)
+ */
+export const nextFrame = (): Promise<void> => {
+  return new Promise(resolve => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+};
+
+/**
  * Wait for a chart to fully render
  */
 export const waitForChartRender = (delay: number = 300): Promise<void> => {
   return new Promise(resolve => setTimeout(resolve, delay));
+};
+
+/**
+ * Capture a Recharts container to PNG with fallback
+ */
+export const captureRecharts = async (
+  containerEl: HTMLElement,
+  options: { scale?: number; backgroundColor?: string } = {}
+): Promise<string> => {
+  const { scale = 2, backgroundColor = '#ffffff' } = options;
+  
+  // Wait for any animations to complete
+  await nextFrame();
+  await waitForChartRender(200);
+  
+  try {
+    // Try SVG capture first
+    return await captureElementToDataURL(containerEl, { scale, backgroundColor });
+  } catch (error) {
+    console.warn('SVG capture failed, using fallback:', error);
+    
+    // Fallback: try html2canvas if available
+    if (typeof window !== 'undefined' && (window as any).html2canvas) {
+      const canvas = await (window as any).html2canvas(containerEl, {
+        scale,
+        backgroundColor,
+        logging: false,
+      });
+      return canvas.toDataURL('image/png');
+    }
+    
+    throw new Error('No capture method available');
+  }
 };
