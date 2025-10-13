@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, Area, AreaChart } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, Area, AreaChart, LabelList } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useReportExports } from '@/hooks/useReportExports';
@@ -675,7 +675,8 @@ export const ExpenseReportsNew = () => {
                   innerRadius={72}
                   outerRadius={110}
                   dataKey="amount"
-                  label={false}
+                  label={({ percentage }) => `${percentage.toFixed(1)}%`}
+                  labelLine={{ stroke: '#666', strokeWidth: 1 }}
                 >
                   {preparedCategoryData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -721,7 +722,9 @@ export const ExpenseReportsNew = () => {
                 <XAxis dataKey="monthLabel" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={(value) => `₹${value.toLocaleString('en-IN', { minimumFractionDigits: 0 })}`} />
                 <Tooltip formatter={(value: any) => [`₹${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 'Amount']} />
-                <Area type="monotone" dataKey="amount" stroke="#1f77b4" strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)" />
+                <Area type="monotone" dataKey="amount" stroke="#1f77b4" strokeWidth={2} fillOpacity={1} fill="url(#colorAmount)">
+                  <LabelList dataKey="amount" position="top" formatter={(value: any) => `₹${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 0 })}`} style={{ fontSize: '11px', fill: '#333' }} />
+                </Area>
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -762,7 +765,8 @@ export const ExpenseReportsNew = () => {
                       innerRadius={60}
                       outerRadius={90}
                       dataKey="amount"
-                      label={false}
+                      label={({ percentage }) => `${percentage.toFixed(1)}%`}
+                      labelLine={{ stroke: '#666', strokeWidth: 1 }}
                     >
                       {sourceData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
