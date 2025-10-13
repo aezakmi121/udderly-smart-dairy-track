@@ -166,7 +166,7 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
     
     for (let i = 0; i < data.images.drilldowns.length; i += chartsPerPage) {
       doc.addPage();
-      yPos = 50;
+      yPos = 70;
 
       const pageCharts = data.images.drilldowns.slice(i, i + chartsPerPage);
       
@@ -178,26 +178,27 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
         doc.setTextColor(41, 128, 185);
         doc.text(`Source Distribution - ${drilldown.category}`, margin, yPos);
         doc.setTextColor(0, 0, 0);
-        yPos += 8;
+        yPos += 12;
 
         if (categoryData) {
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(9);
-          doc.setTextColor(100, 100, 100);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(12);
+          doc.setTextColor(0, 0, 0);
           doc.text(
-            `Total: ${inr(categoryData.amount)} | ${categoryData.percentage.toFixed(1)}% of total expenses`,
+            `Total: ${inr(categoryData.amount)} (${categoryData.percentage.toFixed(1)}% of total expenses)`,
             margin,
             yPos
           );
           doc.setTextColor(0, 0, 0);
-          yPos += 10;
+          yPos += 15;
         }
 
         if (drilldown.image) {
-          const imgWidth = pageWidth - 2 * margin;
+          const imgWidth = 400;
           const imgHeight = 220;
-          doc.addImage(drilldown.image, 'PNG', margin, yPos, imgWidth, imgHeight);
-          yPos += imgHeight + 25;
+          const centerX = (pageWidth - imgWidth) / 2;
+          doc.addImage(drilldown.image, 'PNG', centerX, yPos, imgWidth, imgHeight);
+          yPos += imgHeight + 30;
         }
       });
     }
