@@ -64,12 +64,12 @@ function drawHeaderFooter(
     
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('Expense Report', 18, 18);
+    doc.text('Expense Report', 18, 40);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(`Report Type: ${meta.reportType}`, pageWidth - 18, 14, { align: 'right' });
-    doc.text(`Range: ${meta.range}`, pageWidth - 18, 24, { align: 'right' });
+    doc.text(`Report Type: ${meta.reportType}`, pageWidth - 18, 36, { align: 'right' });
+    doc.text(`Range: ${meta.range}`, pageWidth - 18, 48, { align: 'right' });
 
     doc.setFontSize(9);
     doc.setTextColor(128, 128, 128);
