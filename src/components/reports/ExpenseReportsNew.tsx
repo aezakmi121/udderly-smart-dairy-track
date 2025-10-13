@@ -675,7 +675,7 @@ export const ExpenseReportsNew = () => {
                   innerRadius={72}
                   outerRadius={110}
                   dataKey="amount"
-                  label={({ percentage }) => `${percentage.toFixed(1)}%`}
+                  label={({ name, percentage }) => `${name} (${percentage.toFixed(1)}%)`}
                   labelLine={{ stroke: '#666', strokeWidth: 1 }}
                 >
                   {preparedCategoryData.map((entry, index) => (

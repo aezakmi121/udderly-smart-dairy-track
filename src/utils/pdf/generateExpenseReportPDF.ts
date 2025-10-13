@@ -85,7 +85,7 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
   
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 18;
-  let yPos = 50;
+  let yPos = 80;
 
   const cardWidth = (pageWidth - 3 * margin) / 2;
   const cardHeight = 60;
