@@ -219,7 +219,7 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
     ]];
 
     const body = data.transactions.map(txn => [
-      txn.date,
+      fmtDate(txn.date),
       txn.description || '',
       txn.category,
       txn.source,
