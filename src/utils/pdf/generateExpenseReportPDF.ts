@@ -137,7 +137,7 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
   }
 
   doc.addPage();
-  yPos = 50;
+  yPos = 70;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
@@ -164,7 +164,7 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
 
   // Source-wise breakdown with categories
   doc.addPage();
-  yPos = 50;
+  yPos = 70;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
@@ -196,7 +196,7 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
       // Check if we need a new page
       if (yPos > pageWidth - 100) {
         doc.addPage();
-        yPos = 50;
+        yPos = 70;
       }
     });
 
@@ -215,7 +215,7 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
       // Check if we need a new page for the chart
       if (yPos + imgHeight > pageWidth - 50) {
         doc.addPage();
-        yPos = 50;
+        yPos = 70;
       }
       
       doc.addImage(data.images.sourceDistribution, 'PNG', margin, yPos, imgWidth, imgHeight);
@@ -223,7 +223,7 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
   }
 
   doc.addPage();
-  yPos = 50;
+  yPos = 70;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
