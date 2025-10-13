@@ -311,7 +311,7 @@ export const ExpenseReportsNew = () => {
         paymentMethods: expenseAnalytics.paymentMethodBreakdown,
         sourceBreakdown: expenseAnalytics.sourceBreakdown,
         transactions: expenseAnalytics.rawData.map(record => ({
-          date: reportType === 'accrual' ? record.payment_period : record.payment_date,
+          date: record.payment_date,
           amount: record.amount,
           category: record.expense_categories?.name || 'Uncategorized',
           source: record.expense_sources?.name || 'Not Specified',
