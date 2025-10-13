@@ -317,18 +317,20 @@ export const ExpenseReportsNew = () => {
         monthlyTrends: expenseAnalytics.monthlyTrends,
         paymentMethods: expenseAnalytics.paymentMethodBreakdown,
         sourceBreakdown: expenseAnalytics.sourceBreakdown,
-        transactions: expenseAnalytics.rawData.map(record => ({
-          date: record.payment_date,
-          amount: record.amount,
-          category: record.expense_categories?.name || 'Uncategorized',
-          source: record.expense_sources?.name || 'Not Specified',
-          paymentMethod: record.payment_methods?.name || 'Not Specified',
-          vendor: record.vendor_name || 'N/A',
-          paidBy: record.paid_by || 'N/A',
-          description: record.description || 'N/A',
-          status: record.status || 'N/A',
-          receiptUrl: record.receipt_url || null
-        })),
+        transactions: expenseAnalytics.rawData
+          .map(record => ({
+            date: reportType === 'accrual' ? record.payment_period : record.payment_date,
+            amount: record.amount,
+            category: record.expense_categories?.name || 'Uncategorized',
+            source: record.expense_sources?.name || 'Not Specified',
+            paymentMethod: record.payment_methods?.name || 'Not Specified',
+            vendor: record.vendor_name || 'N/A',
+            paidBy: record.paid_by || 'N/A',
+            description: record.description || 'N/A',
+            status: record.status || 'N/A',
+            receiptUrl: record.receipt_url || null
+          }))
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
         images: {
           categoryDonut: categoryDonutImage,
           monthlyTrends: monthlyTrendsImage,
