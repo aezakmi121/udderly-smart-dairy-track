@@ -35,6 +35,7 @@ export interface PdfData {
     categoryDonut: string;
     monthlyTrends: string;
     paymentBars: string;
+    sourceDistribution: string;
     drilldowns: Array<{ category: string; image: string }>;
   };
 }
@@ -161,46 +162,63 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
     doc.addImage(data.images.paymentBars, 'PNG', margin, yPos, imgWidth, imgHeight);
   }
 
-  if (data.images.drilldowns && data.images.drilldowns.length > 0) {
-    const chartsPerPage = 2;
-    
-    for (let i = 0; i < data.images.drilldowns.length; i += chartsPerPage) {
-      doc.addPage();
-      yPos = 70;
+  // Source-wise breakdown with categories
+  doc.addPage();
+  yPos = 50;
 
-      const pageCharts = data.images.drilldowns.slice(i, i + chartsPerPage);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text('Source-wise Category Breakdown', margin, yPos);
+  yPos += 20;
+
+  // List each source with its categories
+  if (data.sourceBreakdown && data.sourceBreakdown.length > 0) {
+    data.sourceBreakdown.forEach((source) => {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(41, 128, 185);
+      doc.text(`Source: ${source.name}`, margin, yPos);
+      doc.setTextColor(0, 0, 0);
+      yPos += 15;
+
+      // List categories under this source
+      if (source.categories && source.categories.length > 0) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        source.categories.forEach((cat) => {
+          doc.text(`${cat.name} - ${inr(cat.amount)}`, margin + 15, yPos);
+          yPos += 12;
+        });
+      }
+
+      yPos += 8; // Extra spacing between sources
+
+      // Check if we need a new page
+      if (yPos > pageWidth - 100) {
+        doc.addPage();
+        yPos = 50;
+      }
+    });
+
+    yPos += 15;
+
+    // Add source distribution chart if available
+    if (data.images.sourceDistribution) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('Source Distribution', margin, yPos);
+      yPos += 10;
+
+      const imgWidth = pageWidth - 2 * margin;
+      const imgHeight = 280;
       
-      pageCharts.forEach((drilldown) => {
-        const categoryData = data.categoryBreakdown.find(c => c.name === drilldown.category);
-        
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14);
-        doc.setTextColor(41, 128, 185);
-        doc.text(`Source Distribution - ${drilldown.category}`, margin, yPos);
-        doc.setTextColor(0, 0, 0);
-        yPos += 12;
-
-        if (categoryData) {
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(12);
-          doc.setTextColor(0, 0, 0);
-          doc.text(
-            `Total: ${inr(categoryData.amount)} (${categoryData.percentage.toFixed(1)}% of total expenses)`,
-            margin,
-            yPos
-          );
-          doc.setTextColor(0, 0, 0);
-          yPos += 15;
-        }
-
-        if (drilldown.image) {
-          const imgWidth = 400;
-          const imgHeight = 220;
-          const centerX = (pageWidth - imgWidth) / 2;
-          doc.addImage(drilldown.image, 'PNG', centerX, yPos, imgWidth, imgHeight);
-          yPos += imgHeight + 30;
-        }
-      });
+      // Check if we need a new page for the chart
+      if (yPos + imgHeight > pageWidth - 50) {
+        doc.addPage();
+        yPos = 50;
+      }
+      
+      doc.addImage(data.images.sourceDistribution, 'PNG', margin, yPos, imgWidth, imgHeight);
     }
   }
 

@@ -48,6 +48,7 @@ export const ExpenseReportsNew = () => {
   const categoryDonutRef = useRef<HTMLDivElement>(null);
   const monthlyTrendsRef = useRef<HTMLDivElement>(null);
   const paymentBarsRef = useRef<HTMLDivElement>(null);
+  const sourceDistributionRef = useRef<HTMLDivElement>(null);
   const drilldownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // Auto-update date range when preset is selected
@@ -283,6 +284,12 @@ export const ExpenseReportsNew = () => {
         paymentBarsImage = await captureRecharts(paymentBarsRef.current, { scale: 2, backgroundColor: '#ffffff' });
       }
       
+      // Capture source distribution chart
+      let sourceDistributionImage = '';
+      if (sourceDistributionRef.current) {
+        sourceDistributionImage = await captureRecharts(sourceDistributionRef.current, { scale: 2, backgroundColor: '#ffffff' });
+      }
+      
       // Capture drilldown charts (source distribution per category)
       const drilldownImages: Array<{ category: string; image: string }> = [];
       const categoriesWithData = expenseAnalytics.categoryBreakdown
@@ -326,6 +333,7 @@ export const ExpenseReportsNew = () => {
           categoryDonut: categoryDonutImage,
           monthlyTrends: monthlyTrendsImage,
           paymentBars: paymentBarsImage,
+          sourceDistribution: sourceDistributionImage,
           drilldowns: drilldownImages
         }
       };
@@ -784,13 +792,58 @@ export const ExpenseReportsNew = () => {
                         const amount = entry.payload.amount.toLocaleString('en-IN', { minimumFractionDigits: 0 });
                         return `${value}: ${percentage}% (₹${amount})`;
                       }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            );
-          })}
-        </div>
+                     />
+                   </PieChart>
+                 </ResponsiveContainer>
+               </div>
+             );
+           })}
+
+           {/* Source Distribution Chart */}
+           <div ref={sourceDistributionRef} style={{ width: '800px', height: '400px', backgroundColor: 'white', padding: '20px' }}>
+             <ResponsiveContainer width="100%" height="100%">
+               <PieChart>
+                 <Pie
+                   data={expenseAnalytics.sourceBreakdown.map(source => ({
+                     name: source.name,
+                     amount: source.amount,
+                     percentage: (source.amount / expenseAnalytics.totalExpenses) * 100
+                   }))}
+                   cx={280}
+                   cy={180}
+                   innerRadius={70}
+                   outerRadius={110}
+                   dataKey="amount"
+                   label={({ name, percentage }) => `${name} (${percentage.toFixed(1)}%)`}
+                   labelLine={{ stroke: '#666', strokeWidth: 1 }}
+                 >
+                   {expenseAnalytics.sourceBreakdown.map((entry, index) => (
+                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                   ))}
+                 </Pie>
+                 <Tooltip 
+                   formatter={(value: any) => [`₹${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 'Amount']} 
+                 />
+                 <Legend 
+                   layout="vertical" 
+                   align="right" 
+                   verticalAlign="middle"
+                   formatter={(value, entry: any) => {
+                     const percentage = entry.payload.percentage.toFixed(1);
+                     const amount = entry.payload.amount.toLocaleString('en-IN', { minimumFractionDigits: 0 });
+                     return `${value}: ${percentage}% (₹${amount})`;
+                   }}
+                 />
+                 <text x={280} y={180} textAnchor="middle" dominantBaseline="middle" style={{ fontSize: '14px', fontWeight: 'bold', fill: '#333' }}>
+                   Total
+                 </text>
+                 <text x={280} y={200} textAnchor="middle" dominantBaseline="middle" style={{ fontSize: '16px', fontWeight: 'bold', fill: '#000' }}>
+                   ₹{expenseAnalytics.totalExpenses.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+                 </text>
+               </PieChart>
+             </ResponsiveContainer>
+           </div>
+         </div>
       )}
     </div>
   );
