@@ -85,7 +85,7 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
   
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 18;
-  let yPos = 35;
+  let yPos = 50;
 
   const cardWidth = (pageWidth - 3 * margin) / 2;
   const cardHeight = 60;
@@ -136,7 +136,7 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
   }
 
   doc.addPage();
-  yPos = 35;
+  yPos = 50;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
@@ -166,7 +166,7 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
     
     for (let i = 0; i < data.images.drilldowns.length; i += chartsPerPage) {
       doc.addPage();
-      yPos = 35;
+      yPos = 50;
 
       const pageCharts = data.images.drilldowns.slice(i, i + chartsPerPage);
       
@@ -204,7 +204,7 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
   }
 
   doc.addPage();
-  yPos = 35;
+  yPos = 50;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
@@ -300,7 +300,7 @@ export const generateExpenseReportPDF = (data: PdfData): jsPDF => {
           }
         }
       },
-      margin: { top: 35, bottom: 25, left: margin, right: margin },
+      margin: { top: 50, bottom: 25, left: margin, right: margin },
     });
   } else {
     doc.setFont('helvetica', 'normal');
