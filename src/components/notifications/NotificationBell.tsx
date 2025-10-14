@@ -238,7 +238,8 @@ export const NotificationBell = () => {
                               onClick={(e) => { 
                                 e.stopPropagation(); 
                                 console.log('❌ Dismiss clicked:', notification.id);
-                                dismissNotification(notification.id); 
+                                dismissNotification(notification.id);
+                                setIsOpen(false); // Close the popover after dismissing
                               }}
                             >
                               <X className="h-3 w-3" />

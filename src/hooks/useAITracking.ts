@@ -43,7 +43,14 @@ export const useAITracking = () => {
   const canAddAIRecord = async (cowId: string) => {
     const { data, error } = await supabase
       .from('ai_records')
-      .select('pd_done, pd_result, ai_date')
+      .select(`
+        id,
+        pd_done,
+        pd_result,
+        ai_date,
+        service_number,
+        cows!ai_records_cow_id_fkey (cow_number)
+      `)
       .eq('cow_id', cowId)
       .order('ai_date', { ascending: false })
       .limit(1);
@@ -52,16 +59,19 @@ export const useAITracking = () => {
     
     // If no records exist, this is the first AI record - allow it
     if (!data || data.length === 0) {
-      return { canAdd: true, message: '' };
+      return { canAdd: true, message: '', recordId: null };
     }
     
     const lastRecord = data[0];
+    const cowNumber = (lastRecord as any).cows?.cow_number || 'Unknown';
+    const formattedDate = new Date(lastRecord.ai_date).toLocaleDateString();
     
     // Check if PD is done
     if (!lastRecord.pd_done) {
       return { 
         canAdd: false, 
-        message: 'Cannot add new AI record. Please complete PD for the previous AI record first.' 
+        message: `Cannot add new AI record. Please update the PD status for:\n\nCow: ${cowNumber}\nAI Date: ${formattedDate}\nService #${lastRecord.service_number}\n\nGo to "All Records" tab to update this record.`,
+        recordId: lastRecord.id
       };
     }
     
@@ -69,12 +79,13 @@ export const useAITracking = () => {
     if (lastRecord.pd_result !== 'negative') {
       return { 
         canAdd: false, 
-        message: `Cannot add new AI record. Last PD result was ${lastRecord.pd_result || 'not recorded'}. New AI records can only be added after a negative PD result.` 
+        message: `Cannot add new AI record. The last PD result for:\n\nCow: ${cowNumber}\nAI Date: ${formattedDate}\nService #${lastRecord.service_number}\n\nResult: ${lastRecord.pd_result || 'Not recorded'}\n\nNew AI records can only be added after a negative PD result. Please update this record in the "All Records" tab.`,
+        recordId: lastRecord.id
       };
     }
     
     // All conditions met
-    return { canAdd: true, message: '' };
+    return { canAdd: true, message: '', recordId: null };
   };
 
   const getNextServiceNumber = async (cowId: string) => {
