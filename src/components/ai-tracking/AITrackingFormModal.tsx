@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAICows } from '@/hooks/useCows';
 import { useAITracking } from '@/hooks/useAITracking';
+import { PDUpdateDialog } from './PDUpdateDialog';
 
 interface AITrackingFormModalProps {
   open: boolean;
@@ -35,8 +36,12 @@ export const AITrackingFormModal: React.FC<AITrackingFormModalProps> = ({
   });
 
   const { cows } = useAICows();
-  const { getNextServiceNumber } = useAITracking();
+  const { getNextServiceNumber, canAddAIRecord, updateAIRecordMutation } = useAITracking();
   const selectedCowId = watch('cow_id');
+  
+  const [showPDDialog, setShowPDDialog] = useState(false);
+  const [blockingRecord, setBlockingRecord] = useState<any>(null);
+  const [pendingFormData, setPendingFormData] = useState<any>(null);
 
   useEffect(() => {
     if (selectedCowId) {
@@ -46,13 +51,48 @@ export const AITrackingFormModal: React.FC<AITrackingFormModalProps> = ({
     }
   }, [selectedCowId, getNextServiceNumber, setValue]);
 
-  const handleFormSubmit = (data: any) => {
-    onSubmit({
+  const handleFormSubmit = async (data: any) => {
+    const formData = {
       ...data,
       service_number: Number(data.service_number)
-    });
+    };
+
+    // Check if we can add the AI record
+    if (data.cow_id) {
+      const validation = await canAddAIRecord(data.cow_id);
+      if (!validation.canAdd && validation.recordId) {
+        // Store form data and show PD dialog
+        setPendingFormData(formData);
+        setBlockingRecord(validation.recordData);
+        setShowPDDialog(true);
+        return;
+      }
+    }
+
+    // If validation passed, submit the form
+    onSubmit(formData);
     reset();
     onOpenChange(false);
+  };
+
+  const handlePDUpdate = (recordId: string, updates: any) => {
+    updateAIRecordMutation.mutate(
+      { id: recordId, ...updates },
+      {
+        onSuccess: () => {
+          setShowPDDialog(false);
+          setBlockingRecord(null);
+          
+          // After successful PD update, submit the pending form
+          if (pendingFormData) {
+            onSubmit(pendingFormData);
+            setPendingFormData(null);
+            reset();
+            onOpenChange(false);
+          }
+        }
+      }
+    );
   };
 
   return (
@@ -136,6 +176,14 @@ export const AITrackingFormModal: React.FC<AITrackingFormModalProps> = ({
           </div>
         </form>
       </DialogContent>
+      
+      <PDUpdateDialog
+        open={showPDDialog}
+        onOpenChange={setShowPDDialog}
+        record={blockingRecord}
+        onUpdate={handlePDUpdate}
+        isLoading={updateAIRecordMutation.isPending}
+      />
     </Dialog>
   );
 };

@@ -59,7 +59,7 @@ export const useAITracking = () => {
     
     // If no records exist, this is the first AI record - allow it
     if (!data || data.length === 0) {
-      return { canAdd: true, message: '', recordId: null };
+      return { canAdd: true, message: '', recordId: null, recordData: null };
     }
     
     const lastRecord = data[0];
@@ -71,7 +71,13 @@ export const useAITracking = () => {
       return { 
         canAdd: false, 
         message: `Cannot add new AI record. Please update the PD status for:\n\nCow: ${cowNumber}\nAI Date: ${formattedDate}\nService #${lastRecord.service_number}\n\nGo to "All Records" tab to update this record.`,
-        recordId: lastRecord.id
+        recordId: lastRecord.id,
+        recordData: {
+          id: lastRecord.id,
+          cow_number: cowNumber,
+          ai_date: lastRecord.ai_date,
+          service_number: lastRecord.service_number
+        }
       };
     }
     
@@ -80,12 +86,18 @@ export const useAITracking = () => {
       return { 
         canAdd: false, 
         message: `Cannot add new AI record. The last PD result for:\n\nCow: ${cowNumber}\nAI Date: ${formattedDate}\nService #${lastRecord.service_number}\n\nResult: ${lastRecord.pd_result || 'Not recorded'}\n\nNew AI records can only be added after a negative PD result. Please update this record in the "All Records" tab.`,
-        recordId: lastRecord.id
+        recordId: lastRecord.id,
+        recordData: {
+          id: lastRecord.id,
+          cow_number: cowNumber,
+          ai_date: lastRecord.ai_date,
+          service_number: lastRecord.service_number
+        }
       };
     }
     
     // All conditions met
-    return { canAdd: true, message: '', recordId: null };
+    return { canAdd: true, message: '', recordId: null, recordData: null };
   };
 
   const getNextServiceNumber = async (cowId: string) => {
