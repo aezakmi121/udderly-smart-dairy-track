@@ -40,6 +40,43 @@ export const useAITracking = () => {
     }
   });
 
+  const canAddAIRecord = async (cowId: string) => {
+    const { data, error } = await supabase
+      .from('ai_records')
+      .select('pd_done, pd_result, ai_date')
+      .eq('cow_id', cowId)
+      .order('ai_date', { ascending: false })
+      .limit(1);
+    
+    if (error) throw error;
+    
+    // If no records exist, this is the first AI record - allow it
+    if (!data || data.length === 0) {
+      return { canAdd: true, message: '' };
+    }
+    
+    const lastRecord = data[0];
+    
+    // Check if PD is done
+    if (!lastRecord.pd_done) {
+      return { 
+        canAdd: false, 
+        message: 'Cannot add new AI record. Please complete PD for the previous AI record first.' 
+      };
+    }
+    
+    // Check if PD result is negative
+    if (lastRecord.pd_result !== 'negative') {
+      return { 
+        canAdd: false, 
+        message: `Cannot add new AI record. Last PD result was ${lastRecord.pd_result || 'not recorded'}. New AI records can only be added after a negative PD result.` 
+      };
+    }
+    
+    // All conditions met
+    return { canAdd: true, message: '' };
+  };
+
   const getNextServiceNumber = async (cowId: string) => {
     const { data, error } = await supabase
       .from('ai_records')
@@ -85,6 +122,14 @@ export const useAITracking = () => {
 
   const addAIRecordMutation = useMutation({
     mutationFn: async (newRecord: Omit<AIRecord, 'id'>) => {
+      // Validate if AI record can be added
+      if (newRecord.cow_id) {
+        const validation = await canAddAIRecord(newRecord.cow_id);
+        if (!validation.canAdd) {
+          throw new Error(validation.message);
+        }
+      }
+
       // Calculate expected delivery date (285 days after AI date)
       const aiDate = new Date(newRecord.ai_date);
       const expectedDeliveryDate = new Date(aiDate);
@@ -106,6 +151,13 @@ export const useAITracking = () => {
       queryClient.invalidateQueries({ queryKey: ['ai-records'] });
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast({ title: "AI record added successfully!" });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Cannot add AI record", 
+        description: error.message,
+        variant: "destructive"
+      });
     }
   });
 
@@ -150,6 +202,7 @@ export const useAITracking = () => {
     addAIRecordMutation,
     updateAIRecordMutation,
     deleteAIRecordMutation,
-    getNextServiceNumber
+    getNextServiceNumber,
+    canAddAIRecord
   };
 };
