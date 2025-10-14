@@ -76,8 +76,8 @@ export const PDUpdateDialog: React.FC<PDUpdateDialogProps> = ({
               id="pd_date"
               type="date"
               value={pdDate}
-              onChange={(e) => setPdDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
+              readOnly
+              className="bg-muted"
             />
           </div>
 
