@@ -94,13 +94,11 @@ export const ExpenseReportsNew = () => {
         `);
 
       if (reportType === 'accrual') {
-        // For accrual, payment_period is stored as first day of month
-        // We need to get all records where the month falls within our date range
-        const fromMonth = fromDate.substring(0, 7); // YYYY-MM
-        const toMonth = toDate.substring(0, 7); // YYYY-MM
+        // For accrual, payment_period is stored as various dates in a month
+        // We need to get all records where payment_period falls within our date range
         query = query
-          .gte('payment_period', `${fromMonth}-01`)
-          .lte('payment_period', `${toMonth}-01`)
+          .gte('payment_period', fromDate)
+          .lte('payment_period', toDate)
           .order('payment_period', { ascending: true });
       } else {
         // For cashflow, use exact payment_date
