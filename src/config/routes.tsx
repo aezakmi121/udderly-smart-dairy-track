@@ -12,7 +12,10 @@ import {
   Settings,
   Wheat,
   Grid2X2,
-  Receipt
+  Receipt,
+  TrendingUp,
+  ShoppingBag,
+  Droplet
 } from 'lucide-react';
 import { RouteConfig } from '@/types/routes';
 import { Dashboard } from '@/components/dashboard/Dashboard';
@@ -29,6 +32,10 @@ import { CowGroupingManagement } from '@/components/grouping/CowGroupingManageme
 import { ReportsManagement } from '@/components/reports/ReportsManagement';
 import { ExpenseManagement } from '@/components/expenses/ExpenseManagement';
 import { SettingsManagement } from '@/components/settings/SettingsManagement';
+import { PlantSalesManagement } from '@/components/revenue/PlantSalesManagement';
+import { StoreSalesManagement } from '@/components/revenue/StoreSalesManagement';
+import { CollectionCenterSalesManagement } from '@/components/revenue/CollectionCenterSalesManagement';
+import { MilkDistributionManagement } from '@/components/revenue/MilkDistributionManagement';
 
 export const routes: RouteConfig[] = [
   {
@@ -119,6 +126,34 @@ export const routes: RouteConfig[] = [
     permission: 'expenses',
     label: 'Expenses',
     icon: Receipt
+  },
+  {
+    path: '/plant-sales',
+    component: PlantSalesManagement,
+    permission: 'milkCollection',
+    label: 'Plant Sales',
+    icon: TrendingUp
+  },
+  {
+    path: '/store-sales',
+    component: StoreSalesManagement,
+    permission: 'settings',
+    label: 'Store Sales',
+    icon: ShoppingBag
+  },
+  {
+    path: '/collection-center-sales',
+    component: CollectionCenterSalesManagement,
+    permission: 'milkCollection',
+    label: 'Collection Center',
+    icon: Users
+  },
+  {
+    path: '/milk-distribution',
+    component: MilkDistributionManagement,
+    permission: 'milkProduction',
+    label: 'Milk Distribution',
+    icon: Droplet
   },
   {
     path: '/settings',
