@@ -207,6 +207,54 @@ export type Database = {
           },
         ]
       }
+      collection_center_sales: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_name: string
+          id: string
+          notes: string | null
+          payment_date: string | null
+          payment_month: string
+          payment_status: string
+          quantity: number
+          rate_per_liter: number
+          sale_date: string
+          total_amount: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_name: string
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_month?: string
+          payment_status?: string
+          quantity: number
+          rate_per_liter: number
+          sale_date?: string
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_month?: string
+          payment_status?: string
+          quantity?: number
+          rate_per_liter?: number
+          sale_date?: string
+          total_amount?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cow_group_assignments: {
         Row: {
           assigned_by_user_id: string | null
@@ -386,6 +434,60 @@ export type Database = {
             columns: ["promoted_from_calf_id"]
             isOneToOne: false
             referencedRelation: "calves"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cream_stock: {
+        Row: {
+          created_at: string
+          current_stock: number
+          ghee_production_id: string | null
+          id: string
+          milk_distribution_id: string | null
+          notes: string | null
+          quantity: number
+          source: string | null
+          transaction_date: string
+          transaction_type: string
+        }
+        Insert: {
+          created_at?: string
+          current_stock?: number
+          ghee_production_id?: string | null
+          id?: string
+          milk_distribution_id?: string | null
+          notes?: string | null
+          quantity: number
+          source?: string | null
+          transaction_date?: string
+          transaction_type: string
+        }
+        Update: {
+          created_at?: string
+          current_stock?: number
+          ghee_production_id?: string | null
+          id?: string
+          milk_distribution_id?: string | null
+          notes?: string | null
+          quantity?: number
+          source?: string | null
+          transaction_date?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cream_stock_milk_distribution_id_fkey"
+            columns: ["milk_distribution_id"]
+            isOneToOne: false
+            referencedRelation: "milk_distributions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ghee_production"
+            columns: ["ghee_production_id"]
+            isOneToOne: false
+            referencedRelation: "ghee_production"
             referencedColumns: ["id"]
           },
         ]
@@ -698,6 +800,95 @@ export type Database = {
           },
         ]
       }
+      ghee_production: {
+        Row: {
+          batch_number: string | null
+          conversion_rate: number | null
+          cream_used: number
+          created_at: string
+          ghee_yield: number
+          id: string
+          notes: string | null
+          production_cost: number | null
+          production_date: string
+          updated_at: string
+        }
+        Insert: {
+          batch_number?: string | null
+          conversion_rate?: number | null
+          cream_used: number
+          created_at?: string
+          ghee_yield: number
+          id?: string
+          notes?: string | null
+          production_cost?: number | null
+          production_date?: string
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string | null
+          conversion_rate?: number | null
+          cream_used?: number
+          created_at?: string
+          ghee_yield?: number
+          id?: string
+          notes?: string | null
+          production_cost?: number | null
+          production_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ghee_sales: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_name: string | null
+          ghee_production_id: string | null
+          id: string
+          notes: string | null
+          quantity: number
+          rate_per_kg: number
+          sale_date: string
+          sale_type: string
+          total_amount: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          ghee_production_id?: string | null
+          id?: string
+          notes?: string | null
+          quantity: number
+          rate_per_kg: number
+          sale_date?: string
+          sale_type: string
+          total_amount?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          ghee_production_id?: string | null
+          id?: string
+          notes?: string | null
+          quantity?: number
+          rate_per_kg?: number
+          sale_date?: string
+          sale_type?: string
+          total_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghee_sales_ghee_production_id_fkey"
+            columns: ["ghee_production_id"]
+            isOneToOne: false
+            referencedRelation: "ghee_production"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grouping_settings: {
         Row: {
           created_at: string | null
@@ -823,6 +1014,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      milk_distributions: {
+        Row: {
+          calves: number
+          chunnu: number
+          collection_center: number
+          cream_extraction: number
+          cream_yield: number | null
+          created_at: string
+          distribution_date: string
+          farm_workers: number
+          ffm_to_dahi: number | null
+          ffm_to_plant: number | null
+          ffm_yield: number | null
+          home: number
+          id: string
+          notes: string | null
+          pradhan_ji: number
+          session: string
+          store: number
+          total_production: number
+          updated_at: string
+        }
+        Insert: {
+          calves?: number
+          chunnu?: number
+          collection_center?: number
+          cream_extraction?: number
+          cream_yield?: number | null
+          created_at?: string
+          distribution_date?: string
+          farm_workers?: number
+          ffm_to_dahi?: number | null
+          ffm_to_plant?: number | null
+          ffm_yield?: number | null
+          home?: number
+          id?: string
+          notes?: string | null
+          pradhan_ji?: number
+          session: string
+          store?: number
+          total_production?: number
+          updated_at?: string
+        }
+        Update: {
+          calves?: number
+          chunnu?: number
+          collection_center?: number
+          cream_extraction?: number
+          cream_yield?: number | null
+          created_at?: string
+          distribution_date?: string
+          farm_workers?: number
+          ffm_to_dahi?: number | null
+          ffm_to_plant?: number | null
+          ffm_yield?: number | null
+          home?: number
+          id?: string
+          notes?: string | null
+          pradhan_ji?: number
+          session?: string
+          store?: number
+          total_production?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       milk_production: {
         Row: {
@@ -1096,6 +1353,57 @@ export type Database = {
         }
         Relationships: []
       }
+      plant_sales: {
+        Row: {
+          amount_received: number
+          created_at: string
+          created_by: string | null
+          derived_rate: number | null
+          fat_percentage: number
+          id: string
+          notes: string | null
+          payment_date: string | null
+          payment_status: string
+          quantity: number
+          sale_date: string
+          slip_number: string | null
+          snf_percentage: number | null
+          updated_at: string
+        }
+        Insert: {
+          amount_received: number
+          created_at?: string
+          created_by?: string | null
+          derived_rate?: number | null
+          fat_percentage: number
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_status?: string
+          quantity: number
+          sale_date?: string
+          slip_number?: string | null
+          snf_percentage?: number | null
+          updated_at?: string
+        }
+        Update: {
+          amount_received?: number
+          created_at?: string
+          created_by?: string | null
+          derived_rate?: number | null
+          fat_percentage?: number
+          id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_status?: string
+          quantity?: number
+          sale_date?: string
+          slip_number?: string | null
+          snf_percentage?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -1153,6 +1461,45 @@ export type Database = {
           rate?: number
           snf?: number
           species?: string
+        }
+        Relationships: []
+      }
+      store_sales: {
+        Row: {
+          cash_amount: number
+          created_at: string
+          created_by: string | null
+          credit_amount: number
+          id: string
+          notes: string | null
+          sale_date: string
+          total_amount: number | null
+          updated_at: string
+          upi_amount: number
+        }
+        Insert: {
+          cash_amount?: number
+          created_at?: string
+          created_by?: string | null
+          credit_amount?: number
+          id?: string
+          notes?: string | null
+          sale_date?: string
+          total_amount?: number | null
+          updated_at?: string
+          upi_amount?: number
+        }
+        Update: {
+          cash_amount?: number
+          created_at?: string
+          created_by?: string | null
+          credit_amount?: number
+          id?: string
+          notes?: string | null
+          sale_date?: string
+          total_amount?: number | null
+          updated_at?: string
+          upi_amount?: number
         }
         Relationships: []
       }
@@ -1325,10 +1672,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      calculate_days_in_milk: {
-        Args: { cow_id: string }
-        Returns: number
-      }
+      calculate_days_in_milk: { Args: { cow_id: string }; Returns: number }
       create_daily_deliveries_for_date: {
         Args: { target_date?: string }
         Returns: number
