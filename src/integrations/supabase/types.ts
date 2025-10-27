@@ -207,6 +207,54 @@ export type Database = {
           },
         ]
       }
+      collection_center_distributions: {
+        Row: {
+          buffalo_to_plant: number
+          buffalo_to_store: number
+          cash_sale: number
+          cow_to_farm_cream: number
+          cow_to_plant: number
+          cow_to_store: number
+          created_at: string
+          distribution_date: string
+          id: string
+          mixing: number
+          notes: string | null
+          session: string
+          updated_at: string
+        }
+        Insert: {
+          buffalo_to_plant?: number
+          buffalo_to_store?: number
+          cash_sale?: number
+          cow_to_farm_cream?: number
+          cow_to_plant?: number
+          cow_to_store?: number
+          created_at?: string
+          distribution_date?: string
+          id?: string
+          mixing?: number
+          notes?: string | null
+          session: string
+          updated_at?: string
+        }
+        Update: {
+          buffalo_to_plant?: number
+          buffalo_to_store?: number
+          cash_sale?: number
+          cow_to_farm_cream?: number
+          cow_to_plant?: number
+          cow_to_store?: number
+          created_at?: string
+          distribution_date?: string
+          id?: string
+          mixing?: number
+          notes?: string | null
+          session?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       collection_center_sales: {
         Row: {
           created_at: string
@@ -491,6 +539,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      dahi_production: {
+        Row: {
+          batch_number: string | null
+          conversion_rate: number | null
+          cost_per_kg: number | null
+          created_at: string
+          dahi_yield: number
+          ffm_used: number
+          id: string
+          notes: string | null
+          production_cost: number | null
+          production_date: string
+          updated_at: string
+        }
+        Insert: {
+          batch_number?: string | null
+          conversion_rate?: number | null
+          cost_per_kg?: number | null
+          created_at?: string
+          dahi_yield: number
+          ffm_used: number
+          id?: string
+          notes?: string | null
+          production_cost?: number | null
+          production_date?: string
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string | null
+          conversion_rate?: number | null
+          cost_per_kg?: number | null
+          created_at?: string
+          dahi_yield?: number
+          ffm_used?: number
+          id?: string
+          notes?: string | null
+          production_cost?: number | null
+          production_date?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       expense_categories: {
         Row: {
@@ -1030,6 +1120,7 @@ export type Database = {
           ffm_yield: number | null
           home: number
           id: string
+          mixing: number
           notes: string | null
           pradhan_ji: number
           session: string
@@ -1051,6 +1142,7 @@ export type Database = {
           ffm_yield?: number | null
           home?: number
           id?: string
+          mixing?: number
           notes?: string | null
           pradhan_ji?: number
           session: string
@@ -1072,6 +1164,7 @@ export type Database = {
           ffm_yield?: number | null
           home?: number
           id?: string
+          mixing?: number
           notes?: string | null
           pradhan_ji?: number
           session?: string
@@ -1461,6 +1554,89 @@ export type Database = {
           rate?: number
           snf?: number
           species?: string
+        }
+        Relationships: []
+      }
+      slip_verification: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          difference: number | null
+          farmer_id: string | null
+          id: string
+          recorded_quantity: number
+          session: string
+          slip_quantity: number
+          status: string
+          updated_at: string
+          verification_date: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          difference?: number | null
+          farmer_id?: string | null
+          id?: string
+          recorded_quantity: number
+          session: string
+          slip_quantity: number
+          status?: string
+          updated_at?: string
+          verification_date?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          difference?: number | null
+          farmer_id?: string | null
+          id?: string
+          recorded_quantity?: number
+          session?: string
+          slip_quantity?: number
+          status?: string
+          updated_at?: string
+          verification_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slip_verification_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "farmers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_receipts: {
+        Row: {
+          buffalo_received: number
+          cow_received: number
+          created_at: string
+          id: string
+          mixed_received: number
+          notes: string | null
+          receipt_date: string
+          updated_at: string
+        }
+        Insert: {
+          buffalo_received?: number
+          cow_received?: number
+          created_at?: string
+          id?: string
+          mixed_received?: number
+          notes?: string | null
+          receipt_date?: string
+          updated_at?: string
+        }
+        Update: {
+          buffalo_received?: number
+          cow_received?: number
+          created_at?: string
+          id?: string
+          mixed_received?: number
+          notes?: string | null
+          receipt_date?: string
+          updated_at?: string
         }
         Relationships: []
       }

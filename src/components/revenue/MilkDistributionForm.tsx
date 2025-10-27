@@ -27,6 +27,7 @@ export const MilkDistributionForm = ({ initialData, productionData, onSubmit, is
       store: 0,
       cream_extraction: 0,
       collection_center: 0,
+      mixing: 0,
       cream_yield: 0,
       ffm_yield: 0,
       ffm_to_dahi: 0,
@@ -45,9 +46,10 @@ export const MilkDistributionForm = ({ initialData, productionData, onSubmit, is
   const store = watch('store') || 0;
   const creamExtraction = watch('cream_extraction') || 0;
   const collectionCenter = watch('collection_center') || 0;
+  const mixing = watch('mixing') || 0;
 
   const totalDistributed = Number(calves) + Number(farmWorkers) + Number(home) + Number(pradhanJi) + 
-    Number(chunnu) + Number(store) + Number(creamExtraction) + Number(collectionCenter);
+    Number(chunnu) + Number(store) + Number(creamExtraction) + Number(collectionCenter) + Number(mixing);
   const remaining = Number(totalProduction) - totalDistributed;
 
   useEffect(() => {
@@ -124,6 +126,10 @@ export const MilkDistributionForm = ({ initialData, productionData, onSubmit, is
             <div className="space-y-2">
               <Label htmlFor="collection_center">Collection Center (L)</Label>
               <Input id="collection_center" type="number" step="0.1" {...register('collection_center', { min: 0 })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="mixing">Mixing (sent to CC) (L)</Label>
+              <Input id="mixing" type="number" step="0.1" {...register('mixing', { min: 0 })} />
             </div>
           </div>
 

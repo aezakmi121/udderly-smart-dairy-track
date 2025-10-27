@@ -2,66 +2,71 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-interface MilkDistribution {
+interface CollectionCenterDistribution {
   id: string;
   distribution_date: string;
   session: 'morning' | 'evening';
-  total_production: number;
-  calves: number;
-  farm_workers: number;
-  home: number;
-  pradhan_ji: number;
-  chunnu: number;
-  store: number;
-  cream_extraction: number;
-  collection_center: number;
+  cow_to_store: number;
+  cow_to_plant: number;
+  cow_to_farm_cream: number;
+  buffalo_to_store: number;
+  buffalo_to_plant: number;
+  cash_sale: number;
   mixing: number;
-  cream_yield?: number;
-  ffm_yield?: number;
-  ffm_to_dahi?: number;
-  ffm_to_plant?: number;
   notes?: string;
 }
 
-export const useMilkDistribution = (selectedDate: string) => {
+export const useCollectionCenterDistributions = (selectedDate: string) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: distributions, isLoading } = useQuery({
-    queryKey: ['milk-distributions', selectedDate],
+    queryKey: ['collection-center-distributions', selectedDate],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('milk_distributions')
+        .from('collection_center_distributions')
         .select('*')
         .eq('distribution_date', selectedDate)
         .order('session', { ascending: true });
       
       if (error) throw error;
-      return data as MilkDistribution[];
+      return data as CollectionCenterDistribution[];
     }
   });
 
-  const { data: productionData } = useQuery({
-    queryKey: ['milk-production-for-distribution', selectedDate],
+  // Get total milk collected at collection center for the date/session
+  const { data: collectionData } = useQuery({
+    queryKey: ['collection-totals', selectedDate],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('milk_production')
-        .select('session, quantity')
-        .eq('production_date', selectedDate);
+        .from('milk_collections')
+        .select('session, quantity, species')
+        .eq('collection_date', selectedDate);
       
       if (error) throw error;
       
-      const morning = data.filter(r => r.session === 'morning').reduce((sum, r) => sum + Number(r.quantity), 0);
-      const evening = data.filter(r => r.session === 'evening').reduce((sum, r) => sum + Number(r.quantity), 0);
+      const result: Record<string, { cow: number; buffalo: number }> = {
+        morning: { cow: 0, buffalo: 0 },
+        evening: { cow: 0, buffalo: 0 }
+      };
       
-      return { morning, evening };
+      data.forEach(record => {
+        const species = record.species.toLowerCase();
+        if (species === 'cow') {
+          result[record.session].cow += Number(record.quantity);
+        } else if (species === 'buffalo') {
+          result[record.session].buffalo += Number(record.quantity);
+        }
+      });
+      
+      return result;
     }
   });
 
   const addDistributionMutation = useMutation({
-    mutationFn: async (newDistribution: Omit<MilkDistribution, 'id'>) => {
+    mutationFn: async (newDistribution: Omit<CollectionCenterDistribution, 'id'>) => {
       const { data, error } = await supabase
-        .from('milk_distributions')
+        .from('collection_center_distributions')
         .insert(newDistribution)
         .select()
         .single();
@@ -70,8 +75,8 @@ export const useMilkDistribution = (selectedDate: string) => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['milk-distributions'] });
-      toast({ title: "Distribution record added successfully!" });
+      queryClient.invalidateQueries({ queryKey: ['collection-center-distributions'] });
+      toast({ title: "Collection center distribution added successfully!" });
     },
     onError: (error: Error) => {
       toast({ 
@@ -83,9 +88,9 @@ export const useMilkDistribution = (selectedDate: string) => {
   });
 
   const updateDistributionMutation = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<MilkDistribution> & { id: string }) => {
+    mutationFn: async ({ id, ...updates }: Partial<CollectionCenterDistribution> & { id: string }) => {
       const { data, error } = await supabase
-        .from('milk_distributions')
+        .from('collection_center_distributions')
         .update(updates)
         .eq('id', id)
         .select()
@@ -95,8 +100,8 @@ export const useMilkDistribution = (selectedDate: string) => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['milk-distributions'] });
-      toast({ title: "Distribution record updated successfully!" });
+      queryClient.invalidateQueries({ queryKey: ['collection-center-distributions'] });
+      toast({ title: "Distribution updated successfully!" });
     },
     onError: (error: Error) => {
       toast({ 
@@ -110,15 +115,15 @@ export const useMilkDistribution = (selectedDate: string) => {
   const deleteDistributionMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('milk_distributions')
+        .from('collection_center_distributions')
         .delete()
         .eq('id', id);
       
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['milk-distributions'] });
-      toast({ title: "Distribution record deleted successfully!" });
+      queryClient.invalidateQueries({ queryKey: ['collection-center-distributions'] });
+      toast({ title: "Distribution deleted successfully!" });
     },
     onError: (error: Error) => {
       toast({ 
@@ -131,7 +136,7 @@ export const useMilkDistribution = (selectedDate: string) => {
 
   return {
     distributions,
-    productionData,
+    collectionData,
     isLoading,
     addDistributionMutation,
     updateDistributionMutation,

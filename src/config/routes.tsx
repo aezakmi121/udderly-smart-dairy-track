@@ -36,6 +36,10 @@ import { PlantSalesManagement } from '@/components/revenue/PlantSalesManagement'
 import { StoreSalesManagement } from '@/components/revenue/StoreSalesManagement';
 import { CollectionCenterSalesManagement } from '@/components/revenue/CollectionCenterSalesManagement';
 import { MilkDistributionManagement } from '@/components/revenue/MilkDistributionManagement';
+import { CollectionCenterDistributionManagement } from '@/components/revenue/CollectionCenterDistributionManagement';
+import { StoreReceiptManagement } from '@/components/revenue/StoreReceiptManagement';
+import { SlipVerificationManagement } from '@/components/revenue/SlipVerificationManagement';
+import { DahiProductionManagement } from '@/components/revenue/DahiProductionManagement';
 
 export const routes: RouteConfig[] = [
   {
