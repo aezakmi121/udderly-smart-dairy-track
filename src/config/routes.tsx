@@ -160,6 +160,34 @@ export const routes: RouteConfig[] = [
     icon: Droplet
   },
   {
+    path: '/collection-center-distribution',
+    component: CollectionCenterDistributionManagement,
+    permission: 'milkCollection',
+    label: 'CC Distribution',
+    icon: Droplet
+  },
+  {
+    path: '/store-receipts',
+    component: StoreReceiptManagement,
+    permission: 'settings',
+    label: 'Store Receipts',
+    icon: Receipt
+  },
+  {
+    path: '/slip-verification',
+    component: SlipVerificationManagement,
+    permission: 'milkCollection',
+    label: 'Slip Verification',
+    icon: Receipt
+  },
+  {
+    path: '/dahi-production',
+    component: DahiProductionManagement,
+    permission: 'milkProduction',
+    label: 'Dahi Production',
+    icon: Droplet
+  },
+  {
     path: '/settings',
     component: SettingsManagement,
     permission: 'settings',
