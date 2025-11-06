@@ -15,7 +15,8 @@ import {
   Receipt,
   TrendingUp,
   ShoppingBag,
-  Droplet
+  Droplet,
+  FileText
 } from 'lucide-react';
 import { RouteConfig } from '@/types/routes';
 import { Dashboard } from '@/components/dashboard/Dashboard';
@@ -40,6 +41,7 @@ import { CollectionCenterDistributionManagement } from '@/components/revenue/Col
 import { StoreReceiptManagement } from '@/components/revenue/StoreReceiptManagement';
 import { SlipVerificationManagement } from '@/components/revenue/SlipVerificationManagement';
 import { DahiProductionManagement } from '@/components/revenue/DahiProductionManagement';
+import { DistributionReports } from '@/components/reports/DistributionReports';
 
 export const routes: RouteConfig[] = [
   {
@@ -186,6 +188,13 @@ export const routes: RouteConfig[] = [
     permission: 'milkProduction',
     label: 'Dahi Production',
     icon: Droplet
+  },
+  {
+    path: '/distribution-reports',
+    component: DistributionReports,
+    permission: 'analytics',
+    label: 'Distribution Reports',
+    icon: FileText
   },
   {
     path: '/settings',
