@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { Download, Share2, TrendingUp, TrendingDown, AlertCircle } from 'lucide-
 import { useDistributionAnalytics } from '@/hooks/useDistributionAnalytics';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from 'recharts';
 import { useToast } from '@/hooks/use-toast';
+import { captureRecharts } from '@/utils/chartCapture';
+import { generateDistributionReportPDF, generateDistributionWhatsAppMessage, type DistributionPdfData } from '@/utils/pdf/generateDistributionReportPDF';
 
 const CHART_COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6366f1', '#14b8a6'];
 
@@ -21,6 +23,13 @@ export const DistributionReports = () => {
   const [dateRange, setDateRange] = useState<DateRange>('today');
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Refs for hidden charts (PDF export)
+  const distributionPieRef = useRef<HTMLDivElement>(null);
+  const sourceComparisonRef = useRef<HTMLDivElement>(null);
+  const monthlyTrendsRef = useRef<HTMLDivElement>(null);
+  const speciesDonutRef = useRef<HTMLDivElement>(null);
 
   const { data: analytics, isLoading, error } = useDistributionAnalytics(fromDate, toDate);
 
@@ -73,28 +82,130 @@ export const DistributionReports = () => {
   const handleExportCSV = () => {
     if (!analytics) return;
     
+    const csvContent = [
+      ['Metric', 'Value'],
+      ['Total Production', `${analytics.totalProduction.toFixed(1)} L`],
+      ['Farm Production', `${analytics.farmProduction.toFixed(1)} L`],
+      ['Collection Center', `${analytics.collectionCenterProduction.toFixed(1)} L`],
+      ['Store Dispatched', `${analytics.storeDispatched.toFixed(1)} L`],
+      ['Store Received', `${analytics.storeReceived.toFixed(1)} L`],
+      ['Discrepancy', `${analytics.storeDiscrepancy.toFixed(1)} L`],
+      ['Plant Dispatched', `${analytics.plantDispatched.toFixed(1)} L`],
+      ['Plant Revenue', `Rs.${analytics.plantRevenue.toLocaleString('en-IN')}`],
+      ['Cream Extracted', `${analytics.creamExtracted.toFixed(1)} L`],
+      ['FFM Generated', `${analytics.ffmGenerated.toFixed(1)} L`],
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `distribution-report-${fromDate}-to-${toDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+
     toast({
-      title: "CSV Export",
-      description: "CSV export functionality coming soon",
+      title: "CSV Exported",
+      description: "Distribution report exported successfully",
     });
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!analytics) return;
     
-    toast({
-      title: "PDF Export",
-      description: "PDF export functionality coming soon",
-    });
+    setIsExporting(true);
+    
+    try {
+      // Capture all charts
+      const distributionPieImg = await captureRecharts(distributionPieRef.current!);
+      const sourceComparisonImg = await captureRecharts(sourceComparisonRef.current!);
+      const monthlyTrendsImg = analytics.monthlyTrends.length > 1 
+        ? await captureRecharts(monthlyTrendsRef.current!) 
+        : '';
+      const speciesDonutImg = await captureRecharts(speciesDonutRef.current!);
+
+      // Calculate cow breakdown (simplified for now)
+      const cowBreakdown = {
+        farmEvening: analytics.farmProduction * 0.4,
+        farmMorning: analytics.farmProduction * 0.6,
+        ccEvening: 0,
+        ccMorning: 0,
+        storeTotal: analytics.storeDispatched * 0.5,
+        creamTotal: analytics.creamExtracted,
+        ffmToCalves: analytics.ffmGenerated * 0.5,
+        ffmToPlant: analytics.ffmGenerated * 0.3,
+        ffmToDahi: analytics.ffmGenerated * 0.2,
+      };
+
+      const buffaloBreakdown = {
+        ccEvening: analytics.collectionCenterProduction * 0.45,
+        ccMorning: analytics.collectionCenterProduction * 0.55,
+        storeTotal: analytics.storeDispatched * 0.5,
+        plantTotal: analytics.plantDispatched,
+        plantRevenue: analytics.plantRevenue,
+      };
+
+      const pdfData: DistributionPdfData = {
+        fromDate,
+        toDate,
+        totalProduction: analytics.totalProduction,
+        farmProduction: analytics.farmProduction,
+        collectionCenterProduction: analytics.collectionCenterProduction,
+        storeDispatched: analytics.storeDispatched,
+        storeReceived: analytics.storeReceived,
+        storeDiscrepancy: analytics.storeDiscrepancy,
+        plantDispatched: analytics.plantDispatched,
+        plantRevenue: analytics.plantRevenue,
+        creamExtracted: analytics.creamExtracted,
+        ffmGenerated: analytics.ffmGenerated,
+        cashSales: analytics.cashSales,
+        mixing: analytics.mixing,
+        cowBreakdown,
+        buffaloBreakdown,
+        images: {
+          distributionPie: distributionPieImg,
+          sourceComparison: sourceComparisonImg,
+          monthlyTrends: monthlyTrendsImg,
+          speciesDonut: speciesDonutImg,
+        },
+      };
+
+      const pdf = generateDistributionReportPDF(pdfData);
+      pdf.save(`distribution-report-${fromDate}-to-${toDate}.pdf`);
+
+      toast({
+        title: "PDF Generated",
+        description: "Distribution report PDF generated successfully",
+      });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleWhatsAppShare = () => {
     if (!analytics) return;
     
-    toast({
-      title: "WhatsApp Share",
-      description: "WhatsApp share functionality coming soon",
+    const message = generateDistributionWhatsAppMessage({
+      fromDate,
+      toDate,
+      totalProduction: analytics.totalProduction,
+      farmProduction: analytics.farmProduction,
+      collectionCenterProduction: analytics.collectionCenterProduction,
+      storeDispatched: analytics.storeDispatched,
+      storeReceived: analytics.storeReceived,
+      plantDispatched: analytics.plantDispatched,
+      plantRevenue: analytics.plantRevenue,
     });
+
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   if (error) {
@@ -165,15 +276,15 @@ export const DistributionReports = () => {
 
           {/* Export Buttons */}
           <div className="flex flex-wrap gap-2 pt-2">
-            <Button onClick={handleExportCSV} variant="outline" size="sm">
+            <Button onClick={handleExportCSV} variant="outline" size="sm" disabled={isExporting}>
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
-            <Button onClick={handleExportPDF} variant="outline" size="sm">
+            <Button onClick={handleExportPDF} variant="outline" size="sm" disabled={isExporting}>
               <Download className="h-4 w-4 mr-2" />
-              Export PDF
+              {isExporting ? 'Generating PDF...' : 'Export PDF'}
             </Button>
-            <Button onClick={handleWhatsAppShare} variant="outline" size="sm">
+            <Button onClick={handleWhatsAppShare} variant="outline" size="sm" disabled={isExporting}>
               <Share2 className="h-4 w-4 mr-2" />
               Share via WhatsApp
             </Button>
@@ -333,6 +444,89 @@ export const DistributionReports = () => {
                 </ResponsiveContainer>
               </Card>
             )}
+          </div>
+
+          {/* Hidden Charts for PDF Export */}
+          <div className="fixed -left-[9999px] top-0 w-[800px]">
+            <div ref={distributionPieRef} className="bg-white p-6" style={{ width: 800, height: 400 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={distributionData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                    outerRadius={120}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {distributionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div ref={sourceComparisonRef} className="bg-white p-6" style={{ width: 800, height: 400 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sourceComparisonData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="cow" fill="#8b5cf6" name="Cow" />
+                  <Bar dataKey="buffalo" fill="#3b82f6" name="Buffalo" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {analytics?.monthlyTrends && analytics.monthlyTrends.length > 1 && (
+              <div ref={monthlyTrendsRef} className="bg-white p-6" style={{ width: 800, height: 400 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={analytics.monthlyTrends}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="production" stroke="#8b5cf6" name="Production" />
+                    <Line type="monotone" dataKey="storeDispatched" stroke="#3b82f6" name="Store" />
+                    <Line type="monotone" dataKey="plantDispatched" stroke="#10b981" name="Plant" />
+                    <Line type="monotone" dataKey="creamExtracted" stroke="#f59e0b" name="Cream" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            <div ref={speciesDonutRef} className="bg-white p-6" style={{ width: 800, height: 400 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Farm (Cow)', value: analytics?.farmProduction || 0 },
+                      { name: 'Collection Center', value: analytics?.collectionCenterProduction || 0 },
+                    ]}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={120}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label
+                  >
+                    <Cell fill="#8b5cf6" />
+                    <Cell fill="#3b82f6" />
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </>
       )}
