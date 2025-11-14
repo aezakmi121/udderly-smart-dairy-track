@@ -112,16 +112,18 @@ export const CowDetailsModal: React.FC<CowDetailsModalProps> = ({
     enabled: !!cow?.id
   });
 
-  // Fetch milk production for average yield calculation
+  // Fetch milk production for current month average calculation
   const { data: milkProduction } = useQuery({
     queryKey: ['cow-milk-production', cow?.id],
     queryFn: async () => {
       if (!cow?.id) return [];
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('milk_production')
         .select('quantity, production_date')
         .eq('cow_id', cow.id)
-        .gte('production_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .gte('production_date', firstDayOfMonth)
         .order('production_date', { ascending: false });
       
       if (error) throw error;
@@ -251,18 +253,8 @@ export const CowDetailsModal: React.FC<CowDetailsModalProps> = ({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span className="font-medium">Current Month:</span>
+                  <span className="font-medium">Daily Avg (Current Month):</span>
                   <span className="font-semibold text-blue-600">
-                    {cow.current_month_yield?.toFixed(1) || '0.0'} L
-                  </span>
-                  
-                  <span className="font-medium">Lifetime Yield:</span>
-                  <span className="font-semibold text-green-600">
-                    {cow.lifetime_yield?.toFixed(1) || '0.0'} L
-                  </span>
-                  
-                  <span className="font-medium">Average (30 days):</span>
-                  <span className="font-semibold text-orange-600">
                     {averageYield} L/day
                   </span>
                   
