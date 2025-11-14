@@ -364,23 +364,25 @@ export const CowDetailsModal: React.FC<CowDetailsModalProps> = ({
                     </div>
                   </div>
                   
-                  {cow.last_calving_date && (
-                    <>
-                      <Separator />
-                      <div>
-                        <span className="font-medium text-sm">Last Calving:</span>
-                        <div className="text-sm mt-1">
-                          {format(new Date(cow.last_calving_date), 'MMM dd, yyyy')}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="font-medium text-sm">Days in Milk:</span>
-                        <div className="text-sm mt-1 font-semibold text-blue-600">
-                          {Math.floor((new Date().getTime() - new Date(cow.last_calving_date).getTime()) / (1000 * 60 * 60 * 24))} days
-                        </div>
-                      </div>
-                    </>
-                  )}
+                  <Separator />
+                  <div>
+                    <span className="font-medium text-sm">Last Calving:</span>
+                    <div className="text-sm mt-1">
+                      {cow.last_calving_date 
+                        ? format(new Date(cow.last_calving_date), 'MMM dd, yyyy')
+                        : 'N/A'
+                      }
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-sm">Days in Milk (DIM):</span>
+                    <div className="text-sm mt-1 font-semibold text-blue-600">
+                      {cow.last_calving_date 
+                        ? `${Math.floor((new Date().getTime() - new Date(cow.last_calving_date).getTime()) / (1000 * 60 * 60 * 24))} days`
+                        : 'N/A'
+                      }
+                    </div>
+                  </div>
                 </div>
                 
                 {cow.notes && (
