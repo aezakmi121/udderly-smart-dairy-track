@@ -73,6 +73,45 @@ export const CowsManagement = () => {
     }
   });
 
+  // Fetch milk production for current month for all cows
+  const { data: milkProductionData } = useQuery({
+    queryKey: ['milk-production-current-month'],
+    queryFn: async () => {
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('milk_production')
+        .select('cow_id, quantity, production_date')
+        .gte('production_date', firstDayOfMonth);
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Calculate daily average for each cow
+  const cowDailyAverages = useMemo(() => {
+    if (!milkProductionData) return new Map<string, number>();
+    
+    const averages = new Map<string, number>();
+    const cowProduction = new Map<string, number[]>();
+    
+    milkProductionData.forEach(record => {
+      if (!record.cow_id) return;
+      if (!cowProduction.has(record.cow_id)) {
+        cowProduction.set(record.cow_id, []);
+      }
+      cowProduction.get(record.cow_id)!.push(record.quantity);
+    });
+    
+    cowProduction.forEach((quantities, cowId) => {
+      const avg = quantities.reduce((sum, q) => sum + q, 0) / quantities.length;
+      averages.set(cowId, avg);
+    });
+    
+    return averages;
+  }, [milkProductionData]);
+
   // Get unique breeds for filter
   const uniqueBreeds = useMemo(() => {
     if (!cows) return [];
@@ -112,10 +151,6 @@ export const CowsManagement = () => {
         case 'date_of_arrival':
           aValue = a.date_of_arrival || '';
           bValue = b.date_of_arrival || '';
-          break;
-        case 'lifetime_yield':
-          aValue = Number(a.lifetime_yield) || 0;
-          bValue = Number(b.lifetime_yield) || 0;
           break;
         default:
           return 0;
@@ -372,8 +407,7 @@ export const CowsManagement = () => {
                   <TableHead>Status</TableHead>
                   <TableHead>Age</TableHead>
                   <TableHead>Days in Milk</TableHead>
-                  <TableHead>Current Yield</TableHead>
-                  <TableHead>Lifetime Yield</TableHead>
+                  <TableHead>Daily Avg (Month)</TableHead>
                   <TableHead>Calves</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -423,8 +457,9 @@ export const CowsManagement = () => {
                         : 'N/A'
                       }
                     </TableCell>
-                    <TableCell>{cow.current_month_yield?.toFixed(1) || '0.0'} L</TableCell>
-                    <TableCell>{cow.lifetime_yield?.toFixed(1) || '0.0'} L</TableCell>
+                    <TableCell>
+                      {cowDailyAverages.get(cow.id)?.toFixed(1) || '0.0'} L/day
+                    </TableCell>
                     <TableCell>
                       <Button
                         variant="outline"
