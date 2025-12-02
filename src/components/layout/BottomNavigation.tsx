@@ -34,7 +34,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50">
-      <div className="flex items-center justify-around px-2 py-2" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
+      <div className="flex items-center justify-evenly px-2 py-2" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
         {bottomNavRoutes.map((route) => {
           const Icon = route.icon;
           const isActive = currentPath === route.path;
