@@ -13,10 +13,10 @@ const Sidebar: React.FC<SidebarProps> = ({ routes, currentPath, onNavigate, isCo
 
   return (
     <div className={cn(
-      "bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out h-full",
+      "bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out h-full flex flex-col",
       isCollapsed ? "w-16" : "w-64"
     )}>
-      <div className="px-3 py-4 overflow-y-auto h-full">
+      <div className="flex-1 overflow-y-auto px-3 py-4">
         <div className="space-y-1">
           {routes.map((route) => {
             const Icon = route.icon;
