@@ -12,6 +12,7 @@ import { Droplets, TrendingUp, Target, Zap } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { generateMilkProductionPDF, generateWhatsAppMessage } from '@/utils/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
+import { fetchAllMilkProduction } from '@/utils/paginatedFetch';
 
 const COLORS = ['#3b82f6', '#10b981', '#f97316', '#8b5cf6', '#ec4899', '#06b6d4'];
 
@@ -25,18 +26,10 @@ export const MilkProductionReports = () => {
   const { data: productionAnalytics, isLoading } = useQuery({
     queryKey: ['milk-production-analytics', fromDate, toDate],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('milk_production')
-        .select(`
-          *,
-          cows!cow_id (cow_number, lactation_number, last_calving_date, breed)
-        `)
-        .gte('production_date', fromDate)
-        .lte('production_date', toDate)
-        .order('production_date', { ascending: true })
-        .limit(10000);
+      // Use paginated fetch to get all records
+      const data = await fetchAllMilkProduction(fromDate, toDate);
 
-      if (error) throw error;
+      if (!data) throw new Error('Failed to fetch data');
 
       // Overall analytics
       const totalProduction = data.reduce((sum, record) => sum + Number(record.quantity), 0);

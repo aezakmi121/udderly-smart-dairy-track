@@ -13,6 +13,7 @@ import { Droplets, TrendingUp, IndianRupee, Scale, User } from 'lucide-react';
 import { generateMilkCollectionPDF, generatePayoutPDF, generateIndividualFarmerPDF, generateWhatsAppMessage } from '@/utils/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { FarmerSelectionModal } from './FarmerSelectionModal';
+import { fetchAllMilkCollections } from '@/utils/paginatedFetch';
 
 const COLORS = ['#3b82f6', '#10b981', '#f97316', '#8b5cf6'];
 
@@ -28,18 +29,10 @@ export const MilkCollectionReports = () => {
   const { data: collectionAnalytics, isLoading } = useQuery({
     queryKey: ['milk-collection-analytics', fromDate, toDate],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('milk_collections')
-        .select(`
-          *,
-          farmers!milk_collections_farmer_id_fkey (name, farmer_code)
-        `)
-        .gte('collection_date', fromDate)
-        .lte('collection_date', toDate)
-        .order('collection_date', { ascending: true })
-        .limit(10000);
+      // Use paginated fetch to get all records
+      const data = await fetchAllMilkCollections(fromDate, toDate);
 
-      if (error) throw error;
+      if (!data) throw new Error('Failed to fetch data');
 
       // Calculate analytics
       const totalQuantity = data.reduce((sum, record) => sum + Number(record.quantity), 0);

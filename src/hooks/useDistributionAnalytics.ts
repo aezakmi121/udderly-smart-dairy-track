@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays } from 'date-fns';
+import { fetchAllMilkCollectionsBasic, fetchAllMilkProductionBasic, fetchAllMilkDistributions, fetchAllCCDistributions } from '@/utils/paginatedFetch';
 
 export interface SessionBreakdown {
   source: 'farm' | 'collection_center';
@@ -63,65 +64,33 @@ export const useDistributionAnalytics = (fromDate: string, toDate: string) => {
   return useQuery({
     queryKey: ['distribution-analytics', fromDate, toDate],
     queryFn: async (): Promise<DistributionAnalytics> => {
-      const from = new Date(fromDate);
-      const to = new Date(toDate);
+      const formattedFrom = format(new Date(fromDate), 'yyyy-MM-dd');
+      const formattedTo = format(new Date(toDate), 'yyyy-MM-dd');
       
-      // Fetch farm production (milk_production)
-      const { data: farmProd, error: farmError } = await supabase
-        .from('milk_production')
-        .select('*')
-        .gte('production_date', format(from, 'yyyy-MM-dd'))
-        .lte('production_date', format(to, 'yyyy-MM-dd'))
-        .limit(10000);
-      
-      if (farmError) throw farmError;
-      
-      // Fetch collection center collections (milk_collections)
-      const { data: ccCollections, error: ccError } = await supabase
-        .from('milk_collections')
-        .select('*')
-        .gte('collection_date', format(from, 'yyyy-MM-dd'))
-        .lte('collection_date', format(to, 'yyyy-MM-dd'))
-        .limit(10000);
-      
-      if (ccError) throw ccError;
-      
-      // Fetch farm distributions (milk_distributions)
-      const { data: farmDist, error: farmDistError } = await supabase
-        .from('milk_distributions')
-        .select('*')
-        .gte('distribution_date', format(from, 'yyyy-MM-dd'))
-        .lte('distribution_date', format(to, 'yyyy-MM-dd'))
-        .limit(10000);
-      
-      if (farmDistError) throw farmDistError;
-      
-      // Fetch collection center distributions
-      const { data: ccDist, error: ccDistError } = await supabase
-        .from('collection_center_distributions')
-        .select('*')
-        .gte('distribution_date', format(from, 'yyyy-MM-dd'))
-        .lte('distribution_date', format(to, 'yyyy-MM-dd'))
-        .limit(10000);
-      
-      if (ccDistError) throw ccDistError;
-      
-      // Fetch store receipts
+      // Use paginated fetch to get all records (basic versions without relations for performance)
+      const [farmProd, ccCollections, farmDist, ccDist] = await Promise.all([
+        fetchAllMilkProductionBasic(formattedFrom, formattedTo),
+        fetchAllMilkCollectionsBasic(formattedFrom, formattedTo),
+        fetchAllMilkDistributions(formattedFrom, formattedTo),
+        fetchAllCCDistributions(formattedFrom, formattedTo),
+      ]);
+
+      // Fetch store receipts (smaller dataset, use regular query)
       const { data: storeReceipts, error: storeError } = await supabase
         .from('store_receipts')
         .select('*')
-        .gte('receipt_date', format(from, 'yyyy-MM-dd'))
-        .lte('receipt_date', format(to, 'yyyy-MM-dd'))
+        .gte('receipt_date', formattedFrom)
+        .lte('receipt_date', formattedTo)
         .limit(10000);
       
       if (storeError) throw storeError;
       
-      // Fetch plant sales
+      // Fetch plant sales (smaller dataset, use regular query)
       const { data: plantSales, error: plantError } = await supabase
         .from('plant_sales')
         .select('*')
-        .gte('sale_date', format(from, 'yyyy-MM-dd'))
-        .lte('sale_date', format(to, 'yyyy-MM-dd'))
+        .gte('sale_date', formattedFrom)
+        .lte('sale_date', formattedTo)
         .limit(10000);
       
       if (plantError) throw plantError;
