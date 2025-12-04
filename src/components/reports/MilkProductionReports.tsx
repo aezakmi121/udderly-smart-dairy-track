@@ -33,7 +33,8 @@ export const MilkProductionReports = () => {
         `)
         .gte('production_date', fromDate)
         .lte('production_date', toDate)
-        .order('production_date', { ascending: true });
+        .order('production_date', { ascending: true })
+        .limit(10000);
 
       if (error) throw error;
 
