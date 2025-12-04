@@ -71,7 +71,8 @@ export const useDistributionAnalytics = (fromDate: string, toDate: string) => {
         .from('milk_production')
         .select('*')
         .gte('production_date', format(from, 'yyyy-MM-dd'))
-        .lte('production_date', format(to, 'yyyy-MM-dd'));
+        .lte('production_date', format(to, 'yyyy-MM-dd'))
+        .limit(10000);
       
       if (farmError) throw farmError;
       
@@ -80,7 +81,8 @@ export const useDistributionAnalytics = (fromDate: string, toDate: string) => {
         .from('milk_collections')
         .select('*')
         .gte('collection_date', format(from, 'yyyy-MM-dd'))
-        .lte('collection_date', format(to, 'yyyy-MM-dd'));
+        .lte('collection_date', format(to, 'yyyy-MM-dd'))
+        .limit(10000);
       
       if (ccError) throw ccError;
       
@@ -89,7 +91,8 @@ export const useDistributionAnalytics = (fromDate: string, toDate: string) => {
         .from('milk_distributions')
         .select('*')
         .gte('distribution_date', format(from, 'yyyy-MM-dd'))
-        .lte('distribution_date', format(to, 'yyyy-MM-dd'));
+        .lte('distribution_date', format(to, 'yyyy-MM-dd'))
+        .limit(10000);
       
       if (farmDistError) throw farmDistError;
       
@@ -98,7 +101,8 @@ export const useDistributionAnalytics = (fromDate: string, toDate: string) => {
         .from('collection_center_distributions')
         .select('*')
         .gte('distribution_date', format(from, 'yyyy-MM-dd'))
-        .lte('distribution_date', format(to, 'yyyy-MM-dd'));
+        .lte('distribution_date', format(to, 'yyyy-MM-dd'))
+        .limit(10000);
       
       if (ccDistError) throw ccDistError;
       
@@ -107,7 +111,8 @@ export const useDistributionAnalytics = (fromDate: string, toDate: string) => {
         .from('store_receipts')
         .select('*')
         .gte('receipt_date', format(from, 'yyyy-MM-dd'))
-        .lte('receipt_date', format(to, 'yyyy-MM-dd'));
+        .lte('receipt_date', format(to, 'yyyy-MM-dd'))
+        .limit(10000);
       
       if (storeError) throw storeError;
       
@@ -116,7 +121,8 @@ export const useDistributionAnalytics = (fromDate: string, toDate: string) => {
         .from('plant_sales')
         .select('*')
         .gte('sale_date', format(from, 'yyyy-MM-dd'))
-        .lte('sale_date', format(to, 'yyyy-MM-dd'));
+        .lte('sale_date', format(to, 'yyyy-MM-dd'))
+        .limit(10000);
       
       if (plantError) throw plantError;
       

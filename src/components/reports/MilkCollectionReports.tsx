@@ -36,7 +36,8 @@ export const MilkCollectionReports = () => {
         `)
         .gte('collection_date', fromDate)
         .lte('collection_date', toDate)
-        .order('collection_date', { ascending: true });
+        .order('collection_date', { ascending: true })
+        .limit(10000);
 
       if (error) throw error;
 
@@ -123,7 +124,8 @@ export const MilkCollectionReports = () => {
         .gte('collection_date', fromDate)
         .lte('collection_date', toDate)
         .order('collection_date', { ascending: true })
-        .order('session', { ascending: true });
+        .order('session', { ascending: true })
+        .limit(10000);
 
       if (error) throw error;
 
