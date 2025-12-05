@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { fetchAllFeedTransactions } from '@/utils/paginatedFetch';
 
 export const useFeedManagement = () => {
   const { toast } = useToast();
@@ -62,23 +63,12 @@ export const useFeedManagement = () => {
     enabled: !!feedItems
   });
 
-  // Fetch feed transactions with items
+  // Fetch feed transactions with items - using pagination
   const { data: transactions, isLoading: transactionsLoading } = useQuery({
     queryKey: ['feed-transactions'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('feed_transactions')
-        .select(`
-          *,
-          feed_items (
-            name,
-            unit
-          )
-        `)
-        .order('transaction_date', { ascending: false });
-      
-      if (error) throw error;
-      return data;
+      // Use paginated fetch to get all transactions
+      return await fetchAllFeedTransactions();
     }
   });
 

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { fetchAllPlantSales } from '@/utils/paginatedFetch';
 
 interface PlantSale {
   id: string;
@@ -23,16 +24,8 @@ export const usePlantSales = (startDate?: string, endDate?: string) => {
   const { data: plantSales, isLoading } = useQuery({
     queryKey: ['plant-sales', startDate, endDate],
     queryFn: async () => {
-      let query = supabase
-        .from('plant_sales')
-        .select('*')
-        .order('sale_date', { ascending: false });
-      
-      if (startDate) query = query.gte('sale_date', startDate);
-      if (endDate) query = query.lte('sale_date', endDate);
-      
-      const { data, error } = await query;
-      if (error) throw error;
+      // Use paginated fetch to get all plant sales
+      const data = await fetchAllPlantSales(startDate, endDate);
       return data as PlantSale[];
     }
   });

@@ -184,3 +184,141 @@ export async function fetchAllCCDistributions(fromDate: string, toDate: string) 
 
   return allData;
 }
+
+/**
+ * Fetches all expenses with pagination and relations.
+ */
+export async function fetchAllExpenses(fromDate: string, toDate: string, dateField: 'payment_date' | 'payment_period' = 'payment_date') {
+  let allData: any[] = [];
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select(`
+        *,
+        expense_categories!expenses_category_id_fkey (name),
+        expense_sources!expenses_source_id_fkey (name),
+        payment_methods!expenses_payment_method_id_fkey (name)
+      `)
+      .gte(dateField, fromDate)
+      .lte(dateField, toDate)
+      .order(dateField, { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...data];
+      from += PAGE_SIZE;
+      hasMore = data.length === PAGE_SIZE;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allData;
+}
+
+/**
+ * Fetches all feed transactions with pagination and relations.
+ */
+export async function fetchAllFeedTransactions(fromDate?: string, toDate?: string) {
+  let allData: any[] = [];
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    let query = supabase
+      .from('feed_transactions')
+      .select(`
+        *,
+        feed_items!feed_item_id (name, unit)
+      `)
+      .order('transaction_date', { ascending: false });
+
+    if (fromDate) query = query.gte('transaction_date', fromDate);
+    if (toDate) query = query.lte('transaction_date', toDate);
+
+    const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...data];
+      from += PAGE_SIZE;
+      hasMore = data.length === PAGE_SIZE;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allData;
+}
+
+/**
+ * Fetches all plant sales with pagination.
+ */
+export async function fetchAllPlantSales(fromDate?: string, toDate?: string) {
+  let allData: any[] = [];
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    let query = supabase
+      .from('plant_sales')
+      .select('*')
+      .order('sale_date', { ascending: false });
+
+    if (fromDate) query = query.gte('sale_date', fromDate);
+    if (toDate) query = query.lte('sale_date', toDate);
+
+    const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...data];
+      from += PAGE_SIZE;
+      hasMore = data.length === PAGE_SIZE;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allData;
+}
+
+/**
+ * Fetches all store sales with pagination.
+ */
+export async function fetchAllStoreSales(fromDate?: string, toDate?: string) {
+  let allData: any[] = [];
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    let query = supabase
+      .from('store_sales')
+      .select('*')
+      .order('sale_date', { ascending: false });
+
+    if (fromDate) query = query.gte('sale_date', fromDate);
+    if (toDate) query = query.lte('sale_date', toDate);
+
+    const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...data];
+      from += PAGE_SIZE;
+      hasMore = data.length === PAGE_SIZE;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allData;
+}
