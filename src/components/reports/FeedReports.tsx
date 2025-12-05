@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAllFeedTransactions } from '@/utils/paginatedFetch';
 import { useReportExports } from '@/hooks/useReportExports';
 
 interface StockDistributionItem {
@@ -122,16 +123,8 @@ export const FeedReports = () => {
 
   const handleExportTransactionHistory = async () => {
     try {
-      const { data, error } = await supabase
-        .from('feed_transactions')
-        .select(`
-          *,
-          feed_items!feed_item_id (name, unit)
-        `)
-        .order('transaction_date', { ascending: false })
-        .limit(1000);
-
-      if (error) throw error;
+      // Use paginated fetch to get all transactions
+      const data = await fetchAllFeedTransactions();
 
       const headers = ['transaction_date', 'feed_item_name', 'transaction_type', 'quantity', 'unit_cost', 'total_cost', 'supplier_name'];
       const exportData = data.map(transaction => ({
@@ -152,17 +145,9 @@ export const FeedReports = () => {
 
   const handleExportCostAnalysis = async () => {
     try {
-      const { data, error } = await supabase
-        .from('feed_transactions')
-        .select(`
-          *,
-          feed_items!feed_item_id (name, unit)
-        `)
-        .eq('transaction_type', 'incoming')
-        .order('transaction_date', { ascending: false })
-        .limit(500);
-
-      if (error) throw error;
+      // Use paginated fetch and filter for incoming transactions
+      const allData = await fetchAllFeedTransactions();
+      const data = allData.filter((t: any) => t.transaction_type === 'incoming');
 
       const headers = ['feed_item_name', 'month', 'total_quantity', 'total_cost', 'average_cost_per_unit'];
       const monthlyData: Record<string, any> = {};

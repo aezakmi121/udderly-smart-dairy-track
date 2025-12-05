@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, Area, AreaChart, LabelList } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchAllExpenses } from '@/utils/paginatedFetch';
 import { useReportExports } from '@/hooks/useReportExports';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { DollarSign, TrendingUp, CreditCard, Calendar, FileText, Download, Share, Loader2, AlertCircle } from 'lucide-react';
@@ -83,34 +83,9 @@ export const ExpenseReportsNew = () => {
   const { data: expenseAnalytics, isLoading, error } = useQuery({
     queryKey: ['expense-analytics', reportType, fromDate, toDate],
     queryFn: async (): Promise<ExpenseAnalytics> => {
-      // For accrual, we need to check if the payment_period month falls within the date range
-      let query = supabase
-        .from('expenses')
-        .select(`
-          *,
-          expense_categories!expenses_category_id_fkey (name),
-          expense_sources!expenses_source_id_fkey (name),
-          payment_methods!expenses_payment_method_id_fkey (name)
-        `);
-
-      if (reportType === 'accrual') {
-        // For accrual, payment_period is stored as various dates in a month
-        // We need to get all records where payment_period falls within our date range
-        query = query
-          .gte('payment_period', fromDate)
-          .lte('payment_period', toDate)
-          .order('payment_period', { ascending: true });
-      } else {
-        // For cashflow, use exact payment_date
-        query = query
-          .gte('payment_date', fromDate)
-          .lte('payment_date', toDate)
-          .order('payment_date', { ascending: true });
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
+      // Use paginated fetch to get all expenses
+      const dateField = reportType === 'accrual' ? 'payment_period' : 'payment_date';
+      const data = await fetchAllExpenses(fromDate, toDate, dateField);
 
       // Calculate analytics
       const totalExpenses = data.reduce((sum, record) => sum + Number(record.amount), 0);
