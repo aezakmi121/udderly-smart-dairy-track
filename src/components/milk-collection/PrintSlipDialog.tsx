@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/card';
 import { Printer, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
-  isNativePlatform,
+  isWebBluetoothSupported,
   printCollectionSlip,
   getSlipPreview,
   getSavedPrinter,
@@ -44,7 +44,7 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
   const [isPrinting, setIsPrinting] = useState(false);
   const { toast } = useToast();
 
-  const isNative = isNativePlatform();
+  const isSupported = isWebBluetoothSupported();
   const savedPrinter = getSavedPrinter();
 
   if (!collection) return null;
@@ -65,10 +65,10 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
   const previewText = getSlipPreview(slipData);
 
   const handlePrint = async () => {
-    if (!isNative) {
+    if (!isSupported) {
       toast({
-        title: 'Not Available',
-        description: 'Printing is only available on the mobile app.',
+        title: 'Not Supported',
+        description: 'Web Bluetooth is not supported in this browser. Use Chrome on Android or desktop.',
         variant: 'destructive',
       });
       return;
@@ -114,7 +114,7 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
 
         {/* Printer Status */}
         <div className="text-sm">
-          {isNative ? (
+          {isSupported ? (
             savedPrinter ? (
               <p className="text-muted-foreground">
                 Printer: <span className="font-medium text-foreground">{savedPrinter.name}</span>
@@ -126,7 +126,7 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
             )
           ) : (
             <p className="text-muted-foreground">
-              Printing is only available on the mobile app.
+              Web Bluetooth not supported. Use Chrome on Android or desktop.
             </p>
           )}
         </div>
@@ -145,7 +145,7 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
           </Button>
           <Button
             onClick={handlePrint}
-            disabled={isPrinting || !isNative || !savedPrinter}
+            disabled={isPrinting || !isSupported || !savedPrinter}
           >
             <Printer className={`h-4 w-4 mr-2 ${isPrinting ? 'animate-pulse' : ''}`} />
             {isPrinting ? 'Printing...' : 'Print'}
