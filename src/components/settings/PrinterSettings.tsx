@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   isWebBluetoothSupported,
+  isSecureContext,
   scanForPrinters,
   connectToPrinter,
   getSavedPrinter,
@@ -26,6 +27,7 @@ export const PrinterSettings: React.FC = () => {
   const { toast } = useToast();
 
   const isSupported = isWebBluetoothSupported();
+  const isSecure = isSecureContext();
 
   useEffect(() => {
     const saved = getSavedPrinter();
@@ -110,12 +112,16 @@ export const PrinterSettings: React.FC = () => {
     }
   };
 
-  if (!isSupported) {
+  if (!isSupported || !isSecure) {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          <strong>Web Bluetooth not supported.</strong> Use Chrome on Android or desktop.
+          {!isSupported ? (
+            <><strong>Web Bluetooth not supported.</strong> Use Chrome on Android or desktop.</>
+          ) : (
+            <><strong>HTTPS Required.</strong> Web Bluetooth only works on secure (HTTPS) connections. Current: {window.location.origin}</>
+          )}
         </AlertDescription>
       </Alert>
     );

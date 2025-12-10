@@ -22,17 +22,40 @@ export interface CollectionSlipData {
 const SAVED_PRINTER_KEY = 'thermal_printer_address';
 const SAVED_PRINTER_NAME_KEY = 'thermal_printer_name';
 
-// Common thermal printer service UUIDs
-const PRINTER_SERVICE_UUID = '000018f0-0000-1000-8000-00805f9b34fb';
-const PRINTER_CHARACTERISTIC_UUID = '00002af1-0000-1000-8000-00805f9b34fb';
+// Common thermal printer service UUIDs (different printers use different UUIDs)
+const PRINTER_SERVICE_UUIDS = [
+  '000018f0-0000-1000-8000-00805f9b34fb', // Common thermal printer
+  '49535343-fe7d-4ae5-8fa9-9fafd205e455', // Generic SPP
+  'e7810a71-73ae-499d-8c15-faa9aef0c3f2', // Some Chinese printers
+  '0000ff00-0000-1000-8000-00805f9b34fb', // Another common one
+  '0000ffe0-0000-1000-8000-00805f9b34fb', // HM-10 style
+];
+
+const PRINTER_CHARACTERISTIC_UUIDS = [
+  '00002af1-0000-1000-8000-00805f9b34fb',
+  '49535343-8841-43f4-a8d4-ecbe34729bb3',
+  'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f',
+  '0000ff02-0000-1000-8000-00805f9b34fb',
+  '0000ffe1-0000-1000-8000-00805f9b34fb',
+];
 
 // Connected device reference
 let connectedDevice: any = null;
 let printerCharacteristic: any = null;
+let gattServer: any = null;
 
 // Check if Web Bluetooth is supported
 export const isWebBluetoothSupported = (): boolean => {
-  return typeof navigator !== 'undefined' && 'bluetooth' in navigator;
+  const supported = typeof navigator !== 'undefined' && 'bluetooth' in navigator;
+  console.log('Web Bluetooth supported:', supported);
+  return supported;
+};
+
+// Check if running in secure context (required for Web Bluetooth)
+export const isSecureContext = (): boolean => {
+  const secure = window.isSecureContext;
+  console.log('Secure context:', secure, 'URL:', window.location.origin);
+  return secure;
 };
 
 // Check if running on native platform (for backward compatibility)
@@ -60,8 +83,12 @@ export const savePrinter = (device: BluetoothDevice): void => {
 export const clearSavedPrinter = (): void => {
   localStorage.removeItem(SAVED_PRINTER_KEY);
   localStorage.removeItem(SAVED_PRINTER_NAME_KEY);
+  if (gattServer?.connected) {
+    gattServer.disconnect();
+  }
   connectedDevice = null;
   printerCharacteristic = null;
+  gattServer = null;
 };
 
 // Scan for Bluetooth printers using Web Bluetooth API
@@ -69,18 +96,30 @@ export const scanForPrinters = async (
   onDeviceFound: (devices: BluetoothDevice[]) => void,
   onScanComplete: () => void
 ): Promise<void> => {
+  console.log('Starting Bluetooth scan...');
+  
   if (!isWebBluetoothSupported()) {
-    console.warn('Web Bluetooth is not supported in this browser');
+    console.error('Web Bluetooth is not supported in this browser');
+    onScanComplete();
+    return;
+  }
+
+  if (!isSecureContext()) {
+    console.error('Web Bluetooth requires HTTPS (secure context)');
     onScanComplete();
     return;
   }
 
   try {
     // Request device - this shows the browser's Bluetooth picker
+    // acceptAllDevices allows seeing all nearby devices
+    console.log('Requesting Bluetooth device...');
     const device = await (navigator as any).bluetooth.requestDevice({
       acceptAllDevices: true,
-      optionalServices: [PRINTER_SERVICE_UUID, '18f0']
+      optionalServices: PRINTER_SERVICE_UUIDS
     });
+
+    console.log('Device selected:', device?.name, device?.id);
 
     if (device) {
       const bluetoothDevice: BluetoothDevice = {
@@ -88,12 +127,12 @@ export const scanForPrinters = async (
         address: device.id,
         device: device
       };
+      connectedDevice = device; // Store the device reference
       onDeviceFound([bluetoothDevice]);
     }
     onScanComplete();
-  } catch (error) {
-    if ((error as Error).name === 'NotFoundError') {
-      // User cancelled the picker
+  } catch (error: any) {
+    if (error?.name === 'NotFoundError') {
       console.log('User cancelled Bluetooth picker');
     } else {
       console.error('Error scanning for printers:', error);
@@ -107,49 +146,100 @@ export const stopScan = async (): Promise<void> => {
   // Web Bluetooth doesn't need explicit stop - the picker handles it
 };
 
-// Connect to a specific printer
+// Connect to a specific printer (or use already selected device)
 export const connectToPrinter = async (address: string): Promise<BluetoothDevice | null> => {
+  console.log('Connecting to printer:', address);
+  
   if (!isWebBluetoothSupported()) {
-    console.warn('Web Bluetooth is not supported in this browser');
+    console.error('Web Bluetooth is not supported in this browser');
     return null;
   }
 
   try {
-    // For Web Bluetooth, we need to request device again if not already connected
-    const device = await (navigator as any).bluetooth.requestDevice({
-      acceptAllDevices: true,
-      optionalServices: [PRINTER_SERVICE_UUID, '18f0']
-    });
-
-    if (device) {
+    // If we already have a device selected from scan, use it
+    if (connectedDevice && connectedDevice.id === address) {
+      console.log('Using already selected device:', connectedDevice.name);
+    } else if (!connectedDevice) {
+      // Need to request device again
+      console.log('No device in memory, requesting new device...');
+      const device = await (navigator as any).bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: PRINTER_SERVICE_UUIDS
+      });
       connectedDevice = device;
-      
-      // Connect to GATT server
-      const server = await device.gatt?.connect();
-      
-      if (server) {
+    }
+
+    if (!connectedDevice) {
+      console.error('No device available');
+      return null;
+    }
+
+    // Connect to GATT server
+    console.log('Connecting to GATT server...');
+    gattServer = await connectedDevice.gatt?.connect();
+    console.log('GATT connected:', gattServer?.connected);
+
+    if (gattServer) {
+      // Try each service UUID until we find one that works
+      for (const serviceUuid of PRINTER_SERVICE_UUIDS) {
         try {
-          // Try to get the printer service
-          const service = await server.getPrimaryService(PRINTER_SERVICE_UUID);
-          printerCharacteristic = await service.getCharacteristic(PRINTER_CHARACTERISTIC_UUID);
-        } catch {
-          // Try alternative service UUID format
-          try {
-            const service = await server.getPrimaryService('18f0');
-            printerCharacteristic = await service.getCharacteristic('2af1');
-          } catch (e) {
-            console.log('Using fallback print method');
+          console.log('Trying service UUID:', serviceUuid);
+          const service = await gattServer.getPrimaryService(serviceUuid);
+          console.log('Service found:', serviceUuid);
+          
+          // Try each characteristic UUID
+          for (const charUuid of PRINTER_CHARACTERISTIC_UUIDS) {
+            try {
+              console.log('Trying characteristic UUID:', charUuid);
+              printerCharacteristic = await service.getCharacteristic(charUuid);
+              console.log('Characteristic found:', charUuid);
+              break;
+            } catch {
+              // Try next characteristic
+            }
           }
+          
+          if (printerCharacteristic) break;
+        } catch {
+          // Try next service
         }
       }
 
-      return {
-        name: device.name || 'Unknown Printer',
-        address: device.id,
-        device: device
-      };
+      if (!printerCharacteristic) {
+        console.log('No matching service/characteristic found, will try direct write');
+        // Some printers work by getting all services and characteristics
+        try {
+          const services = await gattServer.getPrimaryServices();
+          console.log('Available services:', services.length);
+          for (const service of services) {
+            console.log('Service:', service.uuid);
+            try {
+              const chars = await service.getCharacteristics();
+              for (const char of chars) {
+                console.log('  Characteristic:', char.uuid, 'Properties:', char.properties);
+                // Look for writable characteristic
+                if (char.properties.write || char.properties.writeWithoutResponse) {
+                  printerCharacteristic = char;
+                  console.log('Using writable characteristic:', char.uuid);
+                  break;
+                }
+              }
+              if (printerCharacteristic) break;
+            } catch (e) {
+              console.log('Could not get characteristics for service');
+            }
+          }
+        } catch (e) {
+          console.log('Could not enumerate services:', e);
+        }
+      }
     }
-    return null;
+
+    return {
+      name: connectedDevice.name || 'Unknown Printer',
+      address: connectedDevice.id,
+      device: connectedDevice
+    };
   } catch (error) {
     console.error('Error connecting to printer:', error);
     throw error;
