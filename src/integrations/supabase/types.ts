@@ -1504,6 +1504,7 @@ export type Database = {
           fcm_token: string | null
           full_name: string
           id: string
+          onesignal_player_id: string | null
           phone_number: string | null
           role: Database["public"]["Enums"]["app_role"] | null
           updated_at: string | null
@@ -1514,6 +1515,7 @@ export type Database = {
           fcm_token?: string | null
           full_name: string
           id: string
+          onesignal_player_id?: string | null
           phone_number?: string | null
           role?: Database["public"]["Enums"]["app_role"] | null
           updated_at?: string | null
@@ -1524,6 +1526,7 @@ export type Database = {
           fcm_token?: string | null
           full_name?: string
           id?: string
+          onesignal_player_id?: string | null
           phone_number?: string | null
           role?: Database["public"]["Enums"]["app_role"] | null
           updated_at?: string | null
