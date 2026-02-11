@@ -10,7 +10,7 @@ import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { SessionUnlock } from './SessionUnlock';
 import { AlertSettings } from './AlertSettings';
 import { MilkingSessionSettings } from './MilkingSessionSettings';
-import { FCMPushTest } from './ExpoPushTest';
+import { NotificationSettings } from './NotificationSettings';
 import { PrinterSettings } from './PrinterSettings';
 
 export const SettingsManagement = () => {
@@ -124,10 +124,7 @@ export const SettingsManagement = () => {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="space-y-6">
-                <div>
-                  <h3 className="text-md font-semibold mb-3">FCM Push Notifications Test</h3>
-                  <FCMPushTest />
-                </div>
+                <NotificationSettings />
                 <div className="border-t pt-6">
                   <h3 className="text-md font-semibold mb-3">Alert Settings</h3>
                   <AlertSettings />
