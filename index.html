@@ -8,7 +8,7 @@
     <meta name="author" content="Udderly Smart" />
     
     <!-- Security Headers -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://gjimccbtclynetngfrpw.supabase.co wss://gjimccbtclynetngfrpw.supabase.co; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://cdn.onesignal.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://gjimccbtclynetngfrpw.supabase.co wss://gjimccbtclynetngfrpw.supabase.co https://onesignal.com https://*.onesignal.com https://*.os.tc; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; worker-src 'self' https://cdn.onesignal.com;" />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="X-Frame-Options" content="DENY" />
     <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
@@ -44,6 +44,7 @@
   </head>
 
   <body>
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
