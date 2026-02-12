@@ -2,7 +2,7 @@
 // App ID is a public key - safe to store in codebase
 // Will be set after user creates OneSignal account
 
-const ONESIGNAL_APP_ID = ''; // TODO: Set after OneSignal account creation
+const ONESIGNAL_APP_ID = '74a41f11-6359-4571-97df-4a4c144b6f3d';
 
 interface OneSignalWindow extends Window {
   OneSignalDeferred?: Array<(OneSignal: any) => void>;
