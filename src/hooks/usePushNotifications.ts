@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { oneSignalService } from '@/services/oneSignalService';
@@ -7,14 +7,23 @@ export const usePushNotifications = () => {
   const [isSupported, setIsSupported] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    const supported = 'Notification' in window;
+    const supported = 'Notification' in window && 'serviceWorker' in navigator;
     setIsSupported(supported);
     if (supported) {
       setPermission(Notification.permission);
     }
+    
+    // Initialize OneSignal on mount
+    if (supported && oneSignalService.isConfigured()) {
+      oneSignalService.initialize().then(() => {
+        console.log('OneSignal ready');
+      });
+    }
+    
     checkStatus();
   }, []);
 
@@ -37,46 +46,67 @@ export const usePushNotifications = () => {
     }
   };
 
-  const requestPermission = async (): Promise<boolean> => {
+  const requestPermission = useCallback(async (): Promise<boolean> => {
     if (!isSupported) {
-      toast({ title: 'Not Supported', description: 'Push notifications are not supported.', variant: 'destructive' });
+      toast({ title: 'Not Supported', description: 'Push notifications are not supported in this browser.', variant: 'destructive' });
       return false;
     }
 
-    try {
-      if (Notification.permission === 'denied') {
-        toast({
-          title: 'Permission Blocked',
-          description: 'Click the 🔒 lock icon in your browser address bar and allow notifications.',
-          variant: 'destructive'
-        });
-        return false;
-      }
+    if (Notification.permission === 'denied') {
+      toast({
+        title: 'Permission Blocked',
+        description: 'Notifications are blocked. Click the 🔒 lock icon in your browser address bar → Site settings → Allow notifications, then refresh.',
+        variant: 'destructive'
+      });
+      return false;
+    }
 
-      // If OneSignal is configured, use it
+    setIsLoading(true);
+
+    try {
+      // Try OneSignal first
       if (oneSignalService.isConfigured()) {
+        console.log('Requesting permission via OneSignal...');
         const granted = await oneSignalService.requestPermission();
+        
         if (granted) {
           await enableWithOneSignal();
+          setIsLoading(false);
           return true;
         }
-        return false;
+        
+        // If OneSignal didn't work (SDK not loaded), fall back to native
+        console.log('OneSignal permission not granted, trying native...');
       }
 
       // Fallback: browser native notifications
+      console.log('Requesting native notification permission...');
       const perm = await Notification.requestPermission();
       setPermission(perm);
+      
       if (perm === 'granted') {
         await enableNative();
+        setIsLoading(false);
         return true;
+      } else {
+        toast({
+          title: 'Permission Not Granted',
+          description: perm === 'denied' 
+            ? 'Notifications were blocked. Change this in your browser settings.' 
+            : 'You dismissed the notification prompt. Click Enable to try again.',
+          variant: 'destructive'
+        });
       }
+      
+      setIsLoading(false);
       return false;
     } catch (error) {
       console.error('Error requesting permission:', error);
       toast({ title: 'Error', description: 'Failed to request notification permission.', variant: 'destructive' });
+      setIsLoading(false);
       return false;
     }
-  };
+  }, [isSupported, toast]);
 
   const enableWithOneSignal = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -90,6 +120,8 @@ export const usePushNotifications = () => {
         .from('profiles')
         .update({ onesignal_player_id: playerId } as any)
         .eq('id', user.id);
+      
+      console.log('✅ OneSignal enabled, player ID saved:', playerId);
     }
 
     setIsEnabled(true);
@@ -109,7 +141,7 @@ export const usePushNotifications = () => {
 
     setIsEnabled(true);
     setPermission('granted');
-    toast({ title: 'Notifications Enabled', description: 'Browser notifications enabled. For full push support, configure OneSignal.' });
+    toast({ title: 'Notifications Enabled', description: 'Browser notifications enabled!' });
   };
 
   const disableNotifications = async () => {
@@ -170,6 +202,7 @@ export const usePushNotifications = () => {
     permission,
     token: null as string | null,
     isEnabled,
+    isLoading,
     requestPermission,
     disableNotifications,
     testNotification,

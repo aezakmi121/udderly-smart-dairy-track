@@ -1,6 +1,5 @@
 // OneSignal Web Push Notification Service
 // App ID is a public key - safe to store in codebase
-// Will be set after user creates OneSignal account
 
 const ONESIGNAL_APP_ID = '74a41f11-6359-4571-97df-4a4c144b6f3d';
 
@@ -13,53 +12,80 @@ declare const window: OneSignalWindow;
 
 class OneSignalService {
   private initialized = false;
+  private initPromise: Promise<boolean> | null = null;
 
   async initialize(): Promise<boolean> {
     if (this.initialized) return true;
+    if (this.initPromise) return this.initPromise;
     if (!ONESIGNAL_APP_ID) {
       console.warn('OneSignal App ID not configured');
       return false;
     }
 
-    try {
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      
-      return new Promise<boolean>((resolve) => {
-        window.OneSignalDeferred!.push(async (OneSignal: any) => {
-          try {
-            await OneSignal.init({
-              appId: ONESIGNAL_APP_ID,
-              allowLocalhostAsSecureOrigin: true,
-              serviceWorkerParam: { scope: '/push/onesignal/' },
-              serviceWorkerPath: 'push/onesignal/OneSignalSDKWorker.js',
+    this.initPromise = new Promise<boolean>((resolve) => {
+      try {
+        // Wait for the SDK script to load
+        const checkSDK = () => {
+          if (typeof window.OneSignal !== 'undefined' || window.OneSignalDeferred) {
+            window.OneSignalDeferred = window.OneSignalDeferred || [];
+            window.OneSignalDeferred.push(async (OneSignal: any) => {
+              try {
+                await OneSignal.init({
+                  appId: ONESIGNAL_APP_ID,
+                  allowLocalhostAsSecureOrigin: true,
+                  notifyButton: {
+                    enable: false, // We handle the UI ourselves
+                  },
+                  promptOptions: {
+                    autoPrompt: false, // We'll prompt manually after login
+                  },
+                });
+                this.initialized = true;
+                console.log('✅ OneSignal initialized successfully');
+                resolve(true);
+              } catch (error) {
+                console.error('❌ OneSignal init failed:', error);
+                resolve(false);
+              }
             });
-            this.initialized = true;
-            console.log('✅ OneSignal initialized');
-            resolve(true);
-          } catch (error) {
-            console.error('❌ OneSignal init failed:', error);
+          } else {
+            // SDK not loaded yet, retry
+            setTimeout(checkSDK, 500);
+          }
+        };
+
+        // Start checking, with a timeout
+        checkSDK();
+        setTimeout(() => {
+          if (!this.initialized) {
+            console.warn('⏰ OneSignal SDK did not load within timeout');
             resolve(false);
           }
-        });
-      });
-    } catch (error) {
-      console.error('OneSignal initialization error:', error);
-      return false;
-    }
+        }, 10000);
+      } catch (error) {
+        console.error('OneSignal initialization error:', error);
+        resolve(false);
+      }
+    });
+
+    return this.initPromise;
   }
 
   async requestPermission(): Promise<boolean> {
-    if (!this.initialized) {
-      const ok = await this.initialize();
-      if (!ok) return false;
+    const ok = await this.initialize();
+    if (!ok) {
+      console.warn('OneSignal not initialized, falling back to native');
+      return false;
     }
 
     try {
       const OneSignal = window.OneSignal;
       if (!OneSignal) return false;
 
-      await OneSignal.Slidedown.promptPush();
-      const permission = await OneSignal.Notifications.permission;
+      // Use the native browser prompt via OneSignal
+      await OneSignal.Notifications.requestPermission();
+      const permission = OneSignal.Notifications.permission;
+      console.log('OneSignal permission result:', permission);
       return permission;
     } catch (error) {
       console.error('OneSignal permission error:', error);
@@ -72,7 +98,10 @@ class OneSignalService {
       const OneSignal = window.OneSignal;
       if (!OneSignal) return null;
 
+      // Wait a moment for the subscription to register
+      await new Promise(r => setTimeout(r, 1500));
       const playerId = await OneSignal.User.onesignalId;
+      console.log('OneSignal player ID:', playerId);
       return playerId || null;
     } catch (error) {
       console.error('Error getting OneSignal player ID:', error);
@@ -109,8 +138,7 @@ class OneSignalService {
       const OneSignal = window.OneSignal;
       if (!OneSignal) return false;
 
-      const permission = await OneSignal.Notifications.permission;
-      return permission;
+      return OneSignal.Notifications.permission;
     } catch {
       return false;
     }
@@ -118,6 +146,10 @@ class OneSignalService {
 
   isConfigured(): boolean {
     return !!ONESIGNAL_APP_ID;
+  }
+
+  isInitialized(): boolean {
+    return this.initialized;
   }
 }
 
