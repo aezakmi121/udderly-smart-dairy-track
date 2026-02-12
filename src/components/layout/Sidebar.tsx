@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { RouteConfig } from '@/types/routes';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SidebarProps {
   routes: RouteConfig[];
@@ -10,16 +11,17 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ routes, currentPath, onNavigate, isCollapsed }) => {
+  const isMobile = useIsMobile();
 
   return (
     <div className={cn(
       "bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out flex flex-col",
       isCollapsed ? "w-16" : "w-64"
     )}
-    style={{ height: '100dvh' }}
+    style={{ height: isMobile ? 'calc(100dvh - 4.5rem)' : '100dvh' }}
     >
       <div className="flex-1 overflow-y-auto px-3 py-4 min-h-0">
-        <div className="space-y-1 pb-20 md:pb-4">
+        <div className="space-y-1 pb-4">
           {routes.map((route) => {
             const Icon = route.icon;
             const isActive = currentPath === route.path;
