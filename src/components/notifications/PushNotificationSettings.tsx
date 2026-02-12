@@ -3,12 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { supabase } from '@/integrations/supabase/client';
-import { Bell, BellOff, Send, Megaphone, RefreshCw, AlertCircle } from 'lucide-react';
+import { Bell, BellOff, Send, Megaphone, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const PushNotificationSettings = () => {
-  const { isSupported, permission, token, isEnabled, requestPermission, disableNotifications, testNotification, refreshPermissionStatus } = usePushNotifications();
+  const { isSupported, permission, token, isEnabled, isLoading, requestPermission, disableNotifications, testNotification, refreshPermissionStatus } = usePushNotifications();
   const { isAdmin } = useUserPermissions();
   const { toast } = useToast();
 
@@ -168,8 +168,9 @@ export const PushNotificationSettings = () => {
             </Button>
             
             {!isEnabled && permission !== 'denied' && (
-              <Button onClick={requestPermission}>
-                Enable Notifications
+              <Button onClick={requestPermission} disabled={isLoading}>
+                {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                {isLoading ? 'Enabling...' : 'Enable Notifications'}
               </Button>
             )}
             
