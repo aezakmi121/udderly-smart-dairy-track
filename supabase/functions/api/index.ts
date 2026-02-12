@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 Deno.serve(async (req) => {
@@ -10,28 +10,51 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // API key authentication
+  // Dual auth: Bearer API key OR Supabase JWT with admin role
   const authHeader = req.headers.get('Authorization');
   const PUBLIC_API_KEY = Deno.env.get('PUBLIC_API_KEY');
 
-  if (!PUBLIC_API_KEY) {
-    return new Response(
-      JSON.stringify({ error: 'API not configured' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+  const serviceSupabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  );
+
+  let authenticated = false;
+
+  // Method 1: Static API key
+  if (PUBLIC_API_KEY && authHeader === `Bearer ${PUBLIC_API_KEY}`) {
+    authenticated = true;
   }
 
-  if (!authHeader || authHeader !== `Bearer ${PUBLIC_API_KEY}`) {
+  // Method 2: Supabase JWT - verify user is admin
+  if (!authenticated && authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.replace('Bearer ', '');
+    const anonClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')!,
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
+    );
+    const { data: { user }, error } = await anonClient.auth.getUser(token);
+    if (user && !error) {
+      // Check admin role
+      const { data: roleData } = await serviceSupabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      if (roleData) {
+        authenticated = true;
+      }
+    }
+  }
+
+  if (!authenticated) {
     return new Response(
       JSON.stringify({ error: 'Unauthorized' }),
       { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  );
 
   const url = new URL(req.url);
   const type = url.searchParams.get('type');
@@ -41,7 +64,7 @@ Deno.serve(async (req) => {
   try {
     switch (type) {
       case 'expenses': {
-        let query = supabase
+        let query = serviceSupabase
           .from('expenses')
           .select('*, expense_categories:category_id(name), expense_sources:source_id(name), payment_methods:payment_method_id(name)')
           .order('payment_date', { ascending: false });
@@ -57,7 +80,7 @@ Deno.serve(async (req) => {
       }
 
       case 'milk-production': {
-        let query = supabase
+        let query = serviceSupabase
           .from('milk_production')
           .select('*, cows:cow_id(cow_number, breed)')
           .order('production_date', { ascending: false });
@@ -74,9 +97,9 @@ Deno.serve(async (req) => {
 
       case 'revenue': {
         const [plantSales, storeSales, ccSales] = await Promise.all([
-          fetchWithDateRange(supabase, 'plant_sales', 'sale_date', from, to),
-          fetchWithDateRange(supabase, 'store_sales', 'sale_date', from, to),
-          fetchWithDateRange(supabase, 'collection_center_sales', 'sale_date', from, to),
+          fetchWithDateRange(serviceSupabase, 'plant_sales', 'sale_date', from, to),
+          fetchWithDateRange(serviceSupabase, 'store_sales', 'sale_date', from, to),
+          fetchWithDateRange(serviceSupabase, 'collection_center_sales', 'sale_date', from, to),
         ]);
 
         const plantTotal = plantSales?.reduce((sum: number, s: any) => sum + (s.amount_received || 0), 0) || 0;
@@ -98,10 +121,10 @@ Deno.serve(async (req) => {
         const monthEnd = nextMonth.toISOString().split('T')[0];
 
         const [expenses, milkProd, plantSales, storeSales] = await Promise.all([
-          supabase.from('expenses').select('amount').gte('payment_date', monthStart).lt('payment_date', monthEnd),
-          supabase.from('milk_production').select('quantity').gte('production_date', monthStart).lt('production_date', monthEnd),
-          supabase.from('plant_sales').select('amount_received').gte('sale_date', monthStart).lt('sale_date', monthEnd),
-          supabase.from('store_sales').select('total_amount').gte('sale_date', monthStart).lt('sale_date', monthEnd),
+          serviceSupabase.from('expenses').select('amount').gte('payment_date', monthStart).lt('payment_date', monthEnd),
+          serviceSupabase.from('milk_production').select('quantity').gte('production_date', monthStart).lt('production_date', monthEnd),
+          serviceSupabase.from('plant_sales').select('amount_received').gte('sale_date', monthStart).lt('sale_date', monthEnd),
+          serviceSupabase.from('store_sales').select('total_amount').gte('sale_date', monthStart).lt('sale_date', monthEnd),
         ]);
 
         const totalExpenses = expenses.data?.reduce((s, e) => s + (e.amount || 0), 0) || 0;
