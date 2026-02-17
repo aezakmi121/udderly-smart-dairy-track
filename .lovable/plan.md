@@ -1,175 +1,84 @@
 
 
-# Complete Overhaul: Notifications, API, and Database Access
+# Distribution Reports Redesign: Tabbed Layout with Production Breakdown
 
-This plan covers everything you asked about. Let me answer your questions first, then lay out the implementation.
+## Overview
+Restructure the Distribution Reports page from a single monolithic view into a tabbed interface with separate sections, and add a detailed milk production breakdown showing per-session and per-cow data.
 
----
+## What Changes
 
-## Your Questions Answered
+### 1. Tabbed Layout for Distribution Reports
+The current single-page view will be split into organized tabs:
 
-### Where is your database?
-Your database is hosted on **Supabase** (a cloud service). Your project ID is `gjimccbtclynetngfrpw`. You can access it at:
-- **Dashboard**: https://supabase.com/dashboard/project/gjimccbtclynetngfrpw
-- **Table Editor**: Click "Table Editor" in the left sidebar to view/edit data
-- **SQL Editor**: Click "SQL Editor" to run queries directly
+- **Overview** -- The existing KPI cards and summary charts (current content, cleaned up)
+- **Production** -- New tab showing milk production breakdown by session (morning/evening), by cow, daily totals, and trends
+- **Distribution** -- The distribution pie chart, source comparison, and destination tracking
+- **Store & Plant** -- Store dispatch vs receipt analysis, plant sales with revenue, discrepancy tracking
+- **Cream & FFM** -- Cream extraction, FFM yield, dahi production data
 
-### Are you using a GitHub repo?
-Your code lives in Lovable. You can export it to GitHub via **Settings > GitHub** in Lovable. The database is separate on Supabase -- code changes don't affect the database directly unless you run migrations.
+### 2. Production Breakdown (New)
+The Production tab will show:
+- **Session-wise totals**: Morning vs Evening production with individual cow quantities
+- **Per-cow table**: Each cow's contribution for the selected date range
+- **Daily production chart**: Bar chart showing morning/evening split per day
+- **Top producers**: Highlight highest-yielding cows
 
-### How to update/change the database?
-Three ways:
-1. **Supabase Dashboard** (easiest): Go to Table Editor at the link above and edit rows directly
-2. **SQL Editor**: Run SQL queries at https://supabase.com/dashboard/project/gjimccbtclynetngfrpw/sql/new
-3. **Through Lovable**: I can create database migrations when you ask me to add/change tables
-
-### Can you make an API for your webapp?
-Yes! We can create **Supabase Edge Functions** that act as your API. Other webapps can call these endpoints to get your expenses, milk data, etc. This is exactly how you'd aggregate data from multiple sources.
-
----
-
-## Implementation Plan
-
-### Part 1: Remove Firebase/FCM (Cleanup)
-
-Files to **delete**:
-- `src/config/firebase.ts`
-- `src/services/firebaseMessaging.ts`
-- `src/services/notificationScheduler.ts`
-- `src/services/sessionNotificationService.ts`
-- `public/firebase-messaging-sw.js`
-- `src/components/notifications/FirebaseDebugPanel.tsx`
-- `src/components/settings/ExpoPushTest.tsx`
-
-Files to **clean up** (remove Firebase references):
-- `src/hooks/usePushNotifications.ts` -- rewrite to use OneSignal
-- `src/components/settings/SettingsManagement.tsx` -- remove FCMPushTest section
-- `src/components/notifications/PushNotificationSettings.tsx` -- rewrite for OneSignal
-
-Edge functions to **delete**:
-- `supabase/functions/send-push-notification/` (FCM-based)
-- `supabase/functions/expo-push/` (Expo-based)
-- `supabase/functions/schedule-milking-notifications/`
-
-Remove `firebase` package from dependencies.
-
-### Part 2: OneSignal Integration
-
-OneSignal is a free push notification service that works on web, Android, and iOS without the Firebase complexity.
-
-**Setup steps (you'll need to do):**
-1. Create a free account at https://onesignal.com
-2. Create an app, get your **App ID** (public) and **REST API Key** (secret)
-
-**What I'll build:**
-
-1. **`src/services/oneSignalService.ts`** -- OneSignal Web SDK integration
-   - Initialize OneSignal with your App ID
-   - Register user for push notifications
-   - Tag users with their role (admin/worker) for targeted notifications
-   - Subscribe/unsubscribe
-
-2. **`supabase/functions/send-onesignal-notification/index.ts`** -- Edge function for sending push notifications server-side
-   - Uses OneSignal REST API with your API key
-   - Sends to specific users or segments
-   - Supports scheduled notifications
-
-3. **`src/hooks/usePushNotifications.ts`** -- Rewrite to use OneSignal
-   - Simple enable/disable toggle
-   - No complex token management (OneSignal handles it)
-
-### Part 3: Revamped Notification Settings UI
-
-Replace the current "Notifications & Alerts" section in Settings with a comprehensive panel:
-
-**`src/components/settings/NotificationSettings.tsx`** -- New unified settings component:
-- **Push Notification Toggle**: Enable/disable OneSignal push notifications
-- **Alert Configuration**: Configurable days for each alert type:
-  - PD check alert (default: 60 days after AI)
-  - Expected delivery alert (default: 283 days after AI)
-  - Vaccination due reminder (days before due date)
-  - Low stock threshold alerts
-  - Milking session reminders
-- **Notification Categories Toggle**: Enable/disable by category
-  - Reminders (PD, vaccination, delivery, AI)
-  - Alerts (low stock, session start/end)
-  - Updates (collection summaries)
-- **Test Notification Button**: Send a test push via OneSignal
-
-### Part 4: Server-Side Notification Checker (Cron)
-
-Create **`supabase/functions/check-alerts/index.ts`** -- A cron-triggered edge function that:
-1. Checks all alert conditions daily:
-   - PD checks due/overdue
-   - Expected deliveries approaching
-   - Vaccinations due
-   - Low feed stock
-   - AI scheduled today
-2. Sends push notifications via OneSignal for any triggered alerts
-3. Logs sent notifications to `notification_history` table
-
-Set up a **pg_cron job** to run this daily (e.g., 6:00 AM).
-
-### Part 5: Public API Edge Functions
-
-Create API endpoints other webapps can call:
-
-1. **`supabase/functions/api/index.ts`** -- Main API endpoint with routes:
-   - `GET /api?type=expenses&from=2024-01-01&to=2024-12-31` -- Get expenses
-   - `GET /api?type=milk-production&from=...&to=...` -- Get milk production data
-   - `GET /api?type=revenue&from=...&to=...` -- Get revenue (plant sales, store sales, collection center sales)
-   - `GET /api?type=summary` -- Get a dashboard summary (total expenses, revenue, milk produced)
-
-   Authentication: API key-based (you'll generate an API key stored as a Supabase secret)
+### 3. Data Flow
+The existing `useDistributionAnalytics` hook already fetches milk production data (`farmProd`). The production breakdown will extend this to include cow-level details by fetching production records with cow information (cow_number) for the selected date range.
 
 ---
 
 ## Technical Details
 
-### OneSignal Web SDK Setup
-- OneSignal provides a CDN script; we'll load it in `index.html`
-- App ID (public key) goes in the codebase
-- REST API Key (secret) goes in Supabase secrets for the edge function
+### Files to Create
+1. **`src/components/reports/distribution/DistributionOverviewTab.tsx`** -- KPI cards and summary (extracted from current DistributionReports)
+2. **`src/components/reports/distribution/ProductionBreakdownTab.tsx`** -- New production breakdown with per-cow and per-session data
+3. **`src/components/reports/distribution/DistributionTab.tsx`** -- Distribution pie chart and source comparison
+4. **`src/components/reports/distribution/StorePlantTab.tsx`** -- Store dispatch/receipt and plant sales analysis
+5. **`src/components/reports/distribution/CreamFFMTab.tsx`** -- Cream extraction and FFM data
 
-### Database Changes
-- Add `onesignal_player_id` column to `profiles` table (replaces `fcm_token`)
-- No other schema changes needed -- existing `notification_history`, `notification_settings`, and `app_settings` tables are reused
+### Files to Modify
+1. **`src/components/reports/DistributionReports.tsx`** -- Refactor to use Tabs component wrapping the new sub-components. Date range selector and export buttons stay at the top (shared across tabs).
+2. **`src/hooks/useDistributionAnalytics.ts`** -- Extend to return cow-level production breakdown:
+   - Add `productionBreakdown` field with per-cow, per-session quantities
+   - Query `milk_production` with cow join to get `cow_number`
 
-### Cron Job for Daily Alerts
-```sql
--- Runs check-alerts edge function daily at 6:00 AM
-SELECT cron.schedule(
-  'daily-alert-check',
-  '0 6 * * *',
-  $$ SELECT net.http_post(...) $$
-);
+### Hook Data Extension
+The `useDistributionAnalytics` hook will be extended to include:
+```
+productionBreakdown: {
+  byCow: Array<{
+    cowNumber: string;
+    morning: number;
+    evening: number;
+    total: number;
+  }>;
+  bySession: {
+    morning: number;
+    evening: number;
+  };
+  dailyBreakdown: Array<{
+    date: string;
+    morning: number;
+    evening: number;
+    total: number;
+  }>;
+}
 ```
 
-### API Authentication
-- Generate a random API key, store as Supabase secret `PUBLIC_API_KEY`
-- Other webapps include this key in their request header: `Authorization: Bearer <api-key>`
-- The edge function validates the key before returning data
+### Component Structure
+```text
+DistributionReports
++-- Date Range Selector (shared)
++-- Export Buttons (shared)
++-- Tabs
+    +-- Overview Tab (KPI cards)
+    +-- Production Tab (cow-level breakdown)
+    +-- Distribution Tab (pie chart, source comparison)
+    +-- Store & Plant Tab (dispatch/receipt, revenue)
+    +-- Cream & FFM Tab
+```
 
-### Files Summary
-
-| Action | File |
-|--------|------|
-| Delete | `src/config/firebase.ts` |
-| Delete | `src/services/firebaseMessaging.ts` |
-| Delete | `src/services/notificationScheduler.ts` |
-| Delete | `src/services/sessionNotificationService.ts` |
-| Delete | `public/firebase-messaging-sw.js` |
-| Delete | `src/components/settings/ExpoPushTest.tsx` |
-| Delete | `src/components/notifications/FirebaseDebugPanel.tsx` |
-| Delete | Edge functions: `send-push-notification`, `expo-push`, `schedule-milking-notifications` |
-| Create | `src/services/oneSignalService.ts` |
-| Create | `supabase/functions/send-onesignal-notification/index.ts` |
-| Create | `supabase/functions/check-alerts/index.ts` |
-| Create | `supabase/functions/api/index.ts` |
-| Create | `src/components/settings/NotificationSettings.tsx` |
-| Modify | `src/hooks/usePushNotifications.ts` (rewrite for OneSignal) |
-| Modify | `src/components/settings/SettingsManagement.tsx` (new notification section) |
-| Modify | `index.html` (OneSignal SDK script) |
-| Modify | `supabase/config.toml` (new edge function configs) |
-| Migration | Add `onesignal_player_id` to `profiles`, enable `pg_cron` and `pg_net` extensions |
+### Tab Component
+Uses existing `@/components/ui/tabs` (Radix Tabs) with responsive styling matching the pattern in `ReportsManagement.tsx` -- grid-based TabsList with mobile-friendly text sizes.
 
