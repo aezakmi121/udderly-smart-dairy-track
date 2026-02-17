@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, subDays } from 'date-fns';
-import { fetchAllMilkCollectionsBasic, fetchAllMilkProductionBasic, fetchAllMilkDistributions, fetchAllCCDistributions } from '@/utils/paginatedFetch';
+import { fetchAllMilkCollectionsBasic, fetchAllMilkProductionBasic, fetchAllMilkProduction, fetchAllMilkDistributions, fetchAllCCDistributions } from '@/utils/paginatedFetch';
 
 export interface SessionBreakdown {
   source: 'farm' | 'collection_center';
@@ -30,6 +30,26 @@ export interface SourceBreakdown {
   destinations: Array<{ name: string; amount: number; percentage: number }>;
 }
 
+export interface CowProductionBreakdown {
+  cowNumber: string;
+  morning: number;
+  evening: number;
+  total: number;
+}
+
+export interface DailyProductionBreakdown {
+  date: string;
+  morning: number;
+  evening: number;
+  total: number;
+}
+
+export interface ProductionBreakdown {
+  byCow: CowProductionBreakdown[];
+  bySession: { morning: number; evening: number };
+  dailyBreakdown: DailyProductionBreakdown[];
+}
+
 export interface DistributionAnalytics {
   totalProduction: number;
   farmProduction: number;
@@ -51,6 +71,8 @@ export interface DistributionAnalytics {
   sessionBreakdown: SessionBreakdown[];
   sourceBreakdown: SourceBreakdown[];
   
+  productionBreakdown: ProductionBreakdown;
+  
   monthlyTrends: Array<{
     month: string;
     production: number;
@@ -68,11 +90,12 @@ export const useDistributionAnalytics = (fromDate: string, toDate: string) => {
       const formattedTo = format(new Date(toDate), 'yyyy-MM-dd');
       
       // Use paginated fetch to get all records (basic versions without relations for performance)
-      const [farmProd, ccCollections, farmDist, ccDist] = await Promise.all([
+      const [farmProd, ccCollections, farmDist, ccDist, farmProdWithCows] = await Promise.all([
         fetchAllMilkProductionBasic(formattedFrom, formattedTo),
         fetchAllMilkCollectionsBasic(formattedFrom, formattedTo),
         fetchAllMilkDistributions(formattedFrom, formattedTo),
         fetchAllCCDistributions(formattedFrom, formattedTo),
+        fetchAllMilkProduction(formattedFrom, formattedTo),
       ]);
 
       // Fetch store receipts (smaller dataset, use regular query)
@@ -287,6 +310,41 @@ export const useDistributionAnalytics = (fromDate: string, toDate: string) => {
         .map(([month, data]) => ({ month, ...data }))
         .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
       
+      // Build production breakdown from cow-level data
+      const cowMap = new Map<string, { morning: number; evening: number }>();
+      const dailyMap2 = new Map<string, { morning: number; evening: number }>();
+      let sessionMorning = 0;
+      let sessionEvening = 0;
+
+      (farmProdWithCows || []).forEach((record: any) => {
+        const cowNumber = record.cows?.cow_number || 'Unknown';
+        const qty = Number(record.quantity);
+        const session = record.session as string;
+        
+        // By cow
+        const existing = cowMap.get(cowNumber) || { morning: 0, evening: 0 };
+        if (session === 'morning') { existing.morning += qty; sessionMorning += qty; }
+        else { existing.evening += qty; sessionEvening += qty; }
+        cowMap.set(cowNumber, existing);
+        
+        // By day
+        const dateKey = record.production_date;
+        const dayExisting = dailyMap2.get(dateKey) || { morning: 0, evening: 0 };
+        if (session === 'morning') dayExisting.morning += qty;
+        else dayExisting.evening += qty;
+        dailyMap2.set(dateKey, dayExisting);
+      });
+
+      const productionBreakdown: ProductionBreakdown = {
+        byCow: Array.from(cowMap.entries())
+          .map(([cowNumber, data]) => ({ cowNumber, ...data, total: data.morning + data.evening }))
+          .sort((a, b) => b.total - a.total),
+        bySession: { morning: sessionMorning, evening: sessionEvening },
+        dailyBreakdown: Array.from(dailyMap2.entries())
+          .map(([date, data]) => ({ date, ...data, total: data.morning + data.evening }))
+          .sort((a, b) => a.date.localeCompare(b.date)),
+      };
+      
       return {
         totalProduction,
         farmProduction,
@@ -302,6 +360,7 @@ export const useDistributionAnalytics = (fromDate: string, toDate: string) => {
         mixing,
         sessionBreakdown,
         sourceBreakdown,
+        productionBreakdown,
         monthlyTrends,
       };
     },
