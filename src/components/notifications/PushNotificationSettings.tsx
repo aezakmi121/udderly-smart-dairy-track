@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const PushNotificationSettings = () => {
-  const { isSupported, permission, token, isEnabled, isLoading, requestPermission, disableNotifications, testNotification, refreshPermissionStatus } = usePushNotifications();
+  const { isSupported, permission, isEnabled, isLoading, requestPermission, disableNotifications, testNotification, refreshPermissionStatus } = usePushNotifications();
   const { isAdmin } = useUserPermissions();
   const { toast } = useToast();
 
