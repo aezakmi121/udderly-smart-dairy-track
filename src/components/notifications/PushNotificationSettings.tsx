@@ -132,7 +132,7 @@ export const PushNotificationSettings = () => {
           </div>
         </div>
 
-        {isEnabled && token && (
+        {isEnabled && (
           <div className="space-y-2">
             <Button 
               onClick={testNotification} 
