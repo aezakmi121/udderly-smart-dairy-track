@@ -14,46 +14,13 @@ export const PushNotificationSettings = () => {
 
   const broadcastTestNotification = async () => {
     try {
-      console.log('📡 Starting broadcast test notification...');
-      
-      // Get all user tokens from the database
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('fcm_token')
-        .not('fcm_token', 'is', null);
+      console.log('📡 Starting broadcast test notification via OneSignal...');
 
-      if (error) {
-        throw error;
-      }
-
-      if (!profiles || profiles.length === 0) {
-        toast({
-          title: 'No Devices Found',
-          description: 'No devices are registered for push notifications.',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      const tokens = profiles.map(p => p.fcm_token).filter(Boolean);
-      
-      if (tokens.length === 0) {
-        toast({
-          title: 'No Valid Tokens',
-          description: 'No valid notification tokens found.',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      console.log(`📤 Broadcasting to ${tokens.length} tokens...`);
-
-      // Call the edge function to send notifications to all devices
-      const { data, error: sendError } = await supabase.functions.invoke('send-push-notification', {
+      const { data, error: sendError } = await supabase.functions.invoke('send-onesignal-notification', {
         body: {
-          tokens,
           title: 'Admin Test Broadcast',
-          body: `This is a test broadcast notification from admin! 📢 Received by ${tokens.length} device(s).`,
+          body: `This is a test broadcast notification from admin! 📢`,
+          segment: 'Subscribed Users',
           data: {
             type: 'admin_test',
             timestamp: new Date().toISOString()
@@ -61,35 +28,12 @@ export const PushNotificationSettings = () => {
         }
       });
 
-      console.log('📊 Broadcast response:', { data, error: sendError });
+      if (sendError) throw sendError;
 
-      if (sendError) {
-        throw sendError;
-      }
-
-      if (data) {
-        const { sent, failed, details } = data;
-        console.log(`📊 Broadcast results: ${sent} sent, ${failed} failed`);
-        
-        if (failed > 0) {
-          toast({
-            title: 'Partial Success',
-            description: `Broadcast sent to ${sent} devices, ${failed} failed (likely expired tokens)`,
-            variant: 'default'
-          });
-        } else {
-          toast({
-            title: 'Broadcast Sent',
-            description: `Test broadcast sent to ${sent} registered device(s)!`,
-          });
-        }
-      } else {
-        toast({
-          title: 'Broadcast Sent',
-          description: `Test broadcast sent to ${tokens.length} registered device(s)!`,
-        });
-      }
-
+      toast({
+        title: 'Broadcast Sent',
+        description: `Test broadcast sent to all subscribed users! Recipients: ${data?.recipients || 'unknown'}`,
+      });
     } catch (error) {
       console.error('❌ Error broadcasting notification:', error);
       toast({
