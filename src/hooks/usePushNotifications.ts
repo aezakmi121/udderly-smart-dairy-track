@@ -200,7 +200,6 @@ export const usePushNotifications = () => {
   return {
     isSupported,
     permission,
-    token: null as string | null,
     isEnabled,
     isLoading,
     requestPermission,
