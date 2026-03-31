@@ -29,17 +29,19 @@ class OneSignalService {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async (OneSignal: any) => {
         try {
+          console.log('🔔 OneSignal init starting for app:', ONESIGNAL_APP_ID);
           await OneSignal.init({
             appId: ONESIGNAL_APP_ID,
             allowLocalhostAsSecureOrigin: true,
             notifyButton: { enable: false },
             promptOptions: { autoPrompt: false },
+            serviceWorkerPath: '/OneSignalSDKWorker.js',
           });
           this.initialized = true;
           console.log('✅ OneSignal initialized successfully');
           resolve(true);
-        } catch (error) {
-          console.error('❌ OneSignal init failed:', error);
+        } catch (error: any) {
+          console.error('❌ OneSignal init failed:', error?.message || error);
           resolve(false);
         }
       });
