@@ -23,46 +23,34 @@ class OneSignalService {
     }
 
     this.initPromise = new Promise<boolean>((resolve) => {
-      try {
-        const checkSDK = () => {
-          if (typeof window.OneSignal !== 'undefined' || window.OneSignalDeferred) {
-            window.OneSignalDeferred = window.OneSignalDeferred || [];
-            window.OneSignalDeferred.push(async (OneSignal: any) => {
-              try {
-                await OneSignal.init({
-                  appId: ONESIGNAL_APP_ID,
-                  allowLocalhostAsSecureOrigin: true,
-                  notifyButton: {
-                    enable: false,
-                  },
-                  promptOptions: {
-                    autoPrompt: false,
-                  },
-                });
-                this.initialized = true;
-                console.log('✅ OneSignal initialized successfully');
-                resolve(true);
-              } catch (error) {
-                console.error('❌ OneSignal init failed:', error);
-                resolve(false);
-              }
-            });
-          } else {
-            setTimeout(checkSDK, 500);
-          }
-        };
+      // Always push to OneSignalDeferred — the SDK page script sets this up
+      // and will invoke our callback once it's ready, whether it loads before
+      // or after this code runs.
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async (OneSignal: any) => {
+        try {
+          await OneSignal.init({
+            appId: ONESIGNAL_APP_ID,
+            allowLocalhostAsSecureOrigin: true,
+            notifyButton: { enable: false },
+            promptOptions: { autoPrompt: false },
+          });
+          this.initialized = true;
+          console.log('✅ OneSignal initialized successfully');
+          resolve(true);
+        } catch (error) {
+          console.error('❌ OneSignal init failed:', error);
+          resolve(false);
+        }
+      });
 
-        checkSDK();
-        setTimeout(() => {
-          if (!this.initialized) {
-            console.warn('⏰ OneSignal SDK did not load within timeout');
-            resolve(false);
-          }
-        }, 10000);
-      } catch (error) {
-        console.error('OneSignal initialization error:', error);
-        resolve(false);
-      }
+      // Timeout safety net — if SDK script never loads (e.g. blocked by ad blocker)
+      setTimeout(() => {
+        if (!this.initialized) {
+          console.warn('⏰ OneSignal SDK did not load within timeout');
+          resolve(false);
+        }
+      }, 10000);
     });
 
     return this.initPromise;

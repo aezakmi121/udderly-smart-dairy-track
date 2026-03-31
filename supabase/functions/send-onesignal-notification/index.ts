@@ -38,11 +38,11 @@ Deno.serve(async (req) => {
     };
 
     if (includeExternalUserIds && includeExternalUserIds.length > 0) {
-      notification.include_aliases = { external_id: includeExternalUserIds };
-      notification.target_channel = "push";
+      notification.include_external_user_ids = includeExternalUserIds;
+      notification.channel_for_external_user_ids = "push";
     } else if (userId) {
-      notification.include_aliases = { external_id: [userId] };
-      notification.target_channel = "push";
+      notification.include_external_user_ids = [userId];
+      notification.channel_for_external_user_ids = "push";
     } else if (segment) {
       notification.included_segments = [segment];
     } else {
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${ONESIGNAL_REST_API_KEY}`,
+        'Authorization': `Key ${ONESIGNAL_REST_API_KEY}`,
       },
       body: JSON.stringify(notification),
     });
