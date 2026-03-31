@@ -26,7 +26,7 @@ const DEFAULT_ALERT_CONFIG = {
 };
 
 export const NotificationSettings = () => {
-  const { isSupported, permission, isEnabled, requestPermission, disableNotifications, testNotification, refreshPermissionStatus } = usePushNotifications();
+  const { isSupported, permission, isEnabled, requestPermission, disableNotifications, sendTestToSelf, refreshPermissionStatus } = usePushNotifications();
   const { toast } = useToast();
   const { value: savedConfig, save: saveSettingValue, isSaving: saving } = useAppSetting<typeof DEFAULT_ALERT_CONFIG>('alert_configuration');
   
@@ -109,7 +109,7 @@ export const NotificationSettings = () => {
         </div>
 
         {isEnabled && (
-          <Button onClick={testNotification} variant="outline" size="sm" className="w-full">
+          <Button onClick={sendTestToSelf} variant="outline" size="sm" className="w-full">
             <Send className="h-3 w-3 mr-2" />
             Send Test Notification
           </Button>
