@@ -16,14 +16,13 @@ export const usePushNotifications = () => {
     if (supported) {
       setPermission(Notification.permission);
     }
-    
-    // Initialize OneSignal on mount
+
     if (supported && oneSignalService.isConfigured()) {
       oneSignalService.initialize().then(() => {
         console.log('OneSignal ready');
       });
     }
-    
+
     checkStatus();
   }, []);
 
@@ -61,45 +60,54 @@ export const usePushNotifications = () => {
       return false;
     }
 
+    if (!oneSignalService.isConfigured()) {
+      toast({ title: 'Not Configured', description: 'OneSignal is not configured.', variant: 'destructive' });
+      return false;
+    }
+
     setIsLoading(true);
 
     try {
-      // Try OneSignal first
-      if (oneSignalService.isConfigured()) {
-        console.log('Requesting permission via OneSignal...');
-        const granted = await oneSignalService.requestPermission();
-        
-        if (granted) {
-          await enableWithOneSignal();
-          setIsLoading(false);
-          return true;
-        }
-        
-        // If OneSignal didn't work (SDK not loaded), fall back to native
-        console.log('OneSignal permission not granted, trying native...');
-      }
+      console.log('Requesting permission via OneSignal...');
+      const granted = await oneSignalService.requestPermission();
 
-      // Fallback: browser native notifications
-      console.log('Requesting native notification permission...');
-      const perm = await Notification.requestPermission();
-      setPermission(perm);
-      
-      if (perm === 'granted') {
-        await enableNative();
-        setIsLoading(false);
-        return true;
-      } else {
+      if (!granted) {
         toast({
           title: 'Permission Not Granted',
-          description: perm === 'denied' 
-            ? 'Notifications were blocked. Change this in your browser settings.' 
+          description: Notification.permission === 'denied'
+            ? 'Notifications were blocked. Change this in your browser settings.'
             : 'You dismissed the notification prompt. Click Enable to try again.',
           variant: 'destructive'
         });
+        setIsLoading(false);
+        return false;
       }
-      
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
+        return false;
+      }
+
+      await oneSignalService.setExternalUserId(user.id);
+      const playerId = await oneSignalService.getPlayerId();
+
+      if (playerId) {
+        await supabase
+          .from('profiles')
+          .update({ onesignal_player_id: playerId } as any)
+          .eq('id', user.id);
+
+        console.log('✅ OneSignal enabled, subscription ID saved:', playerId);
+      } else {
+        console.warn('⚠️ OneSignal permission granted but no subscription ID yet — user is still registered via external ID');
+      }
+
+      setIsEnabled(true);
+      setPermission('granted');
+      toast({ title: 'Notifications Enabled', description: 'Push notifications activated via OneSignal!' });
       setIsLoading(false);
-      return false;
+      return true;
     } catch (error) {
       console.error('Error requesting permission:', error);
       toast({ title: 'Error', description: 'Failed to request notification permission.', variant: 'destructive' });
@@ -107,42 +115,6 @@ export const usePushNotifications = () => {
       return false;
     }
   }, [isSupported, toast]);
-
-  const enableWithOneSignal = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    await oneSignalService.setExternalUserId(user.id);
-    const playerId = await oneSignalService.getPlayerId();
-
-    if (playerId) {
-      await supabase
-        .from('profiles')
-        .update({ onesignal_player_id: playerId } as any)
-        .eq('id', user.id);
-      
-      console.log('✅ OneSignal enabled, player ID saved:', playerId);
-    }
-
-    setIsEnabled(true);
-    setPermission('granted');
-    toast({ title: 'Notifications Enabled', description: 'Push notifications activated via OneSignal!' });
-  };
-
-  const enableNative = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const nativeId = `native_${user.id}_${Date.now()}`;
-    await supabase
-      .from('profiles')
-      .update({ onesignal_player_id: nativeId } as any)
-      .eq('id', user.id);
-
-    setIsEnabled(true);
-    setPermission('granted');
-    toast({ title: 'Notifications Enabled', description: 'Browser notifications enabled!' });
-  };
 
   const disableNotifications = async () => {
     try {
@@ -162,32 +134,30 @@ export const usePushNotifications = () => {
     }
   };
 
-  const testNotification = async () => {
-    if (!isSupported || Notification.permission !== 'granted') {
-      toast({ title: 'Setup Required', description: 'Please enable notifications first.', variant: 'destructive' });
-      return;
-    }
-
+  const sendTestToSelf = async () => {
     try {
-      if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.ready;
-        await registration.showNotification('Test Notification', {
-          body: 'Notifications are working! 🥛🐄',
-          icon: '/android-chrome-192x192.png',
-          badge: '/favicon-32x32.png',
-          tag: 'test',
-        });
-      } else {
-        new Notification('Test Notification', {
-          body: 'Notifications are working! 🥛🐄',
-          icon: '/android-chrome-192x192.png',
-        });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({ title: 'Not Logged In', description: 'You must be logged in to send a test notification.', variant: 'destructive' });
+        return;
       }
 
+      const { data, error } = await supabase.functions.invoke('send-onesignal-notification', {
+        body: {
+          title: 'Test Notification',
+          body: 'Your push notifications are working! 🥛🐄',
+          userId: user.id,
+          data: { type: 'admin_test', timestamp: new Date().toISOString() },
+        },
+      });
+
+      if (error) throw error;
+
       toast({ title: 'Test Sent', description: 'Check your notification tray!' });
+      console.log('Test notification result:', data);
     } catch (error) {
       console.error('Test notification error:', error);
-      toast({ title: 'Error', description: 'Failed to send test notification.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Failed to send test notification. Make sure OneSignal env vars are set in Supabase.', variant: 'destructive' });
     }
   };
 
@@ -204,7 +174,7 @@ export const usePushNotifications = () => {
     isLoading,
     requestPermission,
     disableNotifications,
-    testNotification,
+    sendTestToSelf,
     refreshPermissionStatus,
   };
 };

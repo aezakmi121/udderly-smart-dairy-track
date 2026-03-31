@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const PushNotificationSettings = () => {
-  const { isSupported, permission, isEnabled, isLoading, requestPermission, disableNotifications, testNotification, refreshPermissionStatus } = usePushNotifications();
+  const { isSupported, permission, isEnabled, isLoading, requestPermission, disableNotifications, sendTestToSelf, refreshPermissionStatus } = usePushNotifications();
   const { isAdmin } = useUserPermissions();
   const { toast } = useToast();
 
@@ -86,7 +86,7 @@ export const PushNotificationSettings = () => {
             </AlertDescription>
           </Alert>
         )}
-        
+
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">
@@ -99,7 +99,7 @@ export const PushNotificationSettings = () => {
               Permission: {permission} | Browser Support: {isSupported ? 'Yes' : 'No'}
             </p>
           </div>
-          
+
           <div className="flex gap-2">
             <Button
               onClick={refreshPermissionStatus}
@@ -110,20 +110,20 @@ export const PushNotificationSettings = () => {
               <RefreshCw className="h-3 w-3" />
               Refresh Status
             </Button>
-            
+
             {!isEnabled && permission !== 'denied' && (
               <Button onClick={requestPermission} disabled={isLoading}>
                 {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                 {isLoading ? 'Enabling...' : 'Enable Notifications'}
               </Button>
             )}
-            
+
             {!isEnabled && permission === 'denied' && (
               <Button onClick={requestPermission} variant="outline">
                 Try Enable Again
               </Button>
             )}
-            
+
             {isEnabled && (
               <Button onClick={disableNotifications} variant="outline">
                 Disable Notifications
@@ -134,26 +134,26 @@ export const PushNotificationSettings = () => {
 
         {isEnabled && (
           <div className="space-y-2">
-            <Button 
-              onClick={testNotification} 
-              variant="outline" 
+            <Button
+              onClick={sendTestToSelf}
+              variant="outline"
               className="w-full flex items-center gap-2"
             >
               <Send className="h-4 w-4" />
-              Send Test Notification
+              Send Test Notification to Me
             </Button>
-            
+
             {isAdmin && (
-              <Button 
-                onClick={broadcastTestNotification} 
-                variant="secondary" 
+              <Button
+                onClick={broadcastTestNotification}
+                variant="secondary"
                 className="w-full flex items-center gap-2"
               >
                 <Megaphone className="h-4 w-4" />
                 Broadcast Test to All Devices
               </Button>
             )}
-            
+
             <div className="text-xs text-muted-foreground">
               <p><strong>You'll receive notifications for:</strong></p>
               <ul className="list-disc list-inside space-y-1 mt-1">
