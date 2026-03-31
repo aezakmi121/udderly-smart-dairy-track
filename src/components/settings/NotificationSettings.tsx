@@ -26,7 +26,7 @@ const DEFAULT_ALERT_CONFIG = {
 };
 
 export const NotificationSettings = () => {
-  const { isSupported, permission, isEnabled, requestPermission, disableNotifications, testNotification, refreshPermissionStatus } = usePushNotifications();
+  const { isSupported, permission, isEnabled, requestPermission, disableNotifications, sendTestToSelf, refreshPermissionStatus } = usePushNotifications();
   const { toast } = useToast();
   const { value: savedConfig, save: saveSettingValue, isSaving: saving } = useAppSetting<typeof DEFAULT_ALERT_CONFIG>('alert_configuration');
   

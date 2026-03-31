@@ -72,9 +72,10 @@ export const usePushNotifications = () => {
       const granted = await oneSignalService.requestPermission();
 
       if (!granted) {
+      const currentPerm = Notification.permission;
         toast({
           title: 'Permission Not Granted',
-          description: Notification.permission === 'denied'
+          description: currentPerm === 'denied'
             ? 'Notifications were blocked. Change this in your browser settings.'
             : 'You dismissed the notification prompt. Click Enable to try again.',
           variant: 'destructive'
