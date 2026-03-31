@@ -5,6 +5,33 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+// Simple in-memory rate limiter (per-instance)
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 30; // 30 requests per minute
+
+function isRateLimited(key: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+  entry.count++;
+  return entry.count > RATE_LIMIT_MAX;
+}
+
+// Input validation
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const VALID_TYPES = ['expenses', 'milk-production', 'revenue', 'summary'];
+
+function validateDateParam(value: string | null): boolean {
+  if (value === null) return true;
+  if (!DATE_REGEX.test(value)) return false;
+  const d = new Date(value);
+  return !isNaN(d.getTime());
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -20,10 +47,12 @@ Deno.serve(async (req) => {
   );
 
   let authenticated = false;
+  let authIdentifier = 'unknown';
 
   // Method 1: Static API key
   if (PUBLIC_API_KEY && authHeader === `Bearer ${PUBLIC_API_KEY}`) {
     authenticated = true;
+    authIdentifier = 'api_key';
   }
 
   // Method 2: Supabase JWT - verify user is admin
@@ -45,6 +74,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
       if (roleData) {
         authenticated = true;
+        authIdentifier = `user:${user.id}`;
       }
     }
   }
@@ -56,10 +86,43 @@ Deno.serve(async (req) => {
     );
   }
 
+  // Rate limiting
+  if (isRateLimited(authIdentifier)) {
+    return new Response(
+      JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   const url = new URL(req.url);
   const type = url.searchParams.get('type');
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
+
+  // Validate inputs
+  if (type && !VALID_TYPES.includes(type)) {
+    return new Response(
+      JSON.stringify({ error: 'Invalid type parameter', available: VALID_TYPES }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  if (!validateDateParam(from) || !validateDateParam(to)) {
+    return new Response(
+      JSON.stringify({ error: 'Invalid date format. Use YYYY-MM-DD.' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Audit log
+  console.log(JSON.stringify({
+    event: 'api_access',
+    auth: authIdentifier,
+    type,
+    from,
+    to,
+    timestamp: new Date().toISOString(),
+  }));
 
   try {
     switch (type) {
@@ -150,7 +213,7 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             error: 'Invalid type parameter',
-            available: ['expenses', 'milk-production', 'revenue', 'summary'],
+            available: VALID_TYPES,
             usage: '?type=summary or ?type=expenses&from=2024-01-01&to=2024-12-31'
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -159,7 +222,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('API error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'An internal error occurred. Please try again later.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
