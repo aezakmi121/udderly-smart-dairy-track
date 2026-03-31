@@ -51,5 +51,8 @@ verify_jwt = false
 [functions.check-alerts]
 verify_jwt = false
 
+[functions.send-milking-reminders]
+verify_jwt = false
+
 [functions.api]
 verify_jwt = false
