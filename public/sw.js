@@ -1,5 +1,4 @@
 // Service Worker for PWA functionality with Vite-compatible caching
-const CACHE_NAME = 'dairy-farm-manager-v1';
 
 // Cache strategies
 const ASSETS_CACHE = 'assets-cache-v1';

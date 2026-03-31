@@ -24,7 +24,6 @@ class OneSignalService {
 
     this.initPromise = new Promise<boolean>((resolve) => {
       try {
-        // Wait for the SDK script to load
         const checkSDK = () => {
           if (typeof window.OneSignal !== 'undefined' || window.OneSignalDeferred) {
             window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -34,10 +33,10 @@ class OneSignalService {
                   appId: ONESIGNAL_APP_ID,
                   allowLocalhostAsSecureOrigin: true,
                   notifyButton: {
-                    enable: false, // We handle the UI ourselves
+                    enable: false,
                   },
                   promptOptions: {
-                    autoPrompt: false, // We'll prompt manually after login
+                    autoPrompt: false,
                   },
                 });
                 this.initialized = true;
@@ -49,12 +48,10 @@ class OneSignalService {
               }
             });
           } else {
-            // SDK not loaded yet, retry
             setTimeout(checkSDK, 500);
           }
         };
 
-        // Start checking, with a timeout
         checkSDK();
         setTimeout(() => {
           if (!this.initialized) {
@@ -74,7 +71,7 @@ class OneSignalService {
   async requestPermission(): Promise<boolean> {
     const ok = await this.initialize();
     if (!ok) {
-      console.warn('OneSignal not initialized, falling back to native');
+      console.warn('OneSignal not initialized');
       return false;
     }
 
@@ -82,7 +79,6 @@ class OneSignalService {
       const OneSignal = window.OneSignal;
       if (!OneSignal) return false;
 
-      // Use the native browser prompt via OneSignal
       await OneSignal.Notifications.requestPermission();
       const permission = OneSignal.Notifications.permission;
       console.log('OneSignal permission result:', permission);
@@ -98,11 +94,18 @@ class OneSignalService {
       const OneSignal = window.OneSignal;
       if (!OneSignal) return null;
 
-      // Wait a moment for the subscription to register
-      await new Promise(r => setTimeout(r, 1500));
-      const playerId = await OneSignal.User.onesignalId;
-      console.log('OneSignal player ID:', playerId);
-      return playerId || null;
+      // Poll for the subscription ID to become available (up to 5s)
+      for (let i = 0; i < 10; i++) {
+        const id = OneSignal.User?.PushSubscription?.id ?? OneSignal.User?.onesignalId ?? null;
+        if (id) {
+          console.log('OneSignal subscription ID:', id);
+          return id;
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
+
+      console.warn('OneSignal subscription ID not available after polling');
+      return null;
     } catch (error) {
       console.error('Error getting OneSignal player ID:', error);
       return null;
