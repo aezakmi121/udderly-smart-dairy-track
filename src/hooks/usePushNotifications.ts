@@ -72,7 +72,7 @@ export const usePushNotifications = () => {
       const granted = await oneSignalService.requestPermission();
 
       if (!granted) {
-      const currentPerm = Notification.permission;
+        const currentPerm: string = Notification.permission;
         toast({
           title: 'Permission Not Granted',
           description: currentPerm === 'denied'
