@@ -60,7 +60,6 @@ Deno.serve(async (req) => {
       }
 
       // 2. Expected deliveries approaching (within 7 days)
-      const deliveryStart = new Date();
       const deliveryEnd = new Date();
       deliveryEnd.setDate(deliveryEnd.getDate() + 7);
 
@@ -79,6 +78,26 @@ Deno.serve(async (req) => {
             body: `Cow ${record.cows?.cow_number || 'Unknown'} expected to deliver by ${record.expected_delivery_date}`,
             type: 'delivery_due',
           });
+        });
+      }
+
+      // 3. Vaccinations due within reminder window
+      const vaccinationReminderDays = config.vaccination_reminder_days || 3;
+      const vaccinationEnd = new Date();
+      vaccinationEnd.setDate(vaccinationEnd.getDate() + vaccinationReminderDays);
+
+      const { data: vaccinationsDue } = await supabase
+        .from('vaccination_records')
+        .select('id, cow_id, next_due_date, cows:cow_id(cow_number)')
+        .gte('next_due_date', today)
+        .lte('next_due_date', vaccinationEnd.toISOString().split('T')[0]);
+
+      if (vaccinationsDue && vaccinationsDue.length > 0) {
+        const cowNumbers = vaccinationsDue.map((r: any) => r.cows?.cow_number).filter(Boolean).join(', ');
+        alerts.push({
+          title: `Vaccination Due - ${vaccinationsDue.length} cow(s)`,
+          body: `Vaccination due within ${vaccinationReminderDays} days for: ${cowNumbers || vaccinationsDue.length + ' cows'}`,
+          type: 'vaccination_due',
         });
       }
     }
