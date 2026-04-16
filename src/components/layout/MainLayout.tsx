@@ -71,6 +71,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <main className="flex-1 overflow-auto p-3 md:p-6 pb-20 md:pb-6">
           {children}
         </main>
+        <NotificationPromptDialog />
         
         {/* Bottom Navigation - only on mobile */}
         <BottomNavigation
