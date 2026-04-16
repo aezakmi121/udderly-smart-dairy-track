@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { NotificationPromptDialog } from '@/components/notifications/NotificationPromptDialog';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { TopBar } from './TopBar';
@@ -70,6 +71,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <main className="flex-1 overflow-auto p-3 md:p-6 pb-20 md:pb-6">
           {children}
         </main>
+        <NotificationPromptDialog />
         
         {/* Bottom Navigation - only on mobile */}
         <BottomNavigation
