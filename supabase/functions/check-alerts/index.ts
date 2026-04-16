@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
     const ONESIGNAL_REST_API_KEY = Deno.env.get('ONESIGNAL_REST_API_KEY');
 
-    // Get alert configuration
+    // Get alert configuration from app_settings
     const { data: configRow } = await supabase
       .from('app_settings')
       .select('value')
@@ -34,13 +34,39 @@ Deno.serve(async (req) => {
       categories: { reminders: true, alerts: true, updates: true }
     };
 
-    const today = new Date().toISOString().split('T')[0];
-    const alerts: { title: string; body: string; type: string; userId?: string }[] = [];
+    // Also check per-setting keys (AlertSettings saves to these)
+    const { data: pdSetting } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'pd_alert_days')
+      .single();
 
-    // 1. PD checks due (AI done X days ago, PD not done)
+    const { data: deliverySetting } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'delivery_expected_days')
+      .single();
+
+    // Per-setting keys override the combined config
+    const pdCheckDays = (typeof pdSetting?.value === 'number' ? pdSetting.value : null) || config.pd_check_days || 60;
+    const expectedDeliveryDays = (typeof deliverySetting?.value === 'number' ? deliverySetting.value : null) || config.expected_delivery_days || 283;
+    const vaccinationReminderDays = config.vaccination_reminder_days || 3;
+
+    const today = new Date().toISOString().split('T')[0];
+    const alerts: { title: string; body: string; type: string }[] = [];
+
+    // Get all admin + worker user IDs for targeting
+    const { data: targetUsers } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .in('role', ['admin', 'worker']);
+
+    const userIds = targetUsers?.map((u: any) => u.user_id) || [];
+
+    // 1. PD checks due
     if (config.categories?.reminders !== false) {
       const pdCheckDate = new Date();
-      pdCheckDate.setDate(pdCheckDate.getDate() - (config.pd_check_days || 60));
+      pdCheckDate.setDate(pdCheckDate.getDate() - pdCheckDays);
       const pdDateStr = pdCheckDate.toISOString().split('T')[0];
 
       const { data: pdDue } = await supabase
@@ -82,7 +108,6 @@ Deno.serve(async (req) => {
       }
 
       // 3. Vaccinations due within reminder window
-      const vaccinationReminderDays = config.vaccination_reminder_days || 3;
       const vaccinationEnd = new Date();
       vaccinationEnd.setDate(vaccinationEnd.getDate() + vaccinationReminderDays);
 
@@ -102,18 +127,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 3. Low feed stock
+    // 4. Low feed stock
     if (config.low_stock_threshold !== false && config.categories?.alerts !== false) {
       const { data: lowStock } = await supabase
         .from('feed_items')
         .select('name, current_stock, minimum_stock_level, unit')
-        .not('minimum_stock_level', 'is', null)
-        .filter('current_stock', 'lte', 'minimum_stock_level');
+        .not('minimum_stock_level', 'is', null);
 
-      // Manual filter since Supabase doesn't support column-to-column comparison in filter
-      const actualLowStock = lowStock?.filter(item => 
-        item.current_stock !== null && 
-        item.minimum_stock_level !== null && 
+      const actualLowStock = lowStock?.filter(item =>
+        item.current_stock !== null &&
+        item.minimum_stock_level !== null &&
         item.current_stock <= item.minimum_stock_level
       );
 
@@ -127,9 +150,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Send notifications via OneSignal (broadcast to all subscribed users)
+    // Send notifications via OneSignal — target by external user IDs
     let sent = 0;
-    if (alerts.length > 0 && ONESIGNAL_APP_ID && ONESIGNAL_REST_API_KEY) {
+    if (alerts.length > 0 && ONESIGNAL_APP_ID && ONESIGNAL_REST_API_KEY && userIds.length > 0) {
       for (const alert of alerts) {
         try {
           const response = await fetch('https://onesignal.com/api/v1/notifications', {
@@ -142,13 +165,15 @@ Deno.serve(async (req) => {
               app_id: ONESIGNAL_APP_ID,
               headings: { en: alert.title },
               contents: { en: alert.body },
-              included_segments: ['Subscribed Users'],
+              include_external_user_ids: userIds,
+              channel_for_external_user_ids: "push",
               data: { type: alert.type, date: today },
             }),
           });
 
           if (response.ok) {
             sent++;
+            console.log(`✅ Sent alert: ${alert.title} to ${userIds.length} users`);
           } else {
             const err = await response.json();
             console.error('OneSignal send failed:', err);
@@ -159,39 +184,31 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Log all alerts to notification_history for admin users
-    if (alerts.length > 0) {
-      const { data: adminProfiles } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin');
-
-      if (adminProfiles) {
-        const historyRows = [];
-        for (const admin of adminProfiles) {
-          for (const alert of alerts) {
-            historyRows.push({
-              user_id: admin.user_id,
-              notification_id: crypto.randomUUID(),
-              title: alert.title,
-              message: alert.body,
-              type: alert.type,
-              priority: 'high',
-              status: 'sent',
-            });
-          }
-        }
-        if (historyRows.length > 0) {
-          await supabase.from('notification_history').insert(historyRows);
-        }
+    // Log all alerts to notification_history for target users
+    if (alerts.length > 0 && userIds.length > 0) {
+      const historyRows = userIds.flatMap((userId: string) =>
+        alerts.map((alert) => ({
+          user_id: userId,
+          notification_id: crypto.randomUUID(),
+          title: alert.title,
+          message: alert.body,
+          type: alert.type,
+          priority: 'high',
+          status: sent > 0 ? 'sent' : 'failed',
+        }))
+      );
+      if (historyRows.length > 0) {
+        await supabase.from('notification_history').insert(historyRows);
       }
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        alertsFound: alerts.length, 
+      JSON.stringify({
+        success: true,
+        alertsFound: alerts.length,
         notificationsSent: sent,
+        targetUsers: userIds.length,
+        config: { pdCheckDays, expectedDeliveryDays, vaccinationReminderDays },
         alerts: alerts.map(a => ({ title: a.title, type: a.type }))
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
