@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { NotificationPromptDialog } from '@/components/notifications/NotificationPromptDialog';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { TopBar } from './TopBar';
