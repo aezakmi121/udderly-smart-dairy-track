@@ -1,19 +1,23 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, TrendingUp, DollarSign, Package, AlertCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Plus, TrendingUp, DollarSign, Package, AlertCircle, X } from 'lucide-react';
 import { usePlantSales } from '@/hooks/usePlantSales';
 import { PlantSalesForm } from './PlantSalesForm';
 import { PlantSalesTable } from './PlantSalesTable';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export const PlantSalesManagement = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const today = new Date().toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedSale, setSelectedSale] = useState<any>(null);
 
-  const { plantSales, summary, isLoading, addSaleMutation, updateSaleMutation, deleteSaleMutation } = usePlantSales();
+  const { plantSales, summary, isLoading, addSaleMutation, updateSaleMutation, deleteSaleMutation } = usePlantSales(startDate, endDate);
 
   const handleAdd = (data: any) => {
     addSaleMutation.mutate(data, {
@@ -91,9 +95,37 @@ export const PlantSalesManagement = () => {
           </Card>
         </div>
 
-        {/* Action Bar */}
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">Sales Records</h3>
+        {/* Date Filter + Action Bar */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="space-y-1">
+              <Label htmlFor="start_date" className="text-xs">From</Label>
+              <Input
+                id="start_date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-40"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="end_date" className="text-xs">To</Label>
+              <Input
+                id="end_date"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-40"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setStartDate(today); setEndDate(today); }}
+            >
+              <X className="h-4 w-4 mr-1" /> Today
+            </Button>
+          </div>
           <Button onClick={() => setIsAddModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Sale
