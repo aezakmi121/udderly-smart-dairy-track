@@ -59,6 +59,23 @@ export const usePlantSales = (startDate?: string, endDate?: string) => {
         .single();
       
       if (error) throw error;
+
+      // Fire notification to admins/workers
+      try {
+        const qty = Number(data.quantity).toFixed(1);
+        const fat = Number(data.fat_percentage).toFixed(1);
+        const amount = Number(data.amount_received).toLocaleString('en-IN');
+        const rate = data.derived_rate ? `₹${Number(data.derived_rate).toFixed(2)}/L` : '';
+        await supabase.functions.invoke('notify-plant-sale', {
+          body: {
+            title: '🏭 New Plant Sale Recorded',
+            body: `${qty}L @ ${fat}% fat sold for ₹${amount}${rate ? ` (${rate})` : ''}`,
+            data: { type: 'plant_sale', saleId: data.id, priority: 'medium' },
+          },
+        });
+      } catch (e) {
+        console.error('Plant sale notification failed:', e);
+      }
       return data;
     },
     onSuccess: () => {
