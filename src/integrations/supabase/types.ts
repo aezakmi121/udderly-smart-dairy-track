@@ -496,6 +496,7 @@ export type Database = {
           notes: string | null
           quantity: number
           source: string | null
+          species: string
           transaction_date: string
           transaction_type: string
         }
@@ -508,6 +509,7 @@ export type Database = {
           notes?: string | null
           quantity: number
           source?: string | null
+          species?: string
           transaction_date?: string
           transaction_type: string
         }
@@ -520,6 +522,7 @@ export type Database = {
           notes?: string | null
           quantity?: number
           source?: string | null
+          species?: string
           transaction_date?: string
           transaction_type?: string
         }
@@ -890,17 +893,133 @@ export type Database = {
           },
         ]
       }
+      ffm_stock: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          current_stock: number
+          dahi_production_id: string | null
+          id: string
+          milk_distribution_id: string | null
+          notes: string | null
+          plant_sale_id: string | null
+          quantity: number
+          source: string
+          transaction_date: string
+          transaction_type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          current_stock?: number
+          dahi_production_id?: string | null
+          id?: string
+          milk_distribution_id?: string | null
+          notes?: string | null
+          plant_sale_id?: string | null
+          quantity: number
+          source: string
+          transaction_date?: string
+          transaction_type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          current_stock?: number
+          dahi_production_id?: string | null
+          id?: string
+          milk_distribution_id?: string | null
+          notes?: string | null
+          plant_sale_id?: string | null
+          quantity?: number
+          source?: string
+          transaction_date?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ffm_stock_dahi_production_id_fkey"
+            columns: ["dahi_production_id"]
+            isOneToOne: false
+            referencedRelation: "dahi_production"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ffm_stock_milk_distribution_id_fkey"
+            columns: ["milk_distribution_id"]
+            isOneToOne: false
+            referencedRelation: "milk_distributions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ffm_stock_plant_sale_id_fkey"
+            columns: ["plant_sale_id"]
+            isOneToOne: false
+            referencedRelation: "plant_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ghee_dispatch: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_name: string | null
+          dispatch_date: string
+          dispatch_type: string
+          ghee_production_id: string | null
+          id: string
+          notes: string | null
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          dispatch_date?: string
+          dispatch_type: string
+          ghee_production_id?: string | null
+          id?: string
+          notes?: string | null
+          quantity: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          dispatch_date?: string
+          dispatch_type?: string
+          ghee_production_id?: string | null
+          id?: string
+          notes?: string | null
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ghee_dispatch_ghee_production_id_fkey"
+            columns: ["ghee_production_id"]
+            isOneToOne: false
+            referencedRelation: "ghee_production"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ghee_production: {
         Row: {
           batch_number: string | null
           conversion_rate: number | null
           cream_used: number
           created_at: string
+          current_stock: number
           ghee_yield: number
           id: string
           notes: string | null
           production_cost: number | null
           production_date: string
+          species: string
           updated_at: string
         }
         Insert: {
@@ -908,11 +1027,13 @@ export type Database = {
           conversion_rate?: number | null
           cream_used: number
           created_at?: string
+          current_stock?: number
           ghee_yield: number
           id?: string
           notes?: string | null
           production_cost?: number | null
           production_date?: string
+          species?: string
           updated_at?: string
         }
         Update: {
@@ -920,11 +1041,13 @@ export type Database = {
           conversion_rate?: number | null
           cream_used?: number
           created_at?: string
+          current_stock?: number
           ghee_yield?: number
           id?: string
           notes?: string | null
           production_cost?: number | null
           production_date?: string
+          species?: string
           updated_at?: string
         }
         Relationships: []
@@ -1457,6 +1580,7 @@ export type Database = {
           notes: string | null
           payment_date: string | null
           payment_status: string
+          product: string
           quantity: number
           sale_date: string
           slip_number: string | null
@@ -1473,6 +1597,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string | null
           payment_status?: string
+          product?: string
           quantity: number
           sale_date?: string
           slip_number?: string | null
@@ -1489,6 +1614,7 @@ export type Database = {
           notes?: string | null
           payment_date?: string | null
           payment_status?: string
+          product?: string
           quantity?: number
           sale_date?: string
           slip_number?: string | null
