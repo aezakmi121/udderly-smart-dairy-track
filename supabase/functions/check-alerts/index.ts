@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     const remindersOn = config.categories?.reminders !== false;
     const alertsOn = config.categories?.alerts !== false;
 
-    // ---------- 1. PD overdue (per-cow alert with days overdue) ----------
+    // ---------- 1. PD overdue (grouped alert with all cows + days overdue) ----------
     if ((runType === 'all' || runType === 'pd_check') && remindersOn) {
       const pdCutoff = new Date();
       pdCutoff.setDate(pdCutoff.getDate() - pdCheckDays);
@@ -76,32 +76,50 @@ Deno.serve(async (req) => {
 
       const { data: pdDue, error: pdErr } = await supabase
         .from('ai_records')
-        .select('id, cow_id, ai_date, cow:cows!ai_records_cow_id_fkey(cow_number)')
+        .select('id, cow_id, ai_date, service_number, cow:cows!ai_records_cow_id_fkey(cow_number)')
         .eq('pd_done', false)
         .is('pd_result', null)
         .is('actual_delivery_date', null)
         .lte('ai_date', pdCutoffStr);
 
       if (pdErr) console.error('[check-alerts] PD query error:', pdErr);
-      console.log(`[check-alerts] PD overdue records: ${pdDue?.length || 0}`);
 
+      // Skip records where the same cow has a NEWER AI record (this one is superseded)
+      let filtered: any[] = [];
       if (pdDue && pdDue.length > 0) {
-        // Per-cow alerts so user knows exactly which cow + days overdue
-        for (const rec of pdDue as any[]) {
-          const aiDate = new Date(rec.ai_date);
-          const daysSinceAI = Math.floor((Date.now() - aiDate.getTime()) / 86400000);
-          const daysOverdue = daysSinceAI - pdCheckDays;
-          const cowNum = rec.cow?.cow_number || 'Unknown';
-          alerts.push({
-            title: `🩺 PD Overdue — Cow ${cowNum}`,
-            body: `PD check is ${daysOverdue} day(s) overdue (${daysSinceAI} days since AI on ${rec.ai_date}).`,
-            type: 'pd_check_due',
-          });
-        }
+        const cowIds = Array.from(new Set(pdDue.map((r: any) => r.cow_id).filter(Boolean)));
+        const { data: latestPerCow } = await supabase
+          .from('ai_records')
+          .select('cow_id, ai_date')
+          .in('cow_id', cowIds)
+          .order('ai_date', { ascending: false });
+        const latestMap = new Map<string, string>();
+        (latestPerCow || []).forEach((r: any) => {
+          if (!latestMap.has(r.cow_id)) latestMap.set(r.cow_id, r.ai_date);
+        });
+        filtered = pdDue.filter((r: any) => latestMap.get(r.cow_id) === r.ai_date);
+      }
+      console.log(`[check-alerts] PD overdue records: ${pdDue?.length || 0}, after newer-AI filter: ${filtered.length}`);
+
+      if (filtered.length > 0) {
+        // Build grouped summary: "Cow 45 (82d), Cow 6 (47d)"
+        const items = filtered
+          .map((rec: any) => {
+            const daysSinceAI = Math.floor((Date.now() - new Date(rec.ai_date).getTime()) / 86400000);
+            const daysOverdue = daysSinceAI - pdCheckDays;
+            return { cow: rec.cow?.cow_number || '?', daysOverdue };
+          })
+          .sort((a, b) => b.daysOverdue - a.daysOverdue);
+        const summary = items.map(i => `Cow ${i.cow} (${i.daysOverdue}d overdue)`).join(', ');
+        alerts.push({
+          title: `🩺 PD Overdue — ${items.length} cow(s)`,
+          body: `Please get PD checked: ${summary}`,
+          type: 'pd_check_due',
+        });
       }
     }
 
-    // ---------- 2. Delivery approaching (next 7 days) ----------
+    // ---------- 2. Delivery approaching (next 7 days) — grouped ----------
     if ((runType === 'all' || runType === 'delivery') && remindersOn) {
       const deliveryEnd = new Date();
       deliveryEnd.setDate(deliveryEnd.getDate() + 7);
@@ -115,14 +133,21 @@ Deno.serve(async (req) => {
       if (dErr) console.error('[check-alerts] Delivery query error:', dErr);
       console.log(`[check-alerts] Delivery approaching: ${deliveriesDue?.length || 0}`);
 
-      (deliveriesDue || []).forEach((record: any) => {
-        const days = Math.ceil((new Date(record.expected_delivery_date).getTime() - Date.now()) / 86400000);
+      if (deliveriesDue && deliveriesDue.length > 0) {
+        const items = (deliveriesDue as any[])
+          .map((r) => ({
+            cow: r.cow?.cow_number || '?',
+            days: Math.ceil((new Date(r.expected_delivery_date).getTime() - Date.now()) / 86400000),
+            date: r.expected_delivery_date,
+          }))
+          .sort((a, b) => a.days - b.days);
+        const summary = items.map(i => `Cow ${i.cow} in ${i.days}d (${i.date})`).join(', ');
         alerts.push({
-          title: `🐄 Delivery Expected — Cow ${record.cow?.cow_number || 'Unknown'}`,
-          body: `Expected to deliver in ${days} day(s) on ${record.expected_delivery_date}.`,
+          title: `🐄 Delivery Expected — ${items.length} cow(s)`,
+          body: `Upcoming deliveries: ${summary}`,
           type: 'delivery_due',
         });
-      });
+      }
     }
 
     // ---------- 3. Vaccination due ----------
