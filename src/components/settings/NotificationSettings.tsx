@@ -244,7 +244,38 @@ export const NotificationSettings = () => {
 
       <Separator />
 
-      {/* Notification Categories */}
+      {/* Manual Trigger Buttons */}
+      <div className="space-y-3">
+        <div>
+          <h4 className="text-sm font-semibold">Run Checks Manually</h4>
+          <p className="text-xs text-muted-foreground">Trigger an alert check right now using the criteria above.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" size="sm" onClick={() => runCheck('pd_check', 'PD overdue')} disabled={runningCheck !== null}>
+            {runningCheck === 'pd_check' ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Stethoscope className="h-3 w-3 mr-2" />}
+            PD Overdue
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => runCheck('delivery', 'Delivery')} disabled={runningCheck !== null}>
+            {runningCheck === 'delivery' ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Baby className="h-3 w-3 mr-2" />}
+            Delivery Due
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => runCheck('vaccination', 'Vaccination')} disabled={runningCheck !== null}>
+            {runningCheck === 'vaccination' ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Syringe className="h-3 w-3 mr-2" />}
+            Vaccination
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => runCheck('low_stock', 'Low stock')} disabled={runningCheck !== null}>
+            {runningCheck === 'low_stock' ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Package className="h-3 w-3 mr-2" />}
+            Low Feed Stock
+          </Button>
+        </div>
+        <Button size="sm" className="w-full" onClick={() => runCheck('all', 'All checks')} disabled={runningCheck !== null}>
+          {runningCheck === 'all' ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Play className="h-3 w-3 mr-2" />}
+          Run All Checks Now
+        </Button>
+      </div>
+
+      <Separator />
       <div className="space-y-3">
         <h4 className="text-sm font-semibold">Notification Categories</h4>
 
