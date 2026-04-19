@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
           const aiDate = new Date(rec.ai_date);
           const daysSinceAI = Math.floor((Date.now() - aiDate.getTime()) / 86400000);
           const daysOverdue = daysSinceAI - pdCheckDays;
-          const cowNum = rec.cows?.cow_number || 'Unknown';
+          const cowNum = rec.cow?.cow_number || 'Unknown';
           alerts.push({
             title: `🩺 PD Overdue — Cow ${cowNum}`,
             body: `PD check is ${daysOverdue} day(s) overdue (${daysSinceAI} days since AI on ${rec.ai_date}).`,
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
       (deliveriesDue || []).forEach((record: any) => {
         const days = Math.ceil((new Date(record.expected_delivery_date).getTime() - Date.now()) / 86400000);
         alerts.push({
-          title: `🐄 Delivery Expected — Cow ${record.cows?.cow_number || 'Unknown'}`,
+          title: `🐄 Delivery Expected — Cow ${record.cow?.cow_number || 'Unknown'}`,
           body: `Expected to deliver in ${days} day(s) on ${record.expected_delivery_date}.`,
           type: 'delivery_due',
         });
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
       console.log(`[check-alerts] Vaccinations due: ${vacDue?.length || 0}`);
 
       if (vacDue && vacDue.length > 0) {
-        const cowNumbers = vacDue.map((r: any) => r.cows?.cow_number).filter(Boolean).join(', ');
+        const cowNumbers = vacDue.map((r: any) => r.cow?.cow_number).filter(Boolean).join(', ');
         alerts.push({
           title: `💉 Vaccination Due — ${vacDue.length} cow(s)`,
           body: `Within ${vaccinationReminderDays} days: ${cowNumbers || vacDue.length + ' cows'}`,
