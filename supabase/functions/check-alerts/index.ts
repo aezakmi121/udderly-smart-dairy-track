@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
       vEnd.setDate(vEnd.getDate() + vaccinationReminderDays);
       const { data: vacDue, error: vErr } = await supabase
         .from('vaccination_records')
-        .select('id, cow_id, next_due_date, cows:cow_id(cow_number)')
+        .select('id, cow_id, next_due_date, cows:cow_id!vaccination_records_cow_id_fkey(cow_number)')
         .gte('next_due_date', today)
         .lte('next_due_date', vEnd.toISOString().split('T')[0]);
       if (vErr) console.error('[check-alerts] Vaccination query error:', vErr);
