@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ---------- 2. Delivery approaching (next 7 days) ----------
+    // ---------- 2. Delivery approaching (next 7 days) — grouped ----------
     if ((runType === 'all' || runType === 'delivery') && remindersOn) {
       const deliveryEnd = new Date();
       deliveryEnd.setDate(deliveryEnd.getDate() + 7);
@@ -133,14 +133,21 @@ Deno.serve(async (req) => {
       if (dErr) console.error('[check-alerts] Delivery query error:', dErr);
       console.log(`[check-alerts] Delivery approaching: ${deliveriesDue?.length || 0}`);
 
-      (deliveriesDue || []).forEach((record: any) => {
-        const days = Math.ceil((new Date(record.expected_delivery_date).getTime() - Date.now()) / 86400000);
+      if (deliveriesDue && deliveriesDue.length > 0) {
+        const items = (deliveriesDue as any[])
+          .map((r) => ({
+            cow: r.cow?.cow_number || '?',
+            days: Math.ceil((new Date(r.expected_delivery_date).getTime() - Date.now()) / 86400000),
+            date: r.expected_delivery_date,
+          }))
+          .sort((a, b) => a.days - b.days);
+        const summary = items.map(i => `Cow ${i.cow} in ${i.days}d (${i.date})`).join(', ');
         alerts.push({
-          title: `🐄 Delivery Expected — Cow ${record.cow?.cow_number || 'Unknown'}`,
-          body: `Expected to deliver in ${days} day(s) on ${record.expected_delivery_date}.`,
+          title: `🐄 Delivery Expected — ${items.length} cow(s)`,
+          body: `Upcoming deliveries: ${summary}`,
           type: 'delivery_due',
         });
-      });
+      }
     }
 
     // ---------- 3. Vaccination due ----------
