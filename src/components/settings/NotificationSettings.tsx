@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Bell, BellOff, Send, RefreshCw, AlertCircle, Calendar, Stethoscope, Baby, Syringe, Package, Clock } from 'lucide-react';
+import { Bell, BellOff, Send, RefreshCw, AlertCircle, Calendar, Stethoscope, Baby, Syringe, Package, Clock, Play, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useAppSetting } from '@/hooks/useAppSettings';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const DEFAULT_ALERT_CONFIG = {
   pd_check_days: 60,
@@ -31,6 +32,25 @@ export const NotificationSettings = () => {
   const { value: savedConfig, save: saveSettingValue, isSaving: saving } = useAppSetting<typeof DEFAULT_ALERT_CONFIG>('alert_configuration');
   
   const [alertConfig, setAlertConfig] = useState(DEFAULT_ALERT_CONFIG);
+  const [runningCheck, setRunningCheck] = useState<string | null>(null);
+
+  const runCheck = async (type: 'all' | 'pd_check' | 'delivery' | 'vaccination' | 'low_stock', label: string) => {
+    setRunningCheck(type);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-alerts', { body: { type } });
+      if (error) throw error;
+      const found = data?.alertsFound ?? 0;
+      const sent = data?.notificationsSent ?? 0;
+      toast({
+        title: `${label} check complete`,
+        description: found === 0 ? 'No alerts to send right now.' : `Found ${found} alert(s), sent ${sent} notification(s).`,
+      });
+    } catch (e: any) {
+      toast({ title: 'Check failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setRunningCheck(null);
+    }
+  };
 
   useEffect(() => {
     if (savedConfig) {
