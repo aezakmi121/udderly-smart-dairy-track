@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
 
       const { data: pdDue, error: pdErr } = await supabase
         .from('ai_records')
-        .select('id, cow_id, ai_date, cows:cow_id(cow_number)')
+        .select('id, cow_id, ai_date, cows:cow_id!ai_records_cow_id_fkey(cow_number)')
         .eq('pd_done', false)
         .is('pd_result', null)
         .is('actual_delivery_date', null)
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
       deliveryEnd.setDate(deliveryEnd.getDate() + 7);
       const { data: deliveriesDue, error: dErr } = await supabase
         .from('ai_records')
-        .select('id, cow_id, expected_delivery_date, cows:cow_id(cow_number)')
+        .select('id, cow_id, expected_delivery_date, cows:cow_id!ai_records_cow_id_fkey(cow_number)')
         .gte('expected_delivery_date', today)
         .lte('expected_delivery_date', deliveryEnd.toISOString().split('T')[0])
         .is('actual_delivery_date', null)
