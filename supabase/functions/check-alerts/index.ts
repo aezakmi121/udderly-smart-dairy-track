@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
 
       const { data: pdDue, error: pdErr } = await supabase
         .from('ai_records')
-        .select('id, cow_id, ai_date, cows:cow_id!ai_records_cow_id_fkey(cow_number)')
+        .select('id, cow_id, ai_date, cow:cows!ai_records_cow_id_fkey(cow_number)')
         .eq('pd_done', false)
         .is('pd_result', null)
         .is('actual_delivery_date', null)
@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
       deliveryEnd.setDate(deliveryEnd.getDate() + 7);
       const { data: deliveriesDue, error: dErr } = await supabase
         .from('ai_records')
-        .select('id, cow_id, expected_delivery_date, cows:cow_id!ai_records_cow_id_fkey(cow_number)')
+        .select('id, cow_id, expected_delivery_date, cow:cows!ai_records_cow_id_fkey(cow_number)')
         .gte('expected_delivery_date', today)
         .lte('expected_delivery_date', deliveryEnd.toISOString().split('T')[0])
         .is('actual_delivery_date', null)
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
       vEnd.setDate(vEnd.getDate() + vaccinationReminderDays);
       const { data: vacDue, error: vErr } = await supabase
         .from('vaccination_records')
-        .select('id, cow_id, next_due_date, cows:cow_id!vaccination_records_cow_id_fkey(cow_number)')
+        .select('id, cow_id, next_due_date, cow:cows!vaccination_records_cow_id_fkey(cow_number)')
         .gte('next_due_date', today)
         .lte('next_due_date', vEnd.toISOString().split('T')[0]);
       if (vErr) console.error('[check-alerts] Vaccination query error:', vErr);
