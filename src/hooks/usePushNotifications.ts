@@ -13,19 +13,17 @@ export const usePushNotifications = () => {
   useEffect(() => {
     const supported = 'Notification' in window && 'serviceWorker' in navigator;
     setIsSupported(supported);
-    if (supported) {
-      setPermission(Notification.permission);
-    }
+    if (supported) setPermission(Notification.permission);
 
     if (supported && oneSignalService.isConfigured()) {
-      oneSignalService.initialize().then(() => {
-        console.log('OneSignal ready');
-      });
+      // Initialize SDK early so it's ready when the user clicks Enable
+      oneSignalService.initialize();
     }
 
     checkStatus();
   }, []);
 
+  // Sync UI state with DB + actual OneSignal subscription state
   const checkStatus = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -37,9 +35,19 @@ export const usePushNotifications = () => {
         .eq('id', user.id)
         .single();
 
-      if ((profile as any)?.onesignal_player_id) {
+      const dbHasId = !!(profile as any)?.onesignal_player_id;
+
+      // If DB says enabled, trust it
+      if (dbHasId) {
         setIsEnabled(true);
+        return;
       }
+
+      // DB says disabled — make sure OneSignal is also opted out to stay in sync
+      await oneSignalService.initialize();
+      const optedIn = await oneSignalService.isOptedIn();
+      if (optedIn) await oneSignalService.optOut();
+      setIsEnabled(false);
     } catch (error) {
       console.error('Error checking notification status:', error);
     }
@@ -47,15 +55,20 @@ export const usePushNotifications = () => {
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
     if (!isSupported) {
-      toast({ title: 'Not Supported', description: 'Push notifications are not supported in this browser.', variant: 'destructive' });
+      toast({
+        title: 'Not Supported',
+        description: 'Push notifications are not supported in this browser.',
+        variant: 'destructive',
+      });
       return false;
     }
 
     if (Notification.permission === 'denied') {
       toast({
-        title: 'Permission Blocked',
-        description: 'Notifications are blocked. Click the 🔒 lock icon in your browser address bar → Site settings → Allow notifications, then refresh.',
-        variant: 'destructive'
+        title: 'Notifications Blocked',
+        description:
+          'Your browser has blocked notifications for this site. Click the 🔒 lock icon in the address bar → Site settings → Allow notifications, then refresh.',
+        variant: 'destructive',
       });
       return false;
     }
@@ -68,50 +81,65 @@ export const usePushNotifications = () => {
     setIsLoading(true);
 
     try {
-      console.log('Requesting permission via OneSignal...');
-      const granted = await oneSignalService.requestPermission();
-
-      if (!granted) {
-        const currentPerm: string = Notification.permission;
+      // Step 1: Ensure SDK is ready
+      const sdkReady = await oneSignalService.initialize();
+      if (!sdkReady) {
         toast({
-          title: 'Permission Not Granted',
-          description: currentPerm === 'denied'
-            ? 'Notifications were blocked. Change this in your browser settings.'
-            : 'You dismissed the notification prompt. Click Enable to try again.',
-          variant: 'destructive'
+          title: 'Service Unavailable',
+          description: 'Push notification service could not load. Try disabling ad blockers.',
+          variant: 'destructive',
         });
         setIsLoading(false);
         return false;
       }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Step 2: Request browser permission
+      // NOTE: The system prompt only appears the very first time per browser/site.
+      // On subsequent enables the browser grants silently — this is correct behaviour.
+      const granted = await oneSignalService.requestPermission();
+      if (!granted) {
+        toast({
+          title: 'Permission Not Granted',
+          description:
+            Notification.permission === 'denied'
+              ? 'Notifications are blocked in your browser settings. Allow them and refresh.'
+              : 'You dismissed the notification prompt. Click Enable to try again.',
+          variant: 'destructive',
+        });
         setIsLoading(false);
         return false;
       }
 
-      await oneSignalService.setExternalUserId(user.id);
+      // Step 3: Resume the push subscription (critical for re-enable after disable)
+      await oneSignalService.optIn();
+
+      // Step 4: Link this device to the user's account
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setIsLoading(false); return false; }
+
+      await oneSignalService.login(user.id);
+
+      // Step 5: Get subscription ID and save to DB
       const playerId = await oneSignalService.getPlayerId();
 
-      if (playerId) {
-        await supabase
-          .from('profiles')
-          .update({ onesignal_player_id: playerId } as any)
-          .eq('id', user.id);
+      await supabase
+        .from('profiles')
+        .update({ onesignal_player_id: playerId || `ext:${user.id}` } as any)
+        .eq('id', user.id);
 
-        console.log('✅ OneSignal enabled, subscription ID saved:', playerId);
-      } else {
-        console.warn('⚠️ OneSignal permission granted but no subscription ID yet — user is still registered via external ID');
-      }
-
-      setIsEnabled(true);
       setPermission('granted');
-      toast({ title: 'Notifications Enabled', description: 'Push notifications activated via OneSignal!' });
+      setIsEnabled(true);
+      toast({
+        title: 'Notifications Enabled',
+        description: playerId
+          ? 'Push notifications are active on this device.'
+          : 'Registered via user ID. You will receive notifications.',
+      });
       setIsLoading(false);
       return true;
     } catch (error) {
-      console.error('Error requesting permission:', error);
-      toast({ title: 'Error', description: 'Failed to request notification permission.', variant: 'destructive' });
+      console.error('Error enabling notifications:', error);
+      toast({ title: 'Error', description: 'Failed to enable push notifications.', variant: 'destructive' });
       setIsLoading(false);
       return false;
     }
@@ -119,6 +147,11 @@ export const usePushNotifications = () => {
 
   const disableNotifications = async () => {
     try {
+      // Pause pushes in OneSignal and remove user association
+      await oneSignalService.optOut();
+      await oneSignalService.logout();
+
+      // Clear from DB
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -128,7 +161,7 @@ export const usePushNotifications = () => {
         .eq('id', user.id);
 
       setIsEnabled(false);
-      toast({ title: 'Notifications Disabled', description: 'Push notifications have been disabled.' });
+      toast({ title: 'Notifications Disabled', description: 'You will no longer receive push notifications.' });
     } catch (error) {
       console.error('Error disabling notifications:', error);
       toast({ title: 'Error', description: 'Failed to disable notifications.', variant: 'destructive' });
@@ -139,26 +172,50 @@ export const usePushNotifications = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast({ title: 'Not Logged In', description: 'You must be logged in to send a test notification.', variant: 'destructive' });
+        toast({ title: 'Not Logged In', description: 'You must be logged in.', variant: 'destructive' });
         return;
       }
 
       const { data, error } = await supabase.functions.invoke('send-onesignal-notification', {
         body: {
-          title: 'Test Notification',
-          body: 'Your push notifications are working! 🥛🐄',
+          title: '🐄 Test Notification',
+          body: 'Push notifications are working!',
           userId: user.id,
-          data: { type: 'admin_test', timestamp: new Date().toISOString() },
+          data: { type: 'test', timestamp: new Date().toISOString() },
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Surface the actual server error to make diagnosis easier
+        const detail = (error as any)?.message || JSON.stringify(error);
+        toast({
+          title: 'Test Failed',
+          description: detail.includes('not configured')
+            ? 'OneSignal secrets are not set in Supabase Edge Functions. Add ONESIGNAL_APP_ID and ONESIGNAL_REST_API_KEY in the Supabase dashboard → Edge Functions → Manage secrets.'
+            : `Error: ${detail}`,
+          variant: 'destructive',
+        });
+        return;
+      }
 
-      toast({ title: 'Test Sent', description: 'Check your notification tray!' });
-      console.log('Test notification result:', data);
-    } catch (error) {
+      if (data?.error) {
+        toast({
+          title: 'Test Failed',
+          description: data.error.includes('not configured')
+            ? 'OneSignal secrets are not set in Supabase. Add ONESIGNAL_APP_ID and ONESIGNAL_REST_API_KEY in Supabase → Edge Functions → Manage secrets.'
+            : data.error,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      toast({
+        title: 'Test Sent',
+        description: `Notification dispatched (${data?.recipients ?? '?'} recipient). Check your notification tray.`,
+      });
+    } catch (error: any) {
       console.error('Test notification error:', error);
-      toast({ title: 'Error', description: 'Failed to send test notification. Make sure OneSignal env vars are set in Supabase.', variant: 'destructive' });
+      toast({ title: 'Error', description: error?.message || 'Failed to send test notification.', variant: 'destructive' });
     }
   };
 
