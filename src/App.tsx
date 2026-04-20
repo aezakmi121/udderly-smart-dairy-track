@@ -15,6 +15,7 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { EnhancedToastProvider } from "@/components/ui/enhanced-toast";
 import { useEnhancedToast } from "@/hooks/useEnhancedToast";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const AppContent = () => {
               <AuthProvider>
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route
                     path="/*"
                     element={
