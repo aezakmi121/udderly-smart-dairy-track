@@ -34,238 +34,215 @@ export interface DetailedNotification {
   };
 }
 
+const STORAGE_KEYS = {
+  read: 'notification_read_state',
+  snoozed: 'notification_snoozed_state',
+  dismissed: 'notification_dismissed_state',
+} as const;
+
+const loadSet = (key: string): Set<string> => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+const loadMap = (key: string): Map<string, string> => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? new Map(Object.entries(JSON.parse(raw))) : new Map();
+  } catch {
+    return new Map();
+  }
+};
+
 export const useEnhancedNotifications = () => {
-  const [readNotifications, setReadNotifications] = useState<Set<string>>(new Set());
-  const [snoozedNotifications, setSnoozedNotifications] = useState<Map<string, string>>(new Map());
-  
-  const pdAlertDays = useAppSetting<number>('pd_alert_days')?.value || 60;
-  const expectedDeliveryDays = useAppSetting<number>('delivery_expected_days')?.value || 283;
+  const [readNotifications, setReadNotifications] = useState<Set<string>>(() => loadSet(STORAGE_KEYS.read));
+  const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(() => loadSet(STORAGE_KEYS.dismissed));
+  const [snoozedNotifications, setSnoozedNotifications] = useState<Map<string, string>>(() => loadMap(STORAGE_KEYS.snoozed));
 
-  // Load state from localStorage
+  const pdAlertDays = useAppSetting<number>('pd_alert_days').value ?? 60;
+  const expectedDeliveryDays = useAppSetting<number>('delivery_expected_days').value ?? 283;
+
+  // Persist read state
   useEffect(() => {
-    const stored = localStorage.getItem('notification_read_state');
-    if (stored) {
-      try {
-        setReadNotifications(new Set(JSON.parse(stored)));
-      } catch (e) {
-        console.error('Failed to parse stored notification state:', e);
-      }
-    }
-
-    const snoozed = localStorage.getItem('notification_snoozed_state');
-    if (snoozed) {
-      try {
-        const parsed = JSON.parse(snoozed);
-        setSnoozedNotifications(new Map(Object.entries(parsed)));
-      } catch (e) {
-        console.error('Failed to parse snoozed notification state:', e);
-      }
-    }
-  }, []);
-
-  // Persist state to localStorage
-  useEffect(() => {
-    localStorage.setItem('notification_read_state', JSON.stringify(Array.from(readNotifications)));
+    localStorage.setItem(STORAGE_KEYS.read, JSON.stringify(Array.from(readNotifications)));
   }, [readNotifications]);
 
+  // Persist dismissed state
   useEffect(() => {
-    const snoozedObj = Object.fromEntries(snoozedNotifications);
-    localStorage.setItem('notification_snoozed_state', JSON.stringify(snoozedObj));
+    localStorage.setItem(STORAGE_KEYS.dismissed, JSON.stringify(Array.from(dismissedNotifications)));
+  }, [dismissedNotifications]);
+
+  // Persist snoozed state
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.snoozed, JSON.stringify(Object.fromEntries(snoozedNotifications)));
   }, [snoozedNotifications]);
 
   const { data: rawNotifications = [], isLoading } = useQuery({
     queryKey: ['enhanced-notifications', pdAlertDays, expectedDeliveryDays],
     queryFn: async (): Promise<DetailedNotification[]> => {
       const notifications: DetailedNotification[] = [];
+      const today = new Date().toISOString().split('T')[0];
 
       try {
-        // 1. Check for expected deliveries (grouped)
+        // 1. Expected deliveries (grouped by urgency)
         const { data: deliveryData } = await supabase
           .from('ai_records')
-          .select(`
-            *,
-            cows!ai_records_cow_id_fkey (cow_number)
-          `)
+          .select('*, cows!ai_records_cow_id_fkey (cow_number)')
           .not('expected_delivery_date', 'is', null)
-          .gte('expected_delivery_date', new Date().toISOString().split('T')[0])
+          .gte('expected_delivery_date', today)
           .lte('expected_delivery_date', new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
           .eq('is_successful', true)
           .is('actual_delivery_date', null);
 
-        // Group deliveries by urgency
-        const urgentDeliveries: any[] = [];
-        const upcomingDeliveries: any[] = [];
-        
+        const urgentDeliveries: DetailedNotification['data']['cows'] = [];
+        const upcomingDeliveries: DetailedNotification['data']['cows'] = [];
+
         deliveryData?.forEach(record => {
-          const today = new Date();
-          const deliveryDate = new Date(record.expected_delivery_date);
-          const daysUntil = Math.ceil((deliveryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          
+          const daysUntil = Math.ceil(
+            (new Date(record.expected_delivery_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+          );
           const cowData = {
             cow_no: record.cows?.cow_number || 'Unknown',
             expected_delivery: record.expected_delivery_date,
-            days_remaining: daysUntil
+            days_remaining: daysUntil,
           };
-
-          if (daysUntil <= 3) {
-            urgentDeliveries.push(cowData);
-          } else if (daysUntil <= 14) {
-            upcomingDeliveries.push(cowData);
-          }
+          if (daysUntil <= 3) urgentDeliveries.push(cowData);
+          else upcomingDeliveries.push(cowData);
         });
 
         if (urgentDeliveries.length > 0) {
           notifications.push({
-            id: `delivery-urgent-${new Date().toDateString()}`,
+            id: 'delivery-urgent',
             type: 'delivery_due',
             title: `${urgentDeliveries.length} Urgent Deliveries`,
             message: `${urgentDeliveries.length} cows expected to deliver within 3 days`,
             priority: 'high',
             created_at: new Date().toISOString(),
-            data: { cows: urgentDeliveries }
+            data: { cows: urgentDeliveries },
           });
         }
-
         if (upcomingDeliveries.length > 0) {
           notifications.push({
-            id: `delivery-upcoming-${new Date().toDateString()}`,
+            id: 'delivery-upcoming',
             type: 'delivery_due',
             title: `${upcomingDeliveries.length} Deliveries Expected`,
             message: `${upcomingDeliveries.length} cows expected to deliver within 2 weeks`,
             priority: 'medium',
             created_at: new Date().toISOString(),
-            data: { cows: upcomingDeliveries }
+            data: { cows: upcomingDeliveries },
           });
         }
 
-        // 2. Check for PD due records (grouped)
+        // 2. PD due records (grouped)
         const { data: pdDueRecords } = await supabase
           .from('ai_records')
-          .select(`
-            *,
-            cows!ai_records_cow_id_fkey (cow_number)
-          `)
+          .select('*, cows!ai_records_cow_id_fkey (cow_number)')
           .eq('ai_status', 'done')
           .eq('pd_done', false)
           .gte('ai_date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
           .lte('ai_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 
-        const overduePD: any[] = [];
-        const upcomingPD: any[] = [];
-        
+        const overduePD: DetailedNotification['data']['cows'] = [];
+        const upcomingPD: DetailedNotification['data']['cows'] = [];
+
         pdDueRecords?.forEach(record => {
-          const today = new Date();
-          const aiDate = new Date(record.ai_date);
-          const daysSinceAI = Math.ceil((today.getTime() - aiDate.getTime()) / (1000 * 60 * 60 * 24));
-          
+          const daysSinceAI = Math.ceil(
+            (Date.now() - new Date(record.ai_date).getTime()) / (1000 * 60 * 60 * 24)
+          );
           const cowData = {
             cow_no: record.cows?.cow_number || 'Unknown',
             ai_date: record.ai_date,
             service_no: record.service_number,
-            overdue: daysSinceAI > pdAlertDays
+            overdue: daysSinceAI > pdAlertDays,
           };
-
-          if (daysSinceAI > pdAlertDays) {
-            overduePD.push(cowData);
-          } else if (daysSinceAI >= pdAlertDays - 7) {
-            upcomingPD.push(cowData);
-          }
+          if (daysSinceAI > pdAlertDays) overduePD.push(cowData);
+          else if (daysSinceAI >= pdAlertDays - 7) upcomingPD.push(cowData);
         });
 
         if (overduePD.length > 0) {
           notifications.push({
-            id: `pd-overdue-${new Date().toDateString()}`,
+            id: 'pd-overdue',
             type: 'pd_due',
             title: `${overduePD.length} PD Checks Overdue`,
             message: `${overduePD.length} pregnancy diagnoses are overdue`,
             priority: 'high',
             created_at: new Date().toISOString(),
-            data: { cows: overduePD }
+            data: { cows: overduePD },
           });
         }
-
         if (upcomingPD.length > 0) {
           notifications.push({
-            id: `pd-due-${new Date().toDateString()}`,
+            id: 'pd-due',
             type: 'pd_due',
             title: `${upcomingPD.length} PD Checks Due`,
             message: `${upcomingPD.length} cows need pregnancy diagnosis`,
             priority: 'medium',
             created_at: new Date().toISOString(),
-            data: { cows: upcomingPD }
+            data: { cows: upcomingPD },
           });
         }
 
-        // 3. Check for vaccination due (grouped)
+        // 3. Vaccination due (grouped)
         const { data: vaccinationDue } = await supabase
           .from('vaccination_records')
-          .select(`
-            *,
-            cows!vaccination_records_cow_id_fkey (cow_number),
-            vaccination_schedules!vaccination_schedule_id (vaccine_name)
-          `)
+          .select('*, cows!vaccination_records_cow_id_fkey (cow_number), vaccination_schedules!vaccination_schedule_id (vaccine_name)')
           .lte('next_due_date', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 
-        const overdueVaccinations: any[] = [];
-        const upcomingVaccinations: any[] = [];
+        const overdueVaccinations: DetailedNotification['data']['cows'] = [];
+        const upcomingVaccinations: DetailedNotification['data']['cows'] = [];
 
         vaccinationDue?.forEach(record => {
-          const today = new Date();
-          const dueDate = new Date(record.next_due_date);
-          const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
+          const daysUntil = Math.ceil(
+            (new Date(record.next_due_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+          );
           const cowData = {
             cow_no: record.cows?.cow_number || 'Unknown',
             vaccine_name: record.vaccination_schedules?.vaccine_name || 'Unknown',
             due_date: record.next_due_date,
-            overdue: daysUntil < 0
+            overdue: daysUntil < 0,
           };
-
-          if (daysUntil < 0) {
-            overdueVaccinations.push(cowData);
-          } else if (daysUntil <= 7) {
-            upcomingVaccinations.push(cowData);
-          }
+          if (daysUntil < 0) overdueVaccinations.push(cowData);
+          else if (daysUntil <= 7) upcomingVaccinations.push(cowData);
         });
 
         if (overdueVaccinations.length > 0) {
           notifications.push({
-            id: `vaccination-overdue-${new Date().toDateString()}`,
+            id: 'vaccination-overdue',
             type: 'vaccination_due',
             title: `${overdueVaccinations.length} Vaccinations Overdue`,
             message: `${overdueVaccinations.length} vaccinations are overdue`,
             priority: 'high',
             created_at: new Date().toISOString(),
-            data: { cows: overdueVaccinations }
+            data: { cows: overdueVaccinations },
           });
         }
-
         if (upcomingVaccinations.length > 0) {
           notifications.push({
-            id: `vaccination-due-${new Date().toDateString()}`,
+            id: 'vaccination-due',
             type: 'vaccination_due',
             title: `${upcomingVaccinations.length} Vaccinations Due`,
             message: `${upcomingVaccinations.length} vaccinations due within 7 days`,
             priority: 'medium',
             created_at: new Date().toISOString(),
-            data: { cows: upcomingVaccinations }
+            data: { cows: upcomingVaccinations },
           });
         }
 
-        // 4. Check for low stock items
-        const { data: allFeedItems } = await supabase
-          .from('feed_items')
-          .select('*');
-
-        const lowStockItems = allFeedItems?.filter(item => {
-          const currentStock = parseFloat(item.current_stock?.toString() || '0');
-          const minimumLevel = parseFloat(item.minimum_stock_level?.toString() || '0');
-          return currentStock <= minimumLevel && currentStock > 0;
-        }) || [];
+        // 4. Low stock items
+        const { data: allFeedItems } = await supabase.from('feed_items').select('*');
+        const lowStockItems = (allFeedItems || []).filter(item => {
+          const current = parseFloat(item.current_stock?.toString() || '0');
+          const minimum = parseFloat(item.minimum_stock_level?.toString() || '0');
+          return current <= minimum && current > 0;
+        });
 
         if (lowStockItems.length > 0) {
           notifications.push({
-            id: `low-stock-${new Date().toDateString()}`,
+            id: 'low-stock',
             type: 'low_stock',
             title: `${lowStockItems.length} Items Low in Stock`,
             message: `${lowStockItems.length} feed items are running low`,
@@ -277,59 +254,49 @@ export const useEnhancedNotifications = () => {
                 name: item.name,
                 current_stock: parseFloat(item.current_stock?.toString() || '0'),
                 minimum_stock_level: parseFloat(item.minimum_stock_level?.toString() || '0'),
-                unit: item.unit
-              }))
-            }
+                unit: item.unit,
+              })),
+            },
           });
         }
-
       } catch (error) {
         console.error('Error fetching notifications:', error);
       }
 
       return notifications;
     },
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    refetchInterval: 5 * 60 * 1000,
   });
 
   const notifications = useMemo(() => {
     const now = new Date();
-    
     return rawNotifications
-      .filter(notification => {
-        // Filter out snoozed notifications
-        const snoozeUntil = snoozedNotifications.get(notification.id);
-        if (snoozeUntil && new Date(snoozeUntil) > now) {
-          return false;
-        }
+      .filter(n => {
+        // Hide dismissed notifications — they stay gone until data changes
+        if (dismissedNotifications.has(n.id)) return false;
+        // Hide actively snoozed notifications
+        const snoozeUntil = snoozedNotifications.get(n.id);
+        if (snoozeUntil && new Date(snoozeUntil) > now) return false;
         return true;
       })
-      .map(notification => ({
-        ...notification,
-        read: readNotifications.has(notification.id),
-        snoozed: snoozedNotifications.has(notification.id),
-        snooze_until: snoozedNotifications.get(notification.id)
+      .map(n => ({
+        ...n,
+        read: readNotifications.has(n.id),
+        snoozed: snoozedNotifications.has(n.id),
+        snooze_until: snoozedNotifications.get(n.id),
       }))
       .sort((a, b) => {
-        // Sort by priority first, then by creation date
-        const priorityOrder = { high: 3, medium: 2, low: 1 };
-        if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
-          return priorityOrder[b.priority] - priorityOrder[a.priority];
-        }
+        const order = { high: 3, medium: 2, low: 1 };
+        if (order[a.priority] !== order[b.priority]) return order[b.priority] - order[a.priority];
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
-  }, [rawNotifications, readNotifications, snoozedNotifications]);
+  }, [rawNotifications, readNotifications, dismissedNotifications, snoozedNotifications]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
   const highPriorityCount = notifications.filter(n => !n.read && n.priority === 'high').length;
 
   const markAsRead = (id: string) => {
-    console.log('✅ Enhanced notifications - markAsRead called:', id, 'Current read notifications:', readNotifications.size);
-    setReadNotifications(prev => {
-      const newSet = new Set([...prev, id]);
-      console.log('✅ New read notifications size:', newSet.size);
-      return newSet;
-    });
+    setReadNotifications(prev => new Set([...prev, id]));
   };
 
   const markAllAsRead = () => {
@@ -339,11 +306,13 @@ export const useEnhancedNotifications = () => {
   const snoozeNotification = (id: string, hours: number) => {
     const snoozeUntil = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
     setSnoozedNotifications(prev => new Map([...prev, [id, snoozeUntil]]));
+    markAsRead(id);
   };
 
+  // Dismissed notifications are permanently hidden until the underlying data changes
+  // (e.g., new cows added → new 'delivery-urgent' group with different data)
   const dismissNotification = (id: string) => {
-    console.log('🗑️ Enhanced notifications - dismissNotification called:', id);
-    markAsRead(id);
+    setDismissedNotifications(prev => new Set([...prev, id]));
   };
 
   return {
@@ -354,6 +323,6 @@ export const useEnhancedNotifications = () => {
     markAsRead,
     markAllAsRead,
     snoozeNotification,
-    dismissNotification
+    dismissNotification,
   };
 };

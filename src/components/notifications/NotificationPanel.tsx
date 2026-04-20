@@ -52,12 +52,6 @@ export const NotificationPanel = () => {
     dismissNotification 
   } = useEnhancedNotifications();
   
-  console.log('📋 NotificationPanel - Dashboard notifications:', {
-    totalNotifications: notifications.length,
-    unreadCount: notifications.filter(n => !n.read).length,
-    highPriorityCount
-  });
-  
   const unread = notifications.filter(n => !n.read);
 
   if (isLoading) {
