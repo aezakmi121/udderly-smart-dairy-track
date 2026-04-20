@@ -62,21 +62,6 @@ export const NotificationBell = () => {
     snoozeNotification, 
     dismissNotification 
   } = useEnhancedNotifications();
-  const unread = notifications.filter(n => !n.read);
-  console.log('🔔 Notification filtering:', {
-    totalNotifications: notifications.length,
-    unreadNotifications: unread.length,
-    firstFewNotifications: notifications.slice(0, 2).map(n => ({ id: n.id, type: n.type, read: n.read }))
-  });
-
-  console.log('🔔 NotificationBell - State:', {
-    notificationCount: notifications.length,
-    unreadCount,
-    highPriorityCount,
-    showDetails,
-    selectedNotification: selectedNotification?.id
-  });
-
   if (isLoading) {
     return (
       <Button variant="ghost" size="sm" disabled>
@@ -201,9 +186,8 @@ export const NotificationBell = () => {
                               size="icon"
                               className="h-6 w-6 touch-manipulation"
                               aria-label="View details"
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                console.log('🔍 View details clicked:', notification.id, notification.type);
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setSelectedNotification(notification);
                                 setShowDetails(true);
                                 setIsOpen(false); // Close the notification popover
@@ -235,9 +219,8 @@ export const NotificationBell = () => {
                               size="icon"
                               className="h-6 w-6 touch-manipulation"
                               aria-label="Dismiss notification"
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                console.log('❌ Dismiss clicked:', notification.id);
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 dismissNotification(notification.id);
                                 setIsOpen(false); // Close the popover after dismissing
                               }}
