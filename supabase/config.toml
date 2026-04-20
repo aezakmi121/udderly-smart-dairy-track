@@ -28,13 +28,11 @@ file_size_limit = "50MiB"
 [auth]
 enabled = true
 port = 54328
-# UPDATE: set this to your production Vercel URL (no trailing slash)
-# For preview deployments add a wildcard entry in the Supabase dashboard
-# (config.toml only supports exact URLs; wildcard is dashboard-only)
-site_url = "https://YOUR_APP.vercel.app"
+site_url = "https://udderly-smart-dairy-track.vercel.app"
 additional_redirect_urls = [
-  "https://YOUR_APP.vercel.app",
-  "https://YOUR_APP.vercel.app/reset-password",
+  "https://udderly-smart-dairy-track.vercel.app",
+  "https://udderly-smart-dairy-track.vercel.app/reset-password",
+  "https://udderly-smart-dairy-track.vercel.app/auth",
   "http://localhost:5173",
   "http://localhost:8080",
 ]
