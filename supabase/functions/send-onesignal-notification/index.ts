@@ -37,19 +37,23 @@ Deno.serve(async (req) => {
       data: data || {},
     };
 
-    if (includeExternalUserIds && includeExternalUserIds.length > 0) {
-      notification.include_external_user_ids = includeExternalUserIds;
-      notification.channel_for_external_user_ids = "push";
-    } else if (userId) {
-      notification.include_external_user_ids = [userId];
-      notification.channel_for_external_user_ids = "push";
+    // Use include_aliases (modern API) instead of the deprecated include_external_user_ids
+    const targetIds: string[] =
+      includeExternalUserIds?.length > 0 ? includeExternalUserIds :
+      userId ? [userId] :
+      [];
+
+    if (targetIds.length > 0) {
+      notification.include_aliases = { external_id: targetIds };
+      notification.target_channel = 'push';
     } else if (segment) {
       notification.included_segments = [segment];
     } else {
       notification.included_segments = ['Subscribed Users'];
     }
 
-    const response = await fetch('https://onesignal.com/api/v1/notifications', {
+    // Current OneSignal API endpoint (api.onesignal.com, not onesignal.com/api/v1)
+    const response = await fetch('https://api.onesignal.com/notifications', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
