@@ -65,6 +65,7 @@ class OneSignalService {
 
   // Resume push delivery for this browser (call on enable/re-enable)
   async optIn(): Promise<void> {
+    await this.initialize();
     const OneSignal = window.OneSignal;
     if (!OneSignal) return;
     try {
@@ -76,6 +77,7 @@ class OneSignalService {
 
   // Pause push delivery for this browser without revoking browser permission
   async optOut(): Promise<void> {
+    await this.initialize();
     const OneSignal = window.OneSignal;
     if (!OneSignal) return;
     try {
@@ -109,12 +111,31 @@ class OneSignalService {
 
   // Remove user association (call on disable/sign-out)
   async logout(): Promise<void> {
+    await this.initialize();
     const OneSignal = window.OneSignal;
     if (!OneSignal) return;
     try {
       await OneSignal.logout();
     } catch (error) {
       console.error('OneSignal logout error:', error);
+    }
+  }
+
+  // Returns current subscription debug info
+  async getSubscriptionStatus(): Promise<{ optedIn: boolean; subscriptionId: string | null; sdkReady: boolean }> {
+    const sdkReady = await this.initialize();
+    if (!sdkReady) return { optedIn: false, subscriptionId: null, sdkReady: false };
+    const OneSignal = window.OneSignal;
+    if (!OneSignal) return { optedIn: false, subscriptionId: null, sdkReady: false };
+    try {
+      const optedIn = !!OneSignal.User?.PushSubscription?.optedIn;
+      const subscriptionId =
+        OneSignal.User?.PushSubscription?.id ??
+        OneSignal.User?.onesignalId ??
+        null;
+      return { optedIn, subscriptionId, sdkReady: true };
+    } catch {
+      return { optedIn: false, subscriptionId: null, sdkReady: true };
     }
   }
 

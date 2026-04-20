@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export const PushNotificationSettings = () => {
-  const { isSupported, permission, isEnabled, isLoading, requestPermission, disableNotifications, sendTestToSelf, refreshPermissionStatus } = usePushNotifications();
+  const { isSupported, permission, isEnabled, isLoading, isOptedIn, subscriptionId, requestPermission, disableNotifications, sendTestToSelf, refreshPermissionStatus } = usePushNotifications();
   const { isAdmin } = useUserPermissions();
   const { toast } = useToast();
 
@@ -113,6 +113,16 @@ export const PushNotificationSettings = () => {
             <p className="text-xs text-muted-foreground">
               Browser permission: <strong>{permission}</strong>
             </p>
+            {isEnabled && (
+              <p className="text-xs text-muted-foreground">
+                SDK opted-in: <strong>{isOptedIn ? 'yes' : 'no'}</strong>
+                {subscriptionId && (
+                  <span className="ml-2 font-mono text-[10px] opacity-60" title={subscriptionId}>
+                    ID: {subscriptionId.slice(0, 8)}…
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-2">
