@@ -87,16 +87,31 @@ export const PushNotificationSettings = () => {
           </Alert>
         )}
 
+        {permission === 'granted' && !isEnabled && (
+          <Alert className="mb-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Browser permission is already granted — you won't see a system prompt again. Click{' '}
+              <strong>Enable Notifications</strong> to re-register this device.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium">
-              Status: {isEnabled ? 'Enabled' : permission === 'denied' ? 'Blocked by Browser' : 'Not enabled'}
+              Status:{' '}
+              {isEnabled
+                ? 'Enabled'
+                : permission === 'denied'
+                ? 'Blocked by Browser'
+                : 'Disabled'}
             </p>
             <p className="text-xs text-muted-foreground">
-              {isEnabled ? 'Device registered with OneSignal' : 'Device not registered'}
+              {isEnabled ? 'Device registered — push notifications active' : 'Device not registered'}
             </p>
             <p className="text-xs text-muted-foreground">
-              Permission: {permission} | Browser Support: {isSupported ? 'Yes' : 'No'}
+              Browser permission: <strong>{permission}</strong>
             </p>
           </div>
 
