@@ -16,6 +16,7 @@ import { EnhancedToastProvider } from "@/components/ui/enhanced-toast";
 import { useEnhancedToast } from "@/hooks/useEnhancedToast";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import { RecoveryRedirect } from "@/components/auth/RecoveryRedirect";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,7 @@ const AppContent = () => {
             <Toaster />
             <BrowserRouter>
               <AuthProvider>
+                <RecoveryRedirect />
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
