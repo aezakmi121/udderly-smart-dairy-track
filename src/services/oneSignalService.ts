@@ -1,6 +1,6 @@
 // OneSignal Web Push Notification Service
 // App ID is a public key — safe to store in codebase
-const ONESIGNAL_APP_ID = 'efffe468-6b7a-49fd-a276-44efbba13de6';
+const ONESIGNAL_APP_ID = '74a41f11-6359-4571-97df-4a4c144b6f3d';
 
 interface OneSignalWindow extends Window {
   OneSignalDeferred?: Array<(OneSignal: any) => void>;
