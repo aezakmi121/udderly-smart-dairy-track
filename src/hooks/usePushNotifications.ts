@@ -8,6 +8,8 @@ export const usePushNotifications = () => {
   const [isEnabled, setIsEnabled] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isLoading, setIsLoading] = useState(false);
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
+  const [isOptedIn, setIsOptedIn] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -35,19 +37,26 @@ export const usePushNotifications = () => {
         .eq('id', user.id)
         .single();
 
-      const dbHasId = !!(profile as any)?.onesignal_player_id;
+      const storedId = (profile as any)?.onesignal_player_id as string | null;
+      // Ignore the legacy fake "ext:..." placeholder — treat as not registered
+      const dbHasId = !!storedId && !storedId.startsWith('ext:');
 
-      // If DB says enabled, trust it
       if (dbHasId) {
         setIsEnabled(true);
-        return;
+        setSubscriptionId(storedId);
+      } else {
+        // DB says disabled — make sure OneSignal is also opted out to stay in sync
+        await oneSignalService.initialize();
+        const optedIn = await oneSignalService.isOptedIn();
+        if (optedIn) await oneSignalService.optOut();
+        setIsEnabled(false);
+        setSubscriptionId(null);
       }
 
-      // DB says disabled — make sure OneSignal is also opted out to stay in sync
-      await oneSignalService.initialize();
-      const optedIn = await oneSignalService.isOptedIn();
-      if (optedIn) await oneSignalService.optOut();
-      setIsEnabled(false);
+      // Refresh live SDK status for display
+      const status = await oneSignalService.getSubscriptionStatus();
+      setIsOptedIn(status.optedIn);
+      if (status.subscriptionId && dbHasId) setSubscriptionId(status.subscriptionId);
     } catch (error) {
       console.error('Error checking notification status:', error);
     }
@@ -122,18 +131,28 @@ export const usePushNotifications = () => {
       // Step 5: Get subscription ID and save to DB
       const playerId = await oneSignalService.getPlayerId();
 
+      if (!playerId) {
+        toast({
+          title: 'Registration Incomplete',
+          description: 'Device subscription ID not available. Try again — if this persists, reload the page.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return false;
+      }
+
       await supabase
         .from('profiles')
-        .update({ onesignal_player_id: playerId || `ext:${user.id}` } as any)
+        .update({ onesignal_player_id: playerId } as any)
         .eq('id', user.id);
 
       setPermission('granted');
       setIsEnabled(true);
+      setSubscriptionId(playerId);
+      setIsOptedIn(true);
       toast({
         title: 'Notifications Enabled',
-        description: playerId
-          ? 'Push notifications are active on this device.'
-          : 'Registered via user ID. You will receive notifications.',
+        description: 'Push notifications are active on this device.',
       });
       setIsLoading(false);
       return true;
@@ -147,7 +166,7 @@ export const usePushNotifications = () => {
 
   const disableNotifications = async () => {
     try {
-      // Pause pushes in OneSignal and remove user association
+      // initialize() is called inside optOut/logout — SDK must be ready first
       await oneSignalService.optOut();
       await oneSignalService.logout();
 
@@ -161,6 +180,8 @@ export const usePushNotifications = () => {
         .eq('id', user.id);
 
       setIsEnabled(false);
+      setSubscriptionId(null);
+      setIsOptedIn(false);
       toast({ title: 'Notifications Disabled', description: 'You will no longer receive push notifications.' });
     } catch (error) {
       console.error('Error disabling notifications:', error);
@@ -209,10 +230,19 @@ export const usePushNotifications = () => {
         return;
       }
 
-      toast({
-        title: 'Test Sent',
-        description: `Notification dispatched (${data?.recipients ?? '?'} recipient). Check your notification tray.`,
-      });
+      const recipients = data?.recipients ?? 0;
+      if (recipients === 0) {
+        toast({
+          title: 'Sent but 0 Recipients',
+          description: 'OneSignal found no registered device for your account. Disable notifications and re-enable to re-register this device.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Test Sent',
+          description: `Notification dispatched to ${recipients} device(s). Check your notification tray.`,
+        });
+      }
     } catch (error: any) {
       console.error('Test notification error:', error);
       toast({ title: 'Error', description: error?.message || 'Failed to send test notification.', variant: 'destructive' });
@@ -222,6 +252,7 @@ export const usePushNotifications = () => {
   const refreshPermissionStatus = () => {
     const p = Notification.permission;
     setPermission(p);
+    checkStatus();
     return p;
   };
 
@@ -230,6 +261,8 @@ export const usePushNotifications = () => {
     permission,
     isEnabled,
     isLoading,
+    isOptedIn,
+    subscriptionId,
     requestPermission,
     disableNotifications,
     sendTestToSelf,
