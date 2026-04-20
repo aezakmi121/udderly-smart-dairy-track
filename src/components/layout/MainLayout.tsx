@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { NotificationPromptDialog } from '@/components/notifications/NotificationPromptDialog';
+import { NotificationStatusBanner } from '@/components/notifications/NotificationStatusBanner';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { TopBar } from './TopBar';
@@ -72,6 +73,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           {children}
         </main>
         <NotificationPromptDialog />
+        <NotificationStatusBanner />
         
         {/* Bottom Navigation - only on mobile */}
         <BottomNavigation

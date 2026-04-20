@@ -7,6 +7,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SecureInput } from '@/components/ui/secure-input';
 import { supabase } from '@/integrations/supabase/client';
 
+const hasRecoveryHash = () => {
+  const hash = window.location.hash || '';
+  return hash.includes('type=recovery') || hash.includes('access_token=');
+};
+
 const ResetPassword = () => {
   const navigate = useNavigate();
   const [ready, setReady] = useState(false);
@@ -17,27 +22,41 @@ const ResetPassword = () => {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    // Supabase puts the recovery token in the URL hash. Detect a recovery session.
+    let mounted = true;
+    const inRecoveryFlow = hasRecoveryHash();
+
+    // Listen for the PASSWORD_RECOVERY event Supabase emits when a recovery
+    // link is processed. This is the only event we trust.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (!mounted) return;
       if (event === 'PASSWORD_RECOVERY') {
         setReady(true);
+        setError('');
       }
     });
 
-    // Also handle case where the user already has a session via the recovery link
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true);
-    });
+    // If the URL contains a recovery hash, allow the form to render even
+    // before/without the PASSWORD_RECOVERY event (some browsers race).
+    if (inRecoveryFlow) {
+      setReady(true);
+    }
 
-    // If neither fires within a moment, show an error so the user knows the link is invalid/expired
+    // If the user lands here without a recovery hash AND no event fires,
+    // surface a helpful error after a short window.
     const timer = setTimeout(() => {
-      setReady((r) => {
-        if (!r) setError('This reset link is invalid or has expired. Please request a new one.');
-        return r;
-      });
-    }, 2000);
+      if (!mounted) return;
+      if (!hasRecoveryHash()) {
+        setReady((r) => {
+          if (!r) {
+            setError('This page is only accessible from a password reset email link. Please request a new reset email.');
+          }
+          return r;
+        });
+      }
+    }, 1500);
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
       clearTimeout(timer);
     };
@@ -70,7 +89,10 @@ const ResetPassword = () => {
     }
 
     setSuccess('Password updated successfully. Redirecting…');
-    // Sign out the recovery session so the user signs in fresh with the new password
+    // Clean the recovery hash so a refresh doesn't loop us back.
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     setTimeout(async () => {
       await supabase.auth.signOut();
       navigate('/auth', { replace: true });
