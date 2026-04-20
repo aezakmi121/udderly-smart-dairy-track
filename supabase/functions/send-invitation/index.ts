@@ -141,7 +141,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Create signup URL with invitation token
-    const signupUrl = `${Deno.env.get("SUPABASE_URL")?.replace("supabase.co", "supabase.com") || "https://gjimccbtclynetngfrpw.supabase.com"}/auth/v1/verify?token=${invitationToken}&type=invite&redirect_to=${encodeURIComponent(Deno.env.get("SITE_URL") || "https://2d32d2de-68e0-4e6c-a137-eb09985ceae9.lovableproject.com")}`;
+    const signupUrl = `${Deno.env.get("SUPABASE_URL")?.replace("supabase.co", "supabase.com") || "https://gjimccbtclynetngfrpw.supabase.com"}/auth/v1/verify?token=${invitationToken}&type=invite&redirect_to=${encodeURIComponent(Deno.env.get("SITE_URL") || "https://udderly-smart-dairy-track.vercel.app")}`;
 
     // Create HTML email using our template function
     const html = createInvitationEmail(
