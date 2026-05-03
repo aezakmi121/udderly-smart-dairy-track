@@ -1992,6 +1992,9 @@ export type Database = {
         Returns: {
           effective_from: string
           rate: number
+          source: string
+          used_fat: number
+          used_snf: number
         }[]
       }
       get_user_role: {
