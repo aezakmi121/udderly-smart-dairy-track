@@ -308,19 +308,24 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
                   </div>
                 )}
                 <div className="flex flex-wrap items-center gap-1 mt-1">
-                  {hasMatrixRate && effectiveFrom && (
+                  {rateSource === 'matrix' && effectiveFrom && (
                     <Badge variant="secondary" className="text-xs">
                       Matrix rate ≤ {effectiveFrom}
                     </Badge>
                   )}
-                  {!hasMatrixRate && calculatedRate > 0 && !isRateLoading && (
-                    <Badge variant="outline" className="text-xs">
-                      Legacy rate
+                  {rateSource === 'clamped_high' && (
+                    <Badge variant="outline" className="text-xs border-amber-500 text-amber-700">
+                      ⚠ Clamped to top band (fat/SNF above matrix)
                     </Badge>
                   )}
-                  {!hasMatrixRate && calculatedRate === 0 && !isRateLoading && (
+                  {rateSource === 'clamped_low' && (
+                    <Badge variant="outline" className="text-xs border-amber-500 text-amber-700">
+                      ⚠ Floor rate applied (fat/SNF below matrix)
+                    </Badge>
+                  )}
+                  {rateSource === 'none' && !isRateLoading && (
                     <Badge variant="destructive" className="text-xs">
-                      No rates available
+                      No rate matrix loaded — upload one in Settings
                     </Badge>
                   )}
                 </div>
