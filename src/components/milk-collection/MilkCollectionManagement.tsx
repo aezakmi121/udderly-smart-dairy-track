@@ -293,6 +293,13 @@ export const MilkCollectionManagement: React.FC = () => {
         isLoading={bulkUpdateMutation.isPending}
         selectedCount={selectedIds.length}
       />
+
+      <SlipScanModal
+        open={slipScanOpen}
+        onOpenChange={setSlipScanOpen}
+        defaultDate={selectedDate}
+        defaultSession={selectedSession}
+      />
     </div>
   );
 };
