@@ -3,12 +3,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Plus, Trash2, Edit, ScanLine } from "lucide-react";
 
 import { MilkCollectionModal } from "./MilkCollectionModal";
 import { MilkCollectionTable } from "./MilkCollectionTable";
 import { TodaysCollectionSummary } from "./TodaysCollectionSummary";
 import { BulkEditCollectionModal } from "./BulkEditCollectionModal";
+import { SlipScanModal } from "./SlipScanModal";
 
 import { useMilkCollection } from "@/hooks/useMilkCollection";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
@@ -28,6 +29,7 @@ export const MilkCollectionManagement: React.FC = () => {
 
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
   const [bulkEditModalOpen, setBulkEditModalOpen] = React.useState(false);
+  const [slipScanOpen, setSlipScanOpen] = React.useState(false);
 
   const {
     collections,
@@ -207,7 +209,13 @@ export const MilkCollectionManagement: React.FC = () => {
         </div>
 
         {/* Add button */}
-        <div className="w-full min-w-0 md:flex md:items-end md:justify-end">
+        <div className="w-full min-w-0 md:flex md:items-end md:justify-end gap-2">
+          {isAdmin && (
+            <Button variant="outline" className="w-full md:w-auto" onClick={() => setSlipScanOpen(true)}>
+              <ScanLine className="h-4 w-4 mr-2" />
+              <span className="truncate">Scan Slip</span>
+            </Button>
+          )}
           <Button className="w-full md:w-auto" onClick={() => setModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             <span className="truncate">Add Collection</span>
@@ -284,6 +292,13 @@ export const MilkCollectionManagement: React.FC = () => {
         onSubmit={handleBulkEdit}
         isLoading={bulkUpdateMutation.isPending}
         selectedCount={selectedIds.length}
+      />
+
+      <SlipScanModal
+        open={slipScanOpen}
+        onOpenChange={setSlipScanOpen}
+        defaultDate={selectedDate}
+        defaultSession={selectedSession}
       />
     </div>
   );

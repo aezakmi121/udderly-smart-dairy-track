@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMilkCollection } from '@/hooks/useMilkCollection';
-import { useMilkRateSettings } from '@/hooks/useMilkRateSettings';
+
 import { useRateMatrix } from '@/hooks/useRateMatrix';
 import { useAppSetting } from '@/hooks/useAppSettings';
 import { Badge } from '@/components/ui/badge';
@@ -57,7 +57,6 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   });
 
   const { farmers } = useMilkCollection();
-  const { calculateRate } = useMilkRateSettings();
   const { getRateQuery } = useRateMatrix();
   
   const quantity = watch('quantity');
@@ -87,7 +86,6 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
     buffalo_min_snf: number;
   }>('species_detection_thresholds');
 
-  // Default thresholds if not configured
   const defaultThresholds = {
     cow_max_fat: 5.0,
     cow_max_snf: 9.0,
@@ -97,13 +95,10 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   
   const currentThresholds = thresholds || defaultThresholds;
 
-  // Auto-detect species based on configurable fat and SNF thresholds
   React.useEffect(() => {
     const fat = Number(fatPercentage) || 0;
     const snf = Number(snfPercentage) || 0;
-    
     if (fat > 0 && snf > 0) {
-      // Check if both fat AND SNF meet buffalo criteria
       const detectedSpecies = (fat >= currentThresholds.buffalo_min_fat && snf >= currentThresholds.buffalo_min_snf) 
         ? 'Buffalo' 
         : 'Cow';
@@ -111,7 +106,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
     }
   }, [fatPercentage, snfPercentage, setValue, currentThresholds]);
 
-  // Try matrix-based rate calculation first, fallback to legacy
+  // Rate matrix is the single source of truth (with clamp fallback in fn_get_rate)
   const matrixRateQuery = getRateQuery(
     species || 'Cow',
     Number(fatPercentage) || 0,
@@ -119,13 +114,10 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
     collectionDate
   );
 
-  const legacyRate = calculateRate(Number(fatPercentage) || 0, Number(snfPercentage) || 0);
-  const matrixRate = matrixRateQuery.data?.rate || 0;
-  const effectiveFrom = matrixRateQuery.data?.effective_from;
-  
-  // Use matrix rate if available, otherwise fallback to legacy
-  const calculatedRate = matrixRate > 0 ? matrixRate : legacyRate;
-  const hasMatrixRate = matrixRate > 0;
+  const rateData = matrixRateQuery.data;
+  const calculatedRate = rateData?.rate ?? 0;
+  const rateSource = rateData?.source ?? 'none';
+  const effectiveFrom = rateData?.effective_from;
   const isRateLoading = matrixRateQuery.isLoading;
 
   const { value: modeSetting } = useAppSetting<{ mode: 'auto' | 'manual' }>('milk_rate_mode');
@@ -168,6 +160,15 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
         title: "Validation Error",
         description: "Please check the form for errors",
         variant: "destructive",
+      });
+      return;
+    }
+
+    if (isAuto && rateSource === 'none') {
+      toast({
+        title: 'No rate matrix',
+        description: 'Upload a rate matrix in Settings before recording collection.',
+        variant: 'destructive',
       });
       return;
     }
@@ -316,19 +317,24 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
                   </div>
                 )}
                 <div className="flex flex-wrap items-center gap-1 mt-1">
-                  {hasMatrixRate && effectiveFrom && (
+                  {rateSource === 'matrix' && effectiveFrom && (
                     <Badge variant="secondary" className="text-xs">
                       Matrix rate ≤ {effectiveFrom}
                     </Badge>
                   )}
-                  {!hasMatrixRate && calculatedRate > 0 && !isRateLoading && (
-                    <Badge variant="outline" className="text-xs">
-                      Legacy rate
+                  {rateSource === 'clamped_high' && (
+                    <Badge variant="outline" className="text-xs border-amber-500 text-amber-700">
+                      ⚠ Clamped to top band (fat/SNF above matrix)
                     </Badge>
                   )}
-                  {!hasMatrixRate && calculatedRate === 0 && !isRateLoading && (
+                  {rateSource === 'clamped_low' && (
+                    <Badge variant="outline" className="text-xs border-amber-500 text-amber-700">
+                      ⚠ Floor rate applied (fat/SNF below matrix)
+                    </Badge>
+                  )}
+                  {rateSource === 'none' && !isRateLoading && (
                     <Badge variant="destructive" className="text-xs">
-                      No rates available
+                      No rate matrix loaded — upload one in Settings
                     </Badge>
                   )}
                 </div>
