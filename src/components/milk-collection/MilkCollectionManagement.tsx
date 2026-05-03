@@ -3,12 +3,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Plus, Trash2, Edit, ScanLine } from "lucide-react";
 
 import { MilkCollectionModal } from "./MilkCollectionModal";
 import { MilkCollectionTable } from "./MilkCollectionTable";
 import { TodaysCollectionSummary } from "./TodaysCollectionSummary";
 import { BulkEditCollectionModal } from "./BulkEditCollectionModal";
+import { SlipScanModal } from "./SlipScanModal";
 
 import { useMilkCollection } from "@/hooks/useMilkCollection";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
