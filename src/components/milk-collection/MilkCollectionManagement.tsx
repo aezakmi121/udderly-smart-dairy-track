@@ -29,6 +29,7 @@ export const MilkCollectionManagement: React.FC = () => {
 
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
   const [bulkEditModalOpen, setBulkEditModalOpen] = React.useState(false);
+  const [slipScanOpen, setSlipScanOpen] = React.useState(false);
 
   const {
     collections,
