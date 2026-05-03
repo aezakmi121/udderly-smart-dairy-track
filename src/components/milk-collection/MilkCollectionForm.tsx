@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMilkCollection } from '@/hooks/useMilkCollection';
-import { useMilkRateSettings } from '@/hooks/useMilkRateSettings';
+
 import { useRateMatrix } from '@/hooks/useRateMatrix';
 import { useAppSetting } from '@/hooks/useAppSettings';
 import { Badge } from '@/components/ui/badge';
