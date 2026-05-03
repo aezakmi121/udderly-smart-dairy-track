@@ -164,6 +164,15 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
       return;
     }
 
+    if (isAuto && rateSource === 'none') {
+      toast({
+        title: 'No rate matrix',
+        description: 'Upload a rate matrix in Settings before recording collection.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Exclude farmer_code since it's not a database column - only farmer_id is stored
     const { farmer_code, ...dbData } = data;
     
