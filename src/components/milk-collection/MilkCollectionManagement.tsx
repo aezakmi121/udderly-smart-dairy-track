@@ -209,7 +209,13 @@ export const MilkCollectionManagement: React.FC = () => {
         </div>
 
         {/* Add button */}
-        <div className="w-full min-w-0 md:flex md:items-end md:justify-end">
+        <div className="w-full min-w-0 md:flex md:items-end md:justify-end gap-2">
+          {isAdmin && (
+            <Button variant="outline" className="w-full md:w-auto" onClick={() => setSlipScanOpen(true)}>
+              <ScanLine className="h-4 w-4 mr-2" />
+              <span className="truncate">Scan Slip</span>
+            </Button>
+          )}
           <Button className="w-full md:w-auto" onClick={() => setModalOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             <span className="truncate">Add Collection</span>
