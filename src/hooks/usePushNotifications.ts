@@ -110,7 +110,7 @@ export const usePushNotifications = () => {
         toast({
           title: 'Permission Not Granted',
           description:
-            Notification.permission === 'denied'
+            (Notification.permission as NotificationPermission) === 'denied'
               ? 'Notifications are blocked in your browser settings. Allow them and refresh.'
               : 'You dismissed the notification prompt. Click Enable to try again.',
           variant: 'destructive',
