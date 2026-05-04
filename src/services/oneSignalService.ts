@@ -12,6 +12,10 @@ class OneSignalService {
   private initialized = false;
   private initPromise: Promise<boolean> | null = null;
 
+  private readSubscriptionId(OneSignal: any): string | null {
+    return OneSignal?.User?.PushSubscription?.id ?? null;
+  }
+
   async initialize(): Promise<boolean> {
     if (this.initialized) return true;
     if (this.initPromise) return this.initPromise;
@@ -129,10 +133,7 @@ class OneSignalService {
     if (!OneSignal) return { optedIn: false, subscriptionId: null, sdkReady: false };
     try {
       const optedIn = !!OneSignal.User?.PushSubscription?.optedIn;
-      const subscriptionId =
-        OneSignal.User?.PushSubscription?.id ??
-        OneSignal.User?.onesignalId ??
-        null;
+      const subscriptionId = this.readSubscriptionId(OneSignal);
       return { optedIn, subscriptionId, sdkReady: true };
     } catch {
       return { optedIn: false, subscriptionId: null, sdkReady: true };
@@ -141,14 +142,13 @@ class OneSignalService {
 
   // Poll for the subscription ID after optIn (up to 6s)
   async getPlayerId(): Promise<string | null> {
+    const sdkReady = await this.initialize();
+    if (!sdkReady) return null;
     const OneSignal = window.OneSignal;
     if (!OneSignal) return null;
     try {
-      for (let i = 0; i < 12; i++) {
-        const id =
-          OneSignal.User?.PushSubscription?.id ??
-          OneSignal.User?.onesignalId ??
-          null;
+      for (let i = 0; i < 20; i++) {
+        const id = this.readSubscriptionId(OneSignal);
         if (id) return id;
         await new Promise(r => setTimeout(r, 500));
       }
