@@ -31,6 +31,10 @@ export const usePushNotifications = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      await oneSignalService.initialize();
+
+      const liveStatus = await oneSignalService.getSubscriptionStatus();
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('onesignal_player_id')
@@ -38,25 +42,30 @@ export const usePushNotifications = () => {
         .single();
 
       const storedId = (profile as any)?.onesignal_player_id as string | null;
-      // Ignore the legacy fake "ext:..." placeholder — treat as not registered
       const dbHasId = !!storedId && !storedId.startsWith('ext:');
+      const hasLiveSubscription = !!liveStatus.subscriptionId;
+      const idsMatch = !!storedId && !!liveStatus.subscriptionId && storedId === liveStatus.subscriptionId;
 
-      if (dbHasId) {
+      if (dbHasId && hasLiveSubscription && idsMatch) {
         setIsEnabled(true);
-        setSubscriptionId(storedId);
+        setSubscriptionId(liveStatus.subscriptionId);
       } else {
-        // DB says disabled — make sure OneSignal is also opted out to stay in sync
-        await oneSignalService.initialize();
-        const optedIn = await oneSignalService.isOptedIn();
-        if (optedIn) await oneSignalService.optOut();
+        if (liveStatus.optedIn) {
+          await oneSignalService.optOut();
+        }
+
+        if (dbHasId) {
+          await supabase
+            .from('profiles')
+            .update({ onesignal_player_id: null } as any)
+            .eq('id', user.id);
+        }
+
         setIsEnabled(false);
         setSubscriptionId(null);
       }
 
-      // Refresh live SDK status for display
-      const status = await oneSignalService.getSubscriptionStatus();
-      setIsOptedIn(status.optedIn);
-      if (status.subscriptionId && dbHasId) setSubscriptionId(status.subscriptionId);
+      setIsOptedIn(liveStatus.optedIn);
     } catch (error) {
       console.error('Error checking notification status:', error);
     }
@@ -128,7 +137,7 @@ export const usePushNotifications = () => {
 
       await oneSignalService.login(user.id);
 
-      // Step 5: Get subscription ID and save to DB
+      // Step 5: Get the actual push subscription ID and save to DB
       const playerId = await oneSignalService.getPlayerId();
 
       if (!playerId) {
