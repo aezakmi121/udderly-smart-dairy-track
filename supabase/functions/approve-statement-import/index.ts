@@ -18,6 +18,7 @@ interface Decision {
   category_id?: string;
   payment_method_id?: string | null;
   vendor_name?: string;
+  payment_period?: string | null; // YYYY-MM-01
 }
 
 Deno.serve(async (req) => {
