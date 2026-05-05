@@ -127,6 +127,50 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_accounts: {
+        Row: {
+          bank_name: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          last4: string | null
+          name: string
+          source_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          bank_name: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last4?: string | null
+          name: string
+          source_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bank_name?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last4?: string | null
+          name?: string
+          source_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_accounts_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "expense_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       breeds: {
         Row: {
           created_at: string
@@ -1765,6 +1809,149 @@ export type Database = {
             columns: ["farmer_id"]
             isOneToOne: false
             referencedRelation: "farmers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statement_imports: {
+        Row: {
+          bank_account_id: string
+          created_at: string
+          error_message: string | null
+          file_url: string | null
+          id: string
+          period_from: string | null
+          period_to: string | null
+          status: string
+          total_debits: number
+          txn_count: number
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          bank_account_id: string
+          created_at?: string
+          error_message?: string | null
+          file_url?: string | null
+          id?: string
+          period_from?: string | null
+          period_to?: string | null
+          status?: string
+          total_debits?: number
+          txn_count?: number
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          bank_account_id?: string
+          created_at?: string
+          error_message?: string | null
+          file_url?: string | null
+          id?: string
+          period_from?: string | null
+          period_to?: string | null
+          status?: string
+          total_debits?: number
+          txn_count?: number
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statement_imports_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      statement_transactions: {
+        Row: {
+          amount: number
+          bank_account_id: string
+          confidence: number | null
+          created_at: string
+          expense_id: string | null
+          id: string
+          import_id: string
+          narration: string
+          ref_no: string | null
+          status: string
+          suggested_category_id: string | null
+          suggested_payment_method_id: string | null
+          suggested_vendor: string | null
+          txn_date: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          bank_account_id: string
+          confidence?: number | null
+          created_at?: string
+          expense_id?: string | null
+          id?: string
+          import_id: string
+          narration: string
+          ref_no?: string | null
+          status?: string
+          suggested_category_id?: string | null
+          suggested_payment_method_id?: string | null
+          suggested_vendor?: string | null
+          txn_date: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string
+          confidence?: number | null
+          created_at?: string
+          expense_id?: string | null
+          id?: string
+          import_id?: string
+          narration?: string
+          ref_no?: string | null
+          status?: string
+          suggested_category_id?: string | null
+          suggested_payment_method_id?: string | null
+          suggested_vendor?: string | null
+          txn_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statement_transactions_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_transactions_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_transactions_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "statement_imports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_transactions_suggested_category_id_fkey"
+            columns: ["suggested_category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_transactions_suggested_payment_method_id_fkey"
+            columns: ["suggested_payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
             referencedColumns: ["id"]
           },
         ]
