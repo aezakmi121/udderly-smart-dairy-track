@@ -39,10 +39,56 @@ Deno.serve(async (req) => {
 
   let importId: string | null = null;
   try {
-    const form = await req.formData();
-    const file = form.get("file") as File | null;
-    const bankAccountId = form.get("bank_account_id") as string | null;
-    if (!file || !bankAccountId) return json({ error: "file and bank_account_id required" }, 400);
+    const contentType = req.headers.get("content-type") || "";
+    let file: File | null = null;
+    let bankAccountId: string | null = null;
+
+    if (contentType.includes("multipart/form-data")) {
+      const form = await req.formData();
+      file = form.get("file") as File | null;
+      bankAccountId = form.get("bank_account_id") as string | null;
+      if (!file || !bankAccountId) return json({ error: "file and bank_account_id required" }, 400);
+
+      const buf = new Uint8Array(await file.arrayBuffer());
+      const path = `${userData.user.id}/${Date.now()}-${file.name}`;
+      const { error: upErr } = await admin.storage.from("bank-statements").upload(path, buf, {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+      if (upErr) throw new Error("Upload failed: " + upErr.message);
+
+      const { data: imp, error: impErr } = await admin
+        .from("statement_imports")
+        .insert({
+          bank_account_id: bankAccountId,
+          file_url: path,
+          status: "uploaded",
+          uploaded_by: userData.user.id,
+          error_message: null,
+        })
+        .select()
+        .single();
+      if (impErr) throw impErr;
+      importId = imp.id;
+    } else {
+      const body = await req.json().catch(() => null);
+      importId = body?.import_id ?? null;
+      if (!importId) return json({ error: "import_id required" }, 400);
+
+      const { data: imp, error: impErr } = await admin
+        .from("statement_imports")
+        .select("id, bank_account_id, file_url")
+        .eq("id", importId)
+        .single();
+      if (impErr || !imp) return json({ error: "Statement import not found" }, 404);
+
+      bankAccountId = imp.bank_account_id;
+      const { data: fileData, error: downloadErr } = await admin.storage.from("bank-statements").download(imp.file_url);
+      if (downloadErr || !fileData) throw new Error("Could not read uploaded statement file");
+      file = new File([await fileData.arrayBuffer()], imp.file_url.split("/").pop() || "statement.pdf", {
+        type: "application/pdf",
+      });
+    }
 
     // Validate bank account
     const { data: bankAcct } = await admin
@@ -52,33 +98,22 @@ Deno.serve(async (req) => {
       .single();
     if (!bankAcct) return json({ error: "Bank account not found" }, 404);
 
-    // Upload PDF
-    const buf = new Uint8Array(await file.arrayBuffer());
-    const path = `${userData.user.id}/${Date.now()}-${file.name}`;
-    const { error: upErr } = await admin.storage.from("bank-statements").upload(path, buf, {
-      contentType: "application/pdf",
-      upsert: false,
-    });
-    if (upErr) throw new Error("Upload failed: " + upErr.message);
-
-    // Create import record
-    const { data: imp, error: impErr } = await admin
+    await admin
       .from("statement_imports")
-      .insert({
-        bank_account_id: bankAccountId,
-        file_url: path,
-        status: "parsing",
-        uploaded_by: userData.user.id,
-      })
-      .select()
-      .single();
-    if (impErr) throw impErr;
-    importId = imp.id;
+      .update({ status: "parsing", error_message: null })
+      .eq("id", importId);
+
+    const buf = new Uint8Array(await file.arrayBuffer());
 
     // Extract text from PDF
     const pdf = await getDocumentProxy(buf);
     const { text } = await extractText(pdf, { mergePages: true });
     if (!text || text.length < 50) throw new Error("Could not extract text from PDF");
+
+    await admin
+      .from("statement_imports")
+      .update({ status: "extracted" })
+      .eq("id", importId);
 
     // Load reference data for AI
     const [{ data: cats }, { data: pms }] = await Promise.all([
@@ -176,6 +211,11 @@ Rules:
     const parsed = JSON.parse(toolCall.function.arguments);
     const txns: any[] = parsed.transactions ?? [];
 
+    await admin
+      .from("statement_imports")
+      .update({ status: "categorized" })
+      .eq("id", importId);
+
     if (txns.length === 0) {
       await admin.from("statement_imports").update({
         status: "review",
@@ -216,7 +256,7 @@ Rules:
         const { data: dup } = await admin
           .from("statement_transactions")
           .select("ref_no")
-          .eq("bank_account_id", bank_account_id)
+            .eq("bank_account_id", bankAccountId)
           .in("ref_no", refNos);
         for (const d of dup || []) if (d.ref_no) existing.add(d.ref_no);
       }
@@ -232,19 +272,25 @@ Rules:
 
     await admin.from("statement_imports").update({
       status: "review",
-      txn_count: rows.length,
+      txn_count: inserted,
       total_debits: totalDebits,
       period_from: parsed.period_from || rows[0]?.txn_date || null,
       period_to: parsed.period_to || rows[rows.length - 1]?.txn_date || null,
     }).eq("id", importId);
 
-    return json({ import_id: importId, txn_count: rows.length, total_debits: totalDebits });
+    return json({ import_id: importId, txn_count: inserted, total_debits: totalDebits });
   } catch (err: any) {
     console.error("parse-statement error:", err);
     if (importId) {
+      const message = String(err?.message || err).slice(0, 500);
+      const failureStatus = message.includes("extract")
+        ? "failed_extracted"
+        : message.includes("AI") || message.includes("Lovable AI")
+          ? "failed_categorized"
+          : "failed";
       await createClient(SUPABASE_URL, SERVICE_KEY)
         .from("statement_imports")
-        .update({ status: "failed", error_message: String(err?.message || err).slice(0, 500) })
+        .update({ status: failureStatus, error_message: message })
         .eq("id", importId);
     }
     return json({ error: String(err?.message || err) }, 500);
