@@ -17,6 +17,7 @@ import { useEnhancedToast } from "@/hooks/useEnhancedToast";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import { RecoveryRedirect } from "@/components/auth/RecoveryRedirect";
+import { StatementReviewScreen } from "@/components/expenses/StatementReviewScreen";
 
 const queryClient = new QueryClient();
 
