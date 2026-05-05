@@ -6,16 +6,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Check, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, X, Loader2, Trash2 } from 'lucide-react';
 import {
   useStatementImport,
   useStatementTransactions,
   useApproveImport,
+  useDeleteStatementImport,
   type StatementTransaction,
 } from '@/hooks/useStatementImports';
 import { useExpenseManagement } from '@/hooks/useExpenseManagement';
 import { format } from 'date-fns';
 import { MobileOptimizedLayout } from '@/components/mobile/MobileOptimizedLayout';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { StatementImportProgress } from './StatementImportProgress';
 
 type RowEdit = {
   category_id?: string | null;
@@ -33,6 +36,7 @@ export const StatementReviewScreen = () => {
   const { data: categories = [] } = useCategories();
   const { data: paymentMethods = [] } = usePaymentMethods();
   const approve = useApproveImport();
+  const removeImport = useDeleteStatementImport();
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [edits, setEdits] = useState<Record<string, RowEdit>>({});
@@ -121,6 +125,54 @@ export const StatementReviewScreen = () => {
         </div>
 
         {imp && (
+          <Card>
+            <CardContent className="p-4 space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Import progress</p>
+                  <p className="text-xs text-muted-foreground">
+                    This shows exactly where the PDF import is currently stuck.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    if (!imp) return;
+                    await removeImport.mutateAsync({ id: imp.id, fileUrl: imp.file_url });
+                    navigate('/expenses');
+                  }}
+                  disabled={removeImport.isPending}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove Import
+                </Button>
+              </div>
+
+              <StatementImportProgress status={imp.status} errorMessage={imp.error_message} />
+
+              {imp.status !== 'review' && imp.status !== 'approved' && (
+                <Alert>
+                  <AlertDescription>
+                    {imp.status.startsWith('failed')
+                      ? 'This import stopped before review. You can remove it and upload the PDF again.'
+                      : 'Parsing is still running. This page refreshes automatically while the import moves through each step.'}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {imp.status === 'review' && txns.length === 0 && (
+                <Alert>
+                  <AlertDescription>
+                    This import reached review, but no saved transactions were found. Remove it and re-upload the PDF.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {imp && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Total Txns</p><p className="text-lg font-semibold">{imp.txn_count}</p></CardContent></Card>
             <Card><CardContent className="p-3"><p className="text-xs text-muted-foreground">Pending</p><p className="text-lg font-semibold">{pendingTxns.length}</p></CardContent></Card>
@@ -145,7 +197,7 @@ export const StatementReviewScreen = () => {
               <Button
                 size="sm"
                 onClick={handleApproveSelected}
-                disabled={!selectedIds.length || approve.isPending}
+                disabled={!selectedIds.length || approve.isPending || imp?.status !== 'review'}
               >
                 {approve.isPending ? <Loader2 className="h-3 w-3 mr-2 animate-spin" /> : <Check className="h-3 w-3 mr-2" />}
                 Approve Selected ({selectedIds.length})
