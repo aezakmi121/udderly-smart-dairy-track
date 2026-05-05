@@ -65,3 +65,13 @@ verify_jwt = false
 
 [functions.extract-collection-slip]
 verify_jwt = true
+
+[functions.parse-statement]
+verify_jwt = true
+
+[functions.approve-statement-import]
+verify_jwt = true
+
+[functions.send-expense-digest]
+verify_jwt = false
+
