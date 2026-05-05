@@ -134,8 +134,19 @@ Deno.serve(async (req) => {
     const appServer = await loadAppServer();
 
     const payload = JSON.stringify({ title, body: msg, data: data || {} });
-    const encoder = new TextEncoder();
-    const payloadBytes = encoder.encode(payload);
+
+    let sent = 0;
+    let failed = 0;
+    const expiredIds: string[] = [];
+
+    await Promise.all(
+      subscriptions.map(async (sub) => {
+        const subscriber = appServer.subscribe({
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.p256dh, auth: sub.auth },
+        } as any);
+        try {
+          await subscriber.pushTextMessage(payload, {});
 
     let sent = 0;
     let failed = 0;
