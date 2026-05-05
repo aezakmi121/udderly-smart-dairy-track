@@ -1,11 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, ArrowRight, Trash2 } from 'lucide-react';
-import { usePendingImports } from '@/hooks/useStatementImports';
+import { useDeleteStatementImport, usePendingImports } from '@/hooks/useStatementImports';
 import { StatementImportProgress, getStatementImportStepIndex } from './StatementImportProgress';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useDeleteStatementImport } from '@/hooks/useStatementImports';
 
 export const PendingReviewsStrip = () => {
   const navigate = useNavigate();
@@ -15,7 +14,8 @@ export const PendingReviewsStrip = () => {
   if (!imports.length) return null;
 
   const totalTxns = imports.reduce((s, i) => s + (i.txn_count || 0), 0);
-  const mostStuckImport = [...imports].sort((a, b) => getStatementImportStepIndex(a.status) - getStatementImportStepIndex(b.status))[0];
+  const sortedImports = [...imports].sort((a, b) => getStatementImportStepIndex(a.status) - getStatementImportStepIndex(b.status));
+  const mostStuckImport = sortedImports[0];
 
   const handleClick = () => {
     navigate(`/expenses/import/${mostStuckImport.id}`);
@@ -60,6 +60,45 @@ export const PendingReviewsStrip = () => {
           errorMessage={mostStuckImport.error_message}
           compact
         />
+
+        {sortedImports.length > 1 && (
+          <div className="space-y-2 pt-1">
+            {sortedImports.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between gap-3 rounded-md border bg-background/70 px-3 py-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/expenses/import/${item.id}`);
+                }}
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-medium truncate">
+                    {item.bank_accounts?.name || 'Statement import'}
+                    {item.bank_accounts?.bank_name ? ` · ${item.bank_accounts.bank_name}` : ''}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {item.txn_count} txns · {item.status.replaceAll('_', ' ')}
+                  </p>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeImport.mutate({ id: item.id, fileUrl: item.file_url });
+                  }}
+                  disabled={removeImport.isPending}
+                  title="Remove this import"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
