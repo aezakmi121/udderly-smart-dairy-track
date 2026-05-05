@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { useExpenseManagement, type ExpenseCategory, type ExpenseSource, type PaymentMethod } from '@/hooks/useExpenseManagement';
 import { useToast } from '@/hooks/use-toast';
+import { BankAccountsSettings } from './BankAccountsSettings';
 
 interface ExpenseSettingsModalProps {
   open: boolean;
