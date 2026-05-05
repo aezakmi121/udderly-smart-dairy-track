@@ -42,6 +42,7 @@ export const StatementReviewScreen = () => {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [edits, setEdits] = useState<Record<string, RowEdit>>({});
   const [confidenceFilter, setConfidenceFilter] = useState<'all' | 'high' | 'low'>('all');
+  const [bulkPeriod, setBulkPeriod] = useState<string>(''); // YYYY-MM
 
   const filtered = useMemo(() => {
     if (confidenceFilter === 'all') return txns;
@@ -66,25 +67,44 @@ export const StatementReviewScreen = () => {
   const updateEdit = (id: string, patch: Partial<RowEdit>) =>
     setEdits((e) => ({ ...e, [id]: { ...e[id], ...patch } }));
 
+  const txnPeriodMonth = (t: StatementTransaction) =>
+    (t.payment_period ? t.payment_period.slice(0, 7) : t.txn_date.slice(0, 7));
+
   const getEffective = (t: StatementTransaction): RowEdit => ({
     category_id: edits[t.id]?.category_id ?? t.suggested_category_id,
     payment_method_id: edits[t.id]?.payment_method_id ?? t.suggested_payment_method_id,
     vendor_name: edits[t.id]?.vendor_name ?? t.suggested_vendor,
+    payment_period: edits[t.id]?.payment_period ?? txnPeriodMonth(t),
   });
 
   const selectedIds = Object.entries(selected).filter(([, v]) => v).map(([k]) => k);
+
+  const applyBulkPeriod = () => {
+    if (!bulkPeriod || !selectedIds.length) return;
+    setEdits((prev) => {
+      const next = { ...prev };
+      selectedIds.forEach((tid) => {
+        next[tid] = { ...next[tid], payment_period: bulkPeriod };
+      });
+      return next;
+    });
+  };
 
   const handleApproveSelected = async () => {
     if (!id || !selectedIds.length) return;
     const decisions = selectedIds.map((txn_id) => {
       const t = txns.find((x) => x.id === txn_id)!;
       const eff = getEffective(t);
+      const period = eff.payment_period
+        ? (eff.payment_period.length === 7 ? `${eff.payment_period}-01` : eff.payment_period)
+        : null;
       return {
         txn_id,
         action: 'approve' as const,
         category_id: eff.category_id,
         payment_method_id: eff.payment_method_id,
         vendor_name: eff.vendor_name,
+        payment_period: period,
       };
     });
     const res = await approve.mutateAsync({ import_id: id, decisions });
