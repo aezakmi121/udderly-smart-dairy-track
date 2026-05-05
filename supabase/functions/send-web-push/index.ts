@@ -147,19 +147,6 @@ Deno.serve(async (req) => {
         } as any);
         try {
           await subscriber.pushTextMessage(payload, {});
-
-    let sent = 0;
-    let failed = 0;
-    const expiredIds: string[] = [];
-
-    await Promise.all(
-      subscriptions.map(async (sub) => {
-        const subscriber = appServer.subscribe({
-          endpoint: sub.endpoint,
-          keys: { p256dh: sub.p256dh, auth: sub.auth },
-        } as any);
-        try {
-          await subscriber.pushTextMessage(payloadBytes, {});
           sent++;
         } catch (err: any) {
           failed++;
