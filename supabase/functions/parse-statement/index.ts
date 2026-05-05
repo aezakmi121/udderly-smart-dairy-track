@@ -250,15 +250,7 @@ Deno.serve(async (req) => {
 // PDF positional extraction (pdfjs-dist)
 // ─────────────────────────────────────────────────────────────
 async function extractPositionalText(buf: Uint8Array): Promise<PdfTextItem[]> {
-  // pdfjs-dist worker isn't usable in Deno edge — disable it.
-  (pdfjsLib as any).GlobalWorkerOptions.workerSrc = "";
-  const loadingTask = (pdfjsLib as any).getDocument({
-    data: buf,
-    disableWorker: true,
-    isEvalSupported: false,
-    useSystemFonts: true,
-  });
-  const pdf = await loadingTask.promise;
+  const pdf = await getDocumentProxy(buf);
   const items: PdfTextItem[] = [];
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
@@ -266,7 +258,6 @@ async function extractPositionalText(buf: Uint8Array): Promise<PdfTextItem[]> {
     for (const it of tc.items as any[]) {
       const str = (it.str ?? "").trim();
       if (!str) continue;
-      // transform = [a, b, c, d, e, f] ; e = x, f = y
       const x = it.transform?.[4] ?? 0;
       const y = it.transform?.[5] ?? 0;
       items.push({ str, x, y, page: p });
