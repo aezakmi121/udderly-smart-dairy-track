@@ -1876,6 +1876,7 @@ export type Database = {
           id: string
           import_id: string
           narration: string
+          payment_period: string | null
           ref_no: string | null
           status: string
           suggested_category_id: string | null
@@ -1893,6 +1894,7 @@ export type Database = {
           id?: string
           import_id: string
           narration: string
+          payment_period?: string | null
           ref_no?: string | null
           status?: string
           suggested_category_id?: string | null
@@ -1910,6 +1912,7 @@ export type Database = {
           id?: string
           import_id?: string
           narration?: string
+          payment_period?: string | null
           ref_no?: string | null
           status?: string
           suggested_category_id?: string | null
