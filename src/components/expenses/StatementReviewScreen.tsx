@@ -293,6 +293,7 @@ export const StatementReviewScreen = () => {
                           />
                         </td>
                         <td className="p-2">
+                          <Select
                             value={eff.category_id ?? ''}
                             onValueChange={(v) => updateEdit(t.id, { category_id: v })}
                             disabled={!isPending}
