@@ -251,6 +251,7 @@ export const StatementReviewScreen = () => {
                     <th className="p-2 text-left">Date</th>
                     <th className="p-2 text-left">Narration</th>
                     <th className="p-2 text-right">Amount</th>
+                    <th className="p-2 text-left">Period</th>
                     <th className="p-2 text-left">Category</th>
                     <th className="p-2 text-left">Payment</th>
                     <th className="p-2 text-left">Vendor</th>
@@ -261,10 +262,10 @@ export const StatementReviewScreen = () => {
                 </thead>
                 <tbody>
                   {isLoading && (
-                    <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Loading…</td></tr>
+                    <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">Loading…</td></tr>
                   )}
                   {!isLoading && filtered.length === 0 && (
-                    <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">No transactions.</td></tr>
+                    <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">No transactions.</td></tr>
                   )}
                   {filtered.map((t) => {
                     const eff = getEffective(t);
