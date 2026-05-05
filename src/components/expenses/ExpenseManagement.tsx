@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Receipt, TrendingUp, Settings } from 'lucide-react';
+import { Plus, Settings, Upload } from 'lucide-react';
 import { ExpenseTable } from './ExpenseTable';
 import { ExpenseForm } from './ExpenseForm';
 import { ExpenseStats } from './ExpenseStats';
 import { ExpenseSettingsModal } from './ExpenseSettingsModal';
+import { ImportStatementDialog } from './ImportStatementDialog';
+import { PendingReviewsStrip } from './PendingReviewsStrip';
 import { useExpenseManagement, type ExpenseFilters } from '@/hooks/useExpenseManagement';
 import { MobileOptimizedLayout } from '@/components/mobile/MobileOptimizedLayout';
 import { AnimatedButton } from '@/components/ui/animated-button';
@@ -12,6 +13,7 @@ import { AnimatedButton } from '@/components/ui/animated-button';
 export const ExpenseManagement = () => {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [filters, setFilters] = useState<ExpenseFilters>({});
 
