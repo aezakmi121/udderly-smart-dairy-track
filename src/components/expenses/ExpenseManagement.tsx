@@ -76,7 +76,11 @@ export const ExpenseManagement = () => {
           </div>
         </div>
 
+      <PendingReviewsStrip />
+
       <ExpenseStats expenses={expenses} selectedDate={filters.startDate === filters.endDate ? filters.startDate : undefined} />
+
+      <ImportStatementDialog open={showImport} onOpenChange={setShowImport} />
 
       <ExpenseTable
         expenses={expenses}
