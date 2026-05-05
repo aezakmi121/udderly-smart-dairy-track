@@ -31,6 +31,11 @@ export const NotificationSettings = () => {
   const { isSupported, permission, isEnabled, requestPermission, disableNotifications, sendTestToSelf, refreshPermissionStatus } = usePushNotifications();
   const { toast } = useToast();
   const { value: savedConfig, save: saveSettingValue, isSaving: saving } = useAppSetting<typeof DEFAULT_ALERT_CONFIG>('alert_configuration');
+  const { settings: notifSettings, updateSetting } = useNotificationSettings();
+  const digestEnabled = (cat: string) =>
+    notifSettings.find((s: any) => s.category === cat)?.enabled ?? false;
+  const toggleDigest = (cat: string, v: boolean) =>
+    (updateSetting as any)(cat, { enabled: v });
   
   const [alertConfig, setAlertConfig] = useState(DEFAULT_ALERT_CONFIG);
   const [runningCheck, setRunningCheck] = useState<string | null>(null);
