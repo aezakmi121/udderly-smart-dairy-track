@@ -284,7 +284,15 @@ export const StatementReviewScreen = () => {
                         <td className="p-2 max-w-[260px] truncate" title={t.narration}>{t.narration}</td>
                         <td className="p-2 text-right font-medium">₹{Number(t.amount).toLocaleString('en-IN')}</td>
                         <td className="p-2">
-                          <Select
+                          <Input
+                            type="month"
+                            className="h-8 text-xs w-[130px]"
+                            value={(eff.payment_period ?? '').slice(0, 7)}
+                            onChange={(e) => updateEdit(t.id, { payment_period: e.target.value })}
+                            disabled={!isPending}
+                          />
+                        </td>
+                        <td className="p-2">
                             value={eff.category_id ?? ''}
                             onValueChange={(v) => updateEdit(t.id, { category_id: v })}
                             disabled={!isPending}
