@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-// pdfjs-dist gives us positional text items so we can bucket by column (deterministic).
-import * as pdfjsLib from "https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.mjs";
+// unpdf bundles pdfjs without the `canvas` native dep — perfect for Deno edge.
+import { getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
