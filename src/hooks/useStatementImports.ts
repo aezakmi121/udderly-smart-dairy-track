@@ -83,13 +83,10 @@ export const useUploadStatement = () => {
 
   return useMutation({
     mutationFn: async ({ file, bankAccountId }: { file: File; bankAccountId: string }) => {
-      const path = `${bankAccountId}/${Date.now()}_${file.name}`;
-      const { error: upErr } = await supabase.storage.from('bank-statements').upload(path, file);
-      if (upErr) throw upErr;
-
-      const { data, error } = await supabase.functions.invoke('parse-statement', {
-        body: { file_path: path, bank_account_id: bankAccountId },
-      });
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('bank_account_id', bankAccountId);
+      const { data, error } = await supabase.functions.invoke('parse-statement', { body: fd });
       if (error) throw error;
       return data as { import_id: string };
     },
