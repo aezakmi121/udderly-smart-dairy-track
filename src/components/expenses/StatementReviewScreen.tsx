@@ -214,6 +214,23 @@ export const StatementReviewScreen = () => {
                   <SelectItem value="low">Low (&lt;85%)</SelectItem>
                 </SelectContent>
               </Select>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="month"
+                  value={bulkPeriod}
+                  onChange={(e) => setBulkPeriod(e.target.value)}
+                  className="h-8 text-xs w-[140px]"
+                  title="Accrual month to apply to selected rows"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={applyBulkPeriod}
+                  disabled={!bulkPeriod || !selectedIds.length}
+                >
+                  Apply period
+                </Button>
+              </div>
               <Button size="sm" variant="outline" onClick={selectAllHigh}>Select all ≥85%</Button>
               <Button
                 size="sm"
