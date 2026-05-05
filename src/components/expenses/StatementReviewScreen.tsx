@@ -76,7 +76,7 @@ export const StatementReviewScreen = () => {
       const eff = getEffective(t);
       return {
         txn_id,
-        action: 'approved' as const,
+        action: 'approve' as const,
         category_id: eff.category_id,
         payment_method_id: eff.payment_method_id,
         vendor_name: eff.vendor_name,
@@ -91,7 +91,7 @@ export const StatementReviewScreen = () => {
     if (!id) return;
     await approve.mutateAsync({
       import_id: id,
-      decisions: [{ txn_id, action: 'skipped' }],
+      decisions: [{ txn_id, action: 'skip' }],
     });
   };
 
