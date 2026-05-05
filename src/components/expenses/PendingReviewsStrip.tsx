@@ -78,7 +78,7 @@ export const PendingReviewsStrip = () => {
                     {item.bank_accounts?.bank_name ? ` · ${item.bank_accounts.bank_name}` : ''}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    {item.txn_count} txns · {item.status.replaceAll('_', ' ')}
+                    {item.txn_count} txns · {item.status.replace(/_/g, ' ')}
                   </p>
                 </div>
 
