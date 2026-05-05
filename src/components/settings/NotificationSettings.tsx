@@ -10,6 +10,7 @@ import { Bell, BellOff, Send, RefreshCw, AlertCircle, Calendar, Stethoscope, Bab
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useAppSetting } from '@/hooks/useAppSettings';
+import { useNotificationSettings } from '@/hooks/useNotificationSettings';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
