@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Receipt, TrendingUp, Settings } from 'lucide-react';
+import { Plus, Settings, Upload } from 'lucide-react';
 import { ExpenseTable } from './ExpenseTable';
 import { ExpenseForm } from './ExpenseForm';
 import { ExpenseStats } from './ExpenseStats';
 import { ExpenseSettingsModal } from './ExpenseSettingsModal';
+import { ImportStatementDialog } from './ImportStatementDialog';
+import { PendingReviewsStrip } from './PendingReviewsStrip';
 import { useExpenseManagement, type ExpenseFilters } from '@/hooks/useExpenseManagement';
 import { MobileOptimizedLayout } from '@/components/mobile/MobileOptimizedLayout';
 import { AnimatedButton } from '@/components/ui/animated-button';
@@ -12,6 +13,7 @@ import { AnimatedButton } from '@/components/ui/animated-button';
 export const ExpenseManagement = () => {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [filters, setFilters] = useState<ExpenseFilters>({});
 
@@ -52,6 +54,16 @@ export const ExpenseManagement = () => {
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </AnimatedButton>
+            <AnimatedButton
+              variant="outline"
+              size="sm"
+              onClick={() => setShowImport(true)}
+              className="text-sm"
+              animation="bounce"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Import Statement
+            </AnimatedButton>
             <AnimatedButton 
               onClick={handleCreateExpense} 
               className="text-sm"
@@ -64,7 +76,11 @@ export const ExpenseManagement = () => {
           </div>
         </div>
 
+      <PendingReviewsStrip />
+
       <ExpenseStats expenses={expenses} selectedDate={filters.startDate === filters.endDate ? filters.startDate : undefined} />
+
+      <ImportStatementDialog open={showImport} onOpenChange={setShowImport} />
 
       <ExpenseTable
         expenses={expenses}

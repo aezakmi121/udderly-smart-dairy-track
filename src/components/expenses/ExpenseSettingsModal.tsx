@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { useExpenseManagement, type ExpenseCategory, type ExpenseSource, type PaymentMethod } from '@/hooks/useExpenseManagement';
 import { useToast } from '@/hooks/use-toast';
+import { BankAccountsSettings } from './BankAccountsSettings';
 
 interface ExpenseSettingsModalProps {
   open: boolean;
@@ -152,6 +153,9 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
               </TabsTrigger>
               <TabsTrigger value="paid-by" className="text-xs sm:text-sm px-2 sm:px-3">
                 Paid By
+              </TabsTrigger>
+              <TabsTrigger value="bank-accounts" className="text-xs sm:text-sm px-2 sm:px-3">
+                Banks
               </TabsTrigger>
             </TabsList>
           </div>
@@ -446,6 +450,14 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
                   </div>
                 ))}
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="bank-accounts" className="flex-1 overflow-y-auto space-y-4">
+            <div>
+              <h3 className="text-base sm:text-lg font-semibold mb-3">Bank Accounts</h3>
+              <p className="text-xs text-muted-foreground mb-4">Add bank accounts here to enable PDF statement imports. Each account creates a matching expense source automatically.</p>
+              <BankAccountsSettings />
             </div>
           </TabsContent>
         </Tabs>

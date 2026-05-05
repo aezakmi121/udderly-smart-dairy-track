@@ -10,6 +10,7 @@ import { Bell, BellOff, Send, RefreshCw, AlertCircle, Calendar, Stethoscope, Bab
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useAppSetting } from '@/hooks/useAppSettings';
+import { useNotificationSettings } from '@/hooks/useNotificationSettings';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -30,6 +31,11 @@ export const NotificationSettings = () => {
   const { isSupported, permission, isEnabled, requestPermission, disableNotifications, sendTestToSelf, refreshPermissionStatus } = usePushNotifications();
   const { toast } = useToast();
   const { value: savedConfig, save: saveSettingValue, isSaving: saving } = useAppSetting<typeof DEFAULT_ALERT_CONFIG>('alert_configuration');
+  const { settings: notifSettings, updateSetting } = useNotificationSettings();
+  const digestEnabled = (cat: string) =>
+    notifSettings.find((s: any) => s.category === cat)?.enabled ?? false;
+  const toggleDigest = (cat: string, v: boolean) =>
+    (updateSetting as any)(cat, { enabled: v });
   
   const [alertConfig, setAlertConfig] = useState(DEFAULT_ALERT_CONFIG);
   const [runningCheck, setRunningCheck] = useState<string | null>(null);
@@ -310,6 +316,50 @@ export const NotificationSettings = () => {
             <Switch
               checked={alertConfig.categories.updates}
               onCheckedChange={(v) => updateCategory('updates', v)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <Separator />
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold flex items-center gap-2">
+          <Calendar className="h-4 w-4" />
+          Expense Digest Emails
+        </h4>
+        <p className="text-xs text-muted-foreground">
+          Get expense summaries delivered to your email and as push notifications.
+        </p>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">📅 Daily digest</p>
+              <p className="text-xs text-muted-foreground">Yesterday's expenses · 22:00 IST</p>
+            </div>
+            <Switch
+              checked={digestEnabled('digest_daily')}
+              onCheckedChange={(v) => toggleDigest('digest_daily', v)}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">🗓 Weekly digest</p>
+              <p className="text-xs text-muted-foreground">Last 7 days · Mon 08:00 IST</p>
+            </div>
+            <Switch
+              checked={digestEnabled('digest_weekly')}
+              onCheckedChange={(v) => toggleDigest('digest_weekly', v)}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">📆 Monthly digest</p>
+              <p className="text-xs text-muted-foreground">Previous month · 1st 08:00 IST</p>
+            </div>
+            <Switch
+              checked={digestEnabled('digest_monthly')}
+              onCheckedChange={(v) => toggleDigest('digest_monthly', v)}
             />
           </div>
         </div>

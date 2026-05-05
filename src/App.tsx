@@ -17,6 +17,7 @@ import { useEnhancedToast } from "@/hooks/useEnhancedToast";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import { RecoveryRedirect } from "@/components/auth/RecoveryRedirect";
+import { StatementReviewScreen } from "@/components/expenses/StatementReviewScreen";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,11 @@ const AppContent = () => {
                             <Route path="/" element={
                               <RouteProtectedRoute>
                                 {React.createElement(routes[0].component)}
+                              </RouteProtectedRoute>
+                            } />
+                            <Route path="/expenses/import/:id" element={
+                              <RouteProtectedRoute permission="expenses">
+                                <StatementReviewScreen />
                               </RouteProtectedRoute>
                             } />
                             {routes.map((route) => (
