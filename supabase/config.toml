@@ -51,7 +51,7 @@ verify_jwt = true
 [functions.delete-user]
 verify_jwt = true
 
-[functions.send-onesignal-notification]
+[functions.send-web-push]
 verify_jwt = false
 
 [functions.check-alerts]

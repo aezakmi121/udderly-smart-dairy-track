@@ -11,16 +11,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
-    const ONESIGNAL_REST_API_KEY = Deno.env.get('ONESIGNAL_REST_API_KEY');
-
-    if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) {
-      return new Response(JSON.stringify({ error: 'OneSignal not configured' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const { title, body, data } = await req.json();
     if (!title || !body) {
       return new Response(JSON.stringify({ error: 'title and body required' }), {
@@ -34,56 +24,28 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Target admins + workers
     const { data: roles } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .in('role', ['admin', 'worker']);
+      .from('user_roles').select('user_id').in('role', ['admin', 'worker']);
+    const userIds = Array.from(new Set((roles || []).map((r: any) => r.user_id)));
 
-    const userIds = [...new Set((roles || []).map((r: any) => r.user_id))];
     if (userIds.length === 0) {
       return new Response(JSON.stringify({ success: true, recipients: 0 }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const resp = await fetch('https://onesignal.com/api/v1/notifications', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Key ${ONESIGNAL_REST_API_KEY}`,
-      },
-      body: JSON.stringify({
-        app_id: ONESIGNAL_APP_ID,
-        headings: { en: title },
-        contents: { en: body },
-        data: data || {},
-        include_external_user_ids: userIds,
-        channel_for_external_user_ids: 'push',
-      }),
+    const { data: resp, error } = await supabase.functions.invoke('send-web-push', {
+      body: { title, body, userIds, data: data || {} },
     });
-    const result = await resp.json();
 
-    // Log per-user
-    try {
-      const notifId = result.id || crypto.randomUUID();
-      const rows = userIds.map((uid) => ({
-        user_id: uid,
-        notification_id: notifId,
-        title,
-        message: body,
-        type: data?.type || 'plant_sale',
-        priority: data?.priority || 'medium',
-        status: 'sent',
-        entity_id: data?.saleId || null,
-        entity_type: 'plant_sale',
-      }));
-      await supabase.from('notification_history').insert(rows);
-    } catch (e) {
-      console.error('history log failed', e);
+    if (error) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    return new Response(JSON.stringify({ success: true, id: result.id, recipients: userIds.length }), {
+    return new Response(JSON.stringify({ success: true, recipients: resp?.sent ?? 0 }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

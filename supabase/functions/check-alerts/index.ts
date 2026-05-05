@@ -18,8 +18,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID');
-    const ONESIGNAL_REST_API_KEY = Deno.env.get('ONESIGNAL_REST_API_KEY');
+    // (notifications are sent via the send-web-push function)
 
     // Determine which check(s) to run — supports manual trigger from settings UI
     let runType: AlertType = 'all';
@@ -192,31 +191,26 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ---------- Send via OneSignal ----------
+    // ---------- Send via Web Push ----------
     let sent = 0;
-    if (alerts.length > 0 && ONESIGNAL_APP_ID && ONESIGNAL_REST_API_KEY && userIds.length > 0) {
+    if (alerts.length > 0 && userIds.length > 0) {
       for (const alert of alerts) {
         try {
-          const response = await fetch('https://onesignal.com/api/v1/notifications', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Key ${ONESIGNAL_REST_API_KEY}`,
-            },
-            body: JSON.stringify({
-              app_id: ONESIGNAL_APP_ID,
-              headings: { en: alert.title },
-              contents: { en: alert.body },
-              include_external_user_ids: userIds,
-              channel_for_external_user_ids: "push",
+          const { data: resp, error: invErr } = await supabase.functions.invoke('send-web-push', {
+            body: {
+              title: alert.title,
+              body: alert.body,
+              userIds,
               data: { type: alert.type, date: today },
-            }),
+            },
           });
-          if (response.ok) {
+          if (!invErr && (resp?.sent ?? 0) > 0) {
             sent++;
-            console.log(`[check-alerts] ✅ ${alert.title}`);
+            console.log(`[check-alerts] ✅ ${alert.title} → ${resp?.sent} device(s)`);
+          } else if (invErr) {
+            console.error('[check-alerts] send-web-push failed:', invErr);
           } else {
-            console.error('[check-alerts] OneSignal failed:', await response.text());
+            console.log(`[check-alerts] ${alert.title} — 0 devices`);
           }
         } catch (e) {
           console.error('[check-alerts] Send error:', e);

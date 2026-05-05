@@ -16,11 +16,11 @@ export const PushNotificationSettings = () => {
     try {
       console.log('📡 Starting broadcast test notification via OneSignal...');
 
-      const { data, error: sendError } = await supabase.functions.invoke('send-onesignal-notification', {
+      const { data, error: sendError } = await supabase.functions.invoke('send-web-push', {
         body: {
           title: 'Admin Test Broadcast',
           body: `This is a test broadcast notification from admin! 📢`,
-          segment: 'Subscribed Users',
+          broadcast: true,
           data: {
             type: 'admin_test',
             timestamp: new Date().toISOString()

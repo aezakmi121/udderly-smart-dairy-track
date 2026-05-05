@@ -1,102 +1,107 @@
-// Service Worker for PWA functionality with Vite-compatible caching
+// Service Worker: PWA caching + Web Push handlers
 
-// Cache strategies
-const ASSETS_CACHE = 'assets-cache-v1';
-const PAGES_CACHE = 'pages-cache-v1';
+const ASSETS_CACHE = 'assets-cache-v2';
+const PAGES_CACHE = 'pages-cache-v2';
 
-// Handle notification display
-self.addEventListener('notificationclick', (event) => {
-  console.log('Notification click received.');
-  event.notification.close();
-
-  if (event.action === 'view') {
-    // Open the app
-    event.waitUntil(
-      clients.openWindow('/')
-    );
-  }
-});
-
-// Install event - simplified, no pre-caching
 self.addEventListener('install', (event) => {
-  console.log('Service Worker installing');
   self.skipWaiting();
 });
 
-// Fetch event with strategic caching
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
-
-  // Cache-first strategy for Vite assets (built files)
-  if (url.pathname.startsWith('/assets/')) {
-    event.respondWith(
-      caches.open(ASSETS_CACHE).then(cache => {
-        return cache.match(request).then(response => {
-          if (response) {
-            return response;
-          }
-          return fetch(request).then(fetchResponse => {
-            cache.put(request, fetchResponse.clone());
-            return fetchResponse;
-          });
-        });
-      })
-    );
-    return;
-  }
-
-  // Network-first strategy for navigation and API requests
-  if (request.method === 'GET' && (
-    request.mode === 'navigate' ||
-    url.pathname === '/' ||
-    url.pathname.includes('.')  === false
-  )) {
-    event.respondWith(
-      fetch(request)
-        .then(response => {
-          // Cache successful responses
-          if (response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(PAGES_CACHE).then(cache => {
-              cache.put(request, responseClone);
-            });
-          }
-          return response;
-        })
-        .catch(() => {
-          // Fallback to cache if network fails
-          return caches.match(request);
-        })
-    );
-    return;
-  }
-
-  // For other requests, just fetch normally
-  event.respondWith(fetch(request));
-});
-
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating');
   const cacheWhitelist = [ASSETS_CACHE, PAGES_CACHE];
-  
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => {
-            if (!cacheWhitelist.includes(cacheName)) {
-              console.log('Deleting old cache:', cacheName);
-              return caches.delete(cacheName);
-            }
+      caches.keys().then((cacheNames) =>
+        Promise.all(
+          cacheNames.map((name) => {
+            if (!cacheWhitelist.includes(name)) return caches.delete(name);
           })
-        );
-      })
+        )
+      ),
     ])
   );
 });
 
-// TODO: For production apps, consider using Workbox or vite-plugin-pwa
-// for more sophisticated caching strategies and automatic asset management
+// ---------- Web Push ----------
+self.addEventListener('push', (event) => {
+  let payload = { title: 'Notification', body: '', data: {} };
+  try {
+    if (event.data) {
+      const text = event.data.text();
+      try {
+        payload = { ...payload, ...JSON.parse(text) };
+      } catch {
+        payload.body = text;
+      }
+    }
+  } catch (e) {
+    console.error('[sw] push parse error', e);
+  }
+
+  const title = payload.title || 'Notification';
+  const options = {
+    body: payload.body || '',
+    icon: '/favicon-32x32.png',
+    badge: '/favicon-32x32.png',
+    data: payload.data || {},
+    tag: payload.data?.tag || undefined,
+    renotify: !!payload.data?.tag,
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((wins) => {
+      for (const w of wins) {
+        if ('focus' in w) {
+          w.navigate?.(url);
+          return w.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
+});
+
+// ---------- Cache strategies ----------
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.open(ASSETS_CACHE).then((cache) =>
+        cache.match(request).then(
+          (cached) =>
+            cached ||
+            fetch(request).then((res) => {
+              cache.put(request, res.clone());
+              return res;
+            })
+        )
+      )
+    );
+    return;
+  }
+
+  if (request.mode === 'navigate' || !url.pathname.includes('.')) {
+    event.respondWith(
+      fetch(request)
+        .then((res) => {
+          if (res.status === 200) {
+            const clone = res.clone();
+            caches.open(PAGES_CACHE).then((c) => c.put(request, clone));
+          }
+          return res;
+        })
+        .catch(() => caches.match(request))
+    );
+  }
+});
