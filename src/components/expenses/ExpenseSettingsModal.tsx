@@ -154,6 +154,9 @@ export const ExpenseSettingsModal: React.FC<ExpenseSettingsModalProps> = ({
               <TabsTrigger value="paid-by" className="text-xs sm:text-sm px-2 sm:px-3">
                 Paid By
               </TabsTrigger>
+              <TabsTrigger value="bank-accounts" className="text-xs sm:text-sm px-2 sm:px-3">
+                Banks
+              </TabsTrigger>
             </TabsList>
           </div>
 
