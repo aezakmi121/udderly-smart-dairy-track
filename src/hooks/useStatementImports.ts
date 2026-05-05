@@ -107,7 +107,7 @@ export const useApproveImport = () => {
       import_id: string;
       decisions: Array<{
         txn_id: string;
-        action: 'approved' | 'skipped';
+        action: 'approve' | 'skip';
         category_id?: string | null;
         payment_method_id?: string | null;
         vendor_name?: string | null;
