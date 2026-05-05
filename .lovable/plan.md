@@ -1,90 +1,102 @@
 ## Goal
+Replace OneSignal with native Web Push (VAPID) using the `@negrel/webpush` Deno library. Removes third-party SDK fragility (alias drift, opt-in confusion, ad-blocker issues) while keeping the same UX: enable in settings, receive push for alerts/milking reminders/test sends.
 
-Stop the silent ₹0-rate problem (cow code 22 in the slip — 5.6 fat / 11.2 SNF returned no match) and add slip-photo scanning so manual collection entry isn't needed.
-
-## Part 1 — Rate matrix is the only source of truth, with safe clamp fallback
-
-Today `fn_get_rate` does a strict floor lookup. If fat or SNF is below the lowest band, or if no row matches the floor pair, it returns `null` and the form falls back to the legacy flat `milk_rates` rate. The slip-machine has the same gap and prints `0.00`. We will:
-
-1. **Rewrite `fn_get_rate`** to:
-   - Find the active matrix for `(species, date)`.
-   - **Above range** (fat or snf above the matrix max for that species) → clamp to the matrix max band and return that rate. Mark `source = 'clamped_high'`.
-   - **Below range** (fat or snf below the matrix min) → return the **absolute minimum rate** in the entire active matrix for that species (i.e. `MIN(rate)` across all bands of that species/effective_from). Mark `source = 'clamped_low'`.
-   - **In range with exact floor match** → return that rate, `source = 'matrix'`.
-   - **No matrix loaded at all** → return null, `source = 'none'`.
-   - New return columns: `rate, effective_from, source, used_fat, used_snf`.
-
-2. **`useRateMatrix` hook** — surface `source`, `used_fat`, `used_snf`. Drop the legacy `useMilkRateSettings.calculateRate` fallback in `MilkCollectionForm`. If `source = 'none'`, block save with a clear toast ("No rate matrix loaded — upload one in Settings").
-
-3. **UI badges** in `MilkCollectionForm` and the new slip-review screen:
-   - `matrix` → no badge.
-   - `clamped_high` → amber ⚠ "Clamped to top band (fat/snf above matrix)".
-   - `clamped_low` → amber ⚠ "Floor rate applied (fat/snf below matrix)".
-
-4. **Settings → Rate Matrix Viewer**: add a small "Clamp activity" panel showing how many collections in the last 30 days used `clamped_high` / `clamped_low`, so admin knows when to extend the matrix.
-
-## Part 2 — AI slip scanner
-
-New flow under **Milk Collection → Scan Slip** (Admin only):
+## How it will work end-to-end
 
 ```text
-Upload photo ──► extract-collection-slip edge fn ──► review screen ──► bulk insert
-                 (Gemini vision, JSON via tool call)   (editable, badged)
+Browser                       Supabase                      Push Service (FCM/Apple/Mozilla)
+-------                       --------                      --------------------------------
+1. User clicks "Enable"
+2. SW registers /sw.js
+3. PushManager.subscribe(VAPID_PUBLIC) ──► returns {endpoint, p256dh, auth}
+4. INSERT into push_subscriptions ──────► row stored, linked to user_id
+                                          
+                                          check-alerts / test send:
+                                          5. SELECT subs WHERE user_id IN (...)
+                                          6. For each sub: webpush.sendNotification ─► POST to endpoint
+                                                                                       │
+                                                                          7. Push service delivers ─► browser SW
+                                                                                                      │
+                                                                                              8. SW 'push' event
+                                                                                                 → showNotification()
 ```
 
-### Edge function `extract-collection-slip`
-- Auth: requires `admin` role (verify JWT in code).
-- Input: `{ image_base64, collection_date_override?, session_override? }`.
-- Calls Lovable AI Gateway with `google/gemini-2.5-pro` (image + tool calling for structured JSON):
-  ```json
-  { "date": "DD-MM-YYYY", "shift": "M|E|All", "mpp_code": "01925",
-    "sections": [
-      {"species":"Cow", "rows":[{"code":"32","qty":1.66,"fat":5.7,"snf":9.9,"printed_amount":60.81}, ...]},
-      {"species":"Buff", "rows":[...]}
-    ],
-    "totals": { "cow": {"qty":..,"amount":..}, "buff": {...} } }
-  ```
-- For each row: resolve `farmer_id` from `farmers.farmer_code`, call new `fn_get_rate` to compute `rate` and `total_amount`, attach `rate_source`.
-- Computes `discrepancy` per row: `|computed_amount − printed_amount| > 1.0` flagged.
-- Returns enriched JSON; **does not insert** — review step does that.
-- Handles 429/402 from gateway with friendly errors.
+No third-party account. VAPID keys are generated once (offline command) and stored as Supabase secrets. The push endpoint URL is the device's own browser-vendor push service — we just POST to it with a VAPID-signed JWT.
 
-### Frontend
-- `SlipScanModal.tsx` — file/camera input, sends base64 to edge fn.
-- `SlipReviewTable.tsx` — editable rows with columns: Code | Farmer (auto-mapped) | Qty | Fat | SNF | Rate (computed, badged) | Amount | Diff | ⚠.
-  - Unknown farmer codes → red row, dropdown to pick or "create farmer".
-  - Discrepancy > ₹1 → yellow row.
-  - Date/Session header editable; "All" shift forces user to pick morning or evening before save.
-- Save → bulk insert into `milk_collections` (single transaction-like loop, with rollback toast on partial failure).
-- Entry point: button in `MilkCollectionManagement` header next to "Add".
+## Files to ADD
 
-## Technical Details
+| File | Purpose |
+|---|---|
+| `supabase/migrations/<ts>_push_subscriptions.sql` | Create `push_subscriptions` table (user_id, endpoint UNIQUE, p256dh, auth, user_agent, created_at) with RLS: users manage own rows, service role full access |
+| `supabase/functions/send-web-push/index.ts` | Replaces `send-onesignal-notification`. Uses `jsr:@negrel/webpush` to send to one user, list of users, or all subs. Logs to `notification_history`. |
+| `src/services/webPushService.ts` | Replaces `oneSignalService.ts`. Exposes `isSupported()`, `getPermission()`, `subscribe(userId)`, `unsubscribe(userId)`, `getSubscription()`. Pure browser API — no SDK to load. |
 
-**Migration:**
+## Files to MODIFY
+
+| File | Change |
+|---|---|
+| `public/sw.js` | Add `push` and `notificationclick` handlers (display notification, focus/open app on click). Keep existing PWA cache logic. This becomes the ONLY service worker. |
+| `index.html` | Remove `<script src="cdn.onesignal.com/...">`. Update CSP to drop all `onesignal.com` / `*.os.tc` entries. Register `/sw.js` directly (small inline script or in main.tsx). |
+| `src/hooks/usePushNotifications.ts` | Rewire to `webPushService`. State becomes simpler: `isEnabled = !!subscription`. No more polling, no alias-vs-id mismatch. Test send still calls edge function. |
+| `src/components/notifications/PushNotificationSettings.tsx` | Drop OneSignal-specific labels ("SDK opted-in", subscription ID display). Replace `send-onesignal-notification` invoke with `send-web-push`. |
+| `supabase/functions/check-alerts/index.ts` | Replace `fetch onesignal` block with `supabase.functions.invoke('send-web-push', { userIds, title, body, data })`. |
+| `supabase/functions/send-milking-reminders/index.ts` | Same swap. |
+| `supabase/functions/notify-plant-sale/index.ts` | Same swap. |
+| `supabase/config.toml` | Remove `[functions.send-onesignal-notification]`, add `[functions.send-web-push] verify_jwt = false` (called by other functions internally). |
+
+## Files to DELETE
+
+| File | Reason |
+|---|---|
+| `public/OneSignalSDKWorker.js` | OneSignal SDK service worker — no longer needed. PWA cache logic moves into `public/sw.js`. |
+| `src/services/oneSignalService.ts` | Replaced by `webPushService.ts`. |
+| `supabase/functions/send-onesignal-notification/` | Replaced by `send-web-push`. Will also call `delete_edge_functions` to remove the deployed function. |
+
+## DB migration
+
 ```sql
-CREATE OR REPLACE FUNCTION public.fn_get_rate(
-  p_species text, p_fat numeric, p_snf numeric, p_date date DEFAULT CURRENT_DATE
-) RETURNS TABLE(rate numeric, effective_from date, source text, used_fat numeric, used_snf numeric) ...
+create table public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  user_agent text,
+  created_at timestamptz default now(),
+  last_used_at timestamptz
+);
+create index on public.push_subscriptions(user_id);
+alter table public.push_subscriptions enable row level security;
+-- policies: users select/insert/delete own; admins select all
 ```
-Logic: pick `eff_date = max(effective_from where <= p_date)`; compute `fat_max, fat_min, snf_max, snf_min, min_rate` for that species/eff_date; if `p_fat > fat_max OR p_snf > snf_max` → clamp both down to bracket and look up, source='clamped_high'; elsif `p_fat < fat_min OR p_snf < snf_min` → return `min_rate`, source='clamped_low'; else floor lookup, source='matrix' (if floor pair has no row, also fall back to clamped_low min_rate).
 
-**Files added/edited:**
-- migration: redefine `fn_get_rate`.
-- `src/hooks/useRateMatrix.ts` — return new fields.
-- `src/components/milk-collection/MilkCollectionForm.tsx` — drop legacy fallback, show badge, block on `source=none`.
-- `src/components/settings/RateMatrixViewer.tsx` — clamp activity panel.
-- `supabase/functions/extract-collection-slip/index.ts` — new.
-- `supabase/config.toml` — register function (verify_jwt default).
-- `src/components/milk-collection/SlipScanModal.tsx` — new.
-- `src/components/milk-collection/SlipReviewTable.tsx` — new.
-- `src/components/milk-collection/MilkCollectionManagement.tsx` — add "Scan Slip" button (admin only).
+Keep `profiles.onesignal_player_id` column for now (drop in a follow-up after migration confirmed working).
 
-**Verification on the uploaded slip:**
-- Cow code 22 (5.6 fat, 11.2 snf) → `clamped_high` → uses cow top-band rate (likely ~5.9/10.5 or similar) instead of 0.
-- Buff rows all in range → `matrix`.
-- Computed cow total will exceed slip's ₹1326.83 (since slip dropped row 22) — review screen flags this; admin can choose to keep computed value or override.
+## Secrets needed
 
-## Out of scope
-- Auto-creating farmers from unknown codes (review UI offers it but admin must confirm).
-- OCR on hand-written slips (only computer-printed slips like the sample).
-- Editing the matrix from the clamp panel (just visibility).
+User must generate a VAPID key pair once (one terminal command — I'll provide it) and add two secrets:
+- `VAPID_PUBLIC_KEY` (also bundled into client via `VITE_VAPID_PUBLIC_KEY` env var)
+- `VAPID_PRIVATE_KEY`
+- `VAPID_SUBJECT` = `mailto:your-email@example.com`
+
+I'll ask for these via `add_secret` after you approve.
+
+## Migration UX
+
+Existing users will see "Notifications disabled" once after deploy (their OneSignal subscription doesn't exist in `push_subscriptions`). They click **Enable Notifications** once — browser permission is already granted, so no system prompt — and a fresh native subscription is stored. Same one-tap re-enable you've been doing for OneSignal anyway.
+
+## Why this fixes your current pain
+- No SDK loading from CDN → no ad-blocker / CSP / "SDK didn't load in time" errors.
+- No alias vs subscription ID concept — there is just ONE `endpoint` column. If it's there, push works; if not, it doesn't.
+- Permission, subscription, and DB row are all checked synchronously via `navigator.serviceWorker` + `pushManager.getSubscription()`. No 6-second polling loop.
+- "Sent but 0 recipients" becomes impossible — we either have a subscription row to send to, or we don't.
+
+## Cross-browser support (same as OneSignal)
+- Android Chrome/Edge/Firefox/Samsung: full support
+- Desktop Chrome/Edge/Firefox/Safari 16+: full support
+- iOS Safari 16.4+: works only when app is installed to home screen as PWA (this is an Apple restriction, identical to OneSignal)
+
+## Out of scope (can do later)
+- Drop `profiles.onesignal_player_id` column
+- Remove `ONESIGNAL_APP_ID` / `ONESIGNAL_REST_API_KEY` secrets from Supabase
+- Native (Capacitor) push — would need `@capacitor/push-notifications` + FCM, separate change
