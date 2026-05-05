@@ -1,17 +1,35 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+
+export type StatementImportStatus =
+  | 'parsing'
+  | 'uploaded'
+  | 'extracted'
+  | 'categorized'
+  | 'review'
+  | 'approved'
+  | 'failed'
+  | 'failed_uploaded'
+  | 'failed_extracted'
+  | 'failed_categorized';
 
 export interface StatementImport {
   id: string;
   bank_account_id: string;
-  status: 'parsing' | 'review' | 'approved' | 'failed';
+  file_url: string | null;
+  status: StatementImportStatus;
   txn_count: number;
   total_debits: number;
   period_from: string | null;
   period_to: string | null;
   created_at: string;
   error_message: string | null;
+  bank_accounts?: {
+    name?: string | null;
+    bank_name?: string | null;
+    last4?: string | null;
+  } | null;
 }
 
 export interface StatementTransaction {
@@ -30,17 +48,36 @@ export interface StatementTransaction {
   expense_id: string | null;
 }
 
+const ACTIVE_IMPORT_STATUSES: StatementImportStatus[] = [
+  'parsing',
+  'uploaded',
+  'extracted',
+  'categorized',
+  'review',
+  'failed',
+  'failed_uploaded',
+  'failed_extracted',
+  'failed_categorized',
+];
+
+const shouldPollImport = (status?: StatementImportStatus | null) =>
+  !!status && !['review', 'approved', 'failed', 'failed_uploaded', 'failed_extracted', 'failed_categorized'].includes(status);
+
 export const usePendingImports = () => {
   return useQuery({
     queryKey: ['statement-imports', 'pending'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('statement_imports')
-        .select('*')
-        .eq('status', 'review')
+        .select('*, bank_accounts(name, bank_name, last4)')
+        .in('status', ACTIVE_IMPORT_STATUSES)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []) as StatementImport[];
+    },
+    refetchInterval: (query) => {
+      const imports = (query.state.data as StatementImport[] | undefined) ?? [];
+      return imports.some((item) => shouldPollImport(item.status)) ? 2500 : false;
     },
   });
 };
@@ -56,7 +93,11 @@ export const useStatementImport = (id: string | undefined) => {
         .eq('id', id!)
         .maybeSingle();
       if (error) throw error;
-      return data as any;
+      return (data ?? null) as StatementImport | null;
+    },
+    refetchInterval: (query) => {
+      const item = query.state.data as StatementImport | null | undefined;
+      return shouldPollImport(item?.status) ? 2000 : false;
     },
   });
 };
@@ -74,6 +115,7 @@ export const useStatementTransactions = (importId: string | undefined) => {
       if (error) throw error;
       return (data ?? []) as StatementTransaction[];
     },
+    refetchInterval: 2500,
   });
 };
 
@@ -83,18 +125,85 @@ export const useUploadStatement = () => {
 
   return useMutation({
     mutationFn: async ({ file, bankAccountId }: { file: File; bankAccountId: string }) => {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('bank_account_id', bankAccountId);
-      const { data, error } = await supabase.functions.invoke('parse-statement', { body: fd });
-      if (error) throw error;
-      return data as { import_id: string };
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw new Error('Please sign in again and retry the upload.');
+
+      const path = `${authData.user.id}/${Date.now()}-${file.name}`;
+
+      const { error: uploadError } = await supabase.storage.from('bank-statements').upload(path, file, {
+        contentType: 'application/pdf',
+        upsert: false,
+      });
+      if (uploadError) throw new Error(uploadError.message);
+
+      const { data: createdImport, error: importError } = await supabase
+        .from('statement_imports')
+        .insert({
+          bank_account_id: bankAccountId,
+          file_url: path,
+          status: 'uploaded',
+          uploaded_by: authData.user.id,
+          error_message: null,
+        })
+        .select('id')
+        .single();
+
+      if (importError || !createdImport) {
+        await supabase.storage.from('bank-statements').remove([path]);
+        throw new Error(importError?.message || 'Could not create the statement import.');
+      }
+
+      supabase.functions
+        .invoke('parse-statement', { body: { import_id: createdImport.id } })
+        .then(async ({ error }) => {
+          if (error) {
+            await supabase
+              .from('statement_imports')
+              .update({
+                status: 'failed_uploaded',
+                error_message: error.message?.slice(0, 500) || 'Could not start statement parsing.',
+              })
+              .eq('id', createdImport.id);
+          }
+        })
+        .finally(() => {
+          qc.invalidateQueries({ queryKey: ['statement-imports'] });
+          qc.invalidateQueries({ queryKey: ['statement-imports', createdImport.id] });
+          qc.invalidateQueries({ queryKey: ['statement-transactions', createdImport.id] });
+        });
+
+      return { import_id: createdImport.id };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['statement-imports'] });
-      toast({ title: 'Statement parsed', description: 'Review transactions to approve.' });
+      toast({ title: 'Statement uploaded', description: 'Parsing started. You can track each step on the review screen.' });
     },
     onError: (e: any) => toast({ title: 'Upload failed', description: e.message, variant: 'destructive' }),
+  });
+};
+
+export const useDeleteStatementImport = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, fileUrl }: { id: string; fileUrl?: string | null }) => {
+      const { error } = await supabase.from('statement_imports').delete().eq('id', id);
+      if (error) throw error;
+
+      if (fileUrl) {
+        const { error: storageError } = await supabase.storage.from('bank-statements').remove([fileUrl]);
+        if (storageError) {
+          console.warn('Statement file cleanup failed:', storageError.message);
+        }
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['statement-imports'] });
+      qc.invalidateQueries({ queryKey: ['statement-transactions'] });
+      toast({ title: 'Statement import removed' });
+    },
+    onError: (e: any) => toast({ title: 'Could not remove statement import', description: e.message, variant: 'destructive' }),
   });
 };
 
