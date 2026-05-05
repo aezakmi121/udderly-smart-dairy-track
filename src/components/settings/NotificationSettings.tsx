@@ -320,6 +320,50 @@ export const NotificationSettings = () => {
           </div>
         </div>
       </div>
+
+      <Separator />
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold flex items-center gap-2">
+          <Calendar className="h-4 w-4" />
+          Expense Digest Emails
+        </h4>
+        <p className="text-xs text-muted-foreground">
+          Get expense summaries delivered to your email and as push notifications.
+        </p>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">📅 Daily digest</p>
+              <p className="text-xs text-muted-foreground">Yesterday's expenses · 22:00 IST</p>
+            </div>
+            <Switch
+              checked={digestEnabled('digest_daily')}
+              onCheckedChange={(v) => toggleDigest('digest_daily', v)}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">🗓 Weekly digest</p>
+              <p className="text-xs text-muted-foreground">Last 7 days · Mon 08:00 IST</p>
+            </div>
+            <Switch
+              checked={digestEnabled('digest_weekly')}
+              onCheckedChange={(v) => toggleDigest('digest_weekly', v)}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">📆 Monthly digest</p>
+              <p className="text-xs text-muted-foreground">Previous month · 1st 08:00 IST</p>
+            </div>
+            <Switch
+              checked={digestEnabled('digest_monthly')}
+              onCheckedChange={(v) => toggleDigest('digest_monthly', v)}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
