@@ -134,8 +134,6 @@ Deno.serve(async (req) => {
     const appServer = await loadAppServer();
 
     const payload = JSON.stringify({ title, body: msg, data: data || {} });
-    const encoder = new TextEncoder();
-    const payloadBytes = encoder.encode(payload);
 
     let sent = 0;
     let failed = 0;
@@ -148,7 +146,7 @@ Deno.serve(async (req) => {
           keys: { p256dh: sub.p256dh, auth: sub.auth },
         } as any);
         try {
-          await subscriber.pushTextMessage(payloadBytes, {});
+          await subscriber.pushTextMessage(payload, {});
           sent++;
         } catch (err: any) {
           failed++;
