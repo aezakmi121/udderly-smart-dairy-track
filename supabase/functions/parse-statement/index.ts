@@ -207,14 +207,22 @@ Rules:
         status: "pending",
       }));
 
-    // Insert with upsert on (bank_account_id, ref_no) to dedup
+    // Pre-dedup against existing rows for this bank account (partial unique index can't be used with ON CONFLICT)
     let inserted = 0;
     if (rows.length > 0) {
-      // Insert in chunks; ignore conflicts on dedup index
-      for (const chunk of chunked(rows, 100)) {
-        const { error } = await admin
+      const refNos = rows.map((r) => r.ref_no).filter((v): v is string => !!v);
+      const existing = new Set<string>();
+      if (refNos.length > 0) {
+        const { data: dup } = await admin
           .from("statement_transactions")
-          .upsert(chunk, { onConflict: "bank_account_id,ref_no", ignoreDuplicates: true });
+          .select("ref_no")
+          .eq("bank_account_id", bank_account_id)
+          .in("ref_no", refNos);
+        for (const d of dup || []) if (d.ref_no) existing.add(d.ref_no);
+      }
+      const toInsert = rows.filter((r) => !r.ref_no || !existing.has(r.ref_no));
+      for (const chunk of chunked(toInsert, 100)) {
+        const { error } = await admin.from("statement_transactions").insert(chunk);
         if (!error) inserted += chunk.length;
         else console.error("Insert chunk error:", error);
       }
