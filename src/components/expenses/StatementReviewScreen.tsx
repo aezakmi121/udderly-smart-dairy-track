@@ -24,6 +24,7 @@ type RowEdit = {
   category_id?: string | null;
   payment_method_id?: string | null;
   vendor_name?: string | null;
+  payment_period?: string | null; // YYYY-MM
 };
 
 export const StatementReviewScreen = () => {
@@ -41,6 +42,7 @@ export const StatementReviewScreen = () => {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [edits, setEdits] = useState<Record<string, RowEdit>>({});
   const [confidenceFilter, setConfidenceFilter] = useState<'all' | 'high' | 'low'>('all');
+  const [bulkPeriod, setBulkPeriod] = useState<string>(''); // YYYY-MM
 
   const filtered = useMemo(() => {
     if (confidenceFilter === 'all') return txns;
@@ -65,25 +67,44 @@ export const StatementReviewScreen = () => {
   const updateEdit = (id: string, patch: Partial<RowEdit>) =>
     setEdits((e) => ({ ...e, [id]: { ...e[id], ...patch } }));
 
+  const txnPeriodMonth = (t: StatementTransaction) =>
+    (t.payment_period ? t.payment_period.slice(0, 7) : t.txn_date.slice(0, 7));
+
   const getEffective = (t: StatementTransaction): RowEdit => ({
     category_id: edits[t.id]?.category_id ?? t.suggested_category_id,
     payment_method_id: edits[t.id]?.payment_method_id ?? t.suggested_payment_method_id,
     vendor_name: edits[t.id]?.vendor_name ?? t.suggested_vendor,
+    payment_period: edits[t.id]?.payment_period ?? txnPeriodMonth(t),
   });
 
   const selectedIds = Object.entries(selected).filter(([, v]) => v).map(([k]) => k);
+
+  const applyBulkPeriod = () => {
+    if (!bulkPeriod || !selectedIds.length) return;
+    setEdits((prev) => {
+      const next = { ...prev };
+      selectedIds.forEach((tid) => {
+        next[tid] = { ...next[tid], payment_period: bulkPeriod };
+      });
+      return next;
+    });
+  };
 
   const handleApproveSelected = async () => {
     if (!id || !selectedIds.length) return;
     const decisions = selectedIds.map((txn_id) => {
       const t = txns.find((x) => x.id === txn_id)!;
       const eff = getEffective(t);
+      const period = eff.payment_period
+        ? (eff.payment_period.length === 7 ? `${eff.payment_period}-01` : eff.payment_period)
+        : null;
       return {
         txn_id,
         action: 'approve' as const,
         category_id: eff.category_id,
         payment_method_id: eff.payment_method_id,
         vendor_name: eff.vendor_name,
+        payment_period: period,
       };
     });
     const res = await approve.mutateAsync({ import_id: id, decisions });
@@ -193,6 +214,23 @@ export const StatementReviewScreen = () => {
                   <SelectItem value="low">Low (&lt;85%)</SelectItem>
                 </SelectContent>
               </Select>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="month"
+                  value={bulkPeriod}
+                  onChange={(e) => setBulkPeriod(e.target.value)}
+                  className="h-8 text-xs w-[140px]"
+                  title="Accrual month to apply to selected rows"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={applyBulkPeriod}
+                  disabled={!bulkPeriod || !selectedIds.length}
+                >
+                  Apply period
+                </Button>
+              </div>
               <Button size="sm" variant="outline" onClick={selectAllHigh}>Select all ≥85%</Button>
               <Button
                 size="sm"
@@ -213,6 +251,7 @@ export const StatementReviewScreen = () => {
                     <th className="p-2 text-left">Date</th>
                     <th className="p-2 text-left">Narration</th>
                     <th className="p-2 text-right">Amount</th>
+                    <th className="p-2 text-left">Period</th>
                     <th className="p-2 text-left">Category</th>
                     <th className="p-2 text-left">Payment</th>
                     <th className="p-2 text-left">Vendor</th>
@@ -223,10 +262,10 @@ export const StatementReviewScreen = () => {
                 </thead>
                 <tbody>
                   {isLoading && (
-                    <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Loading…</td></tr>
+                    <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">Loading…</td></tr>
                   )}
                   {!isLoading && filtered.length === 0 && (
-                    <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">No transactions.</td></tr>
+                    <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">No transactions.</td></tr>
                   )}
                   {filtered.map((t) => {
                     const eff = getEffective(t);
@@ -244,6 +283,15 @@ export const StatementReviewScreen = () => {
                         <td className="p-2 whitespace-nowrap">{format(new Date(t.txn_date), 'dd MMM')}</td>
                         <td className="p-2 max-w-[260px] truncate" title={t.narration}>{t.narration}</td>
                         <td className="p-2 text-right font-medium">₹{Number(t.amount).toLocaleString('en-IN')}</td>
+                        <td className="p-2">
+                          <Input
+                            type="month"
+                            className="h-8 text-xs w-[130px]"
+                            value={(eff.payment_period ?? '').slice(0, 7)}
+                            onChange={(e) => updateEdit(t.id, { payment_period: e.target.value })}
+                            disabled={!isPending}
+                          />
+                        </td>
                         <td className="p-2">
                           <Select
                             value={eff.category_id ?? ''}

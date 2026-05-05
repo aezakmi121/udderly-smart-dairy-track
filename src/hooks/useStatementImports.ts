@@ -40,6 +40,7 @@ export interface StatementTransaction {
   narration: string;
   ref_no: string | null;
   amount: number;
+  payment_period: string | null;
   suggested_category_id: string | null;
   suggested_payment_method_id: string | null;
   suggested_vendor: string | null;
@@ -220,6 +221,7 @@ export const useApproveImport = () => {
         category_id?: string | null;
         payment_method_id?: string | null;
         vendor_name?: string | null;
+        payment_period?: string | null;
       }>;
     }) => {
       const { data, error } = await supabase.functions.invoke('approve-statement-import', { body: payload });

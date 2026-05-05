@@ -18,6 +18,7 @@ interface Decision {
   category_id?: string;
   payment_method_id?: string | null;
   vendor_name?: string;
+  payment_period?: string | null; // YYYY-MM-01
 }
 
 Deno.serve(async (req) => {
@@ -108,7 +109,10 @@ Deno.serve(async (req) => {
       }
 
       // Insert expense
-      const periodFirst = `${txn.txn_date.slice(0, 7)}-01`;
+      const periodFirst =
+        d.payment_period ||
+        txn.payment_period ||
+        `${txn.txn_date.slice(0, 7)}-01`;
       const { data: exp, error: expErr } = await admin
         .from("expenses")
         .insert({

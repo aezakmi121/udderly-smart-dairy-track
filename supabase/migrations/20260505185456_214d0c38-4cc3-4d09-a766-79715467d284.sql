@@ -1,0 +1,1 @@
+ALTER TABLE public.statement_transactions ADD COLUMN IF NOT EXISTS payment_period date;
