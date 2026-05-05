@@ -54,6 +54,16 @@ export const ExpenseManagement = () => {
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </AnimatedButton>
+            <AnimatedButton
+              variant="outline"
+              size="sm"
+              onClick={() => setShowImport(true)}
+              className="text-sm"
+              animation="bounce"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Import Statement
+            </AnimatedButton>
             <AnimatedButton 
               onClick={handleCreateExpense} 
               className="text-sm"
