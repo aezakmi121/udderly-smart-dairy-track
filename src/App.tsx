@@ -47,6 +47,11 @@ const AppContent = () => {
                                 {React.createElement(routes[0].component)}
                               </RouteProtectedRoute>
                             } />
+                            <Route path="/expenses/import/:id" element={
+                              <RouteProtectedRoute permission="expenses">
+                                <StatementReviewScreen />
+                              </RouteProtectedRoute>
+                            } />
                             {routes.map((route) => (
                               <Route
                                 key={route.path}
