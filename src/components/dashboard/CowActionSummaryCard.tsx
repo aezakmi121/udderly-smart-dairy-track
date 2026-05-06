@@ -1,23 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { useNavigate } from 'react-router-dom';
 import { useCowActionSummary } from '@/hooks/useCowActionSummary';
 import { Stethoscope, CalendarClock, AlertTriangle, Syringe, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CowActionDetailsModal } from './CowActionDetailsModal';
+import type { ActionCategory } from '@/hooks/useCowActionDetails';
 
 interface Tile {
-  key: string;
+  key: ActionCategory;
   label: string;
   count: number;
   icon: React.ComponentType<{ className?: string }>;
-  filter: string;
   tone: string;
   iconTone: string;
 }
 
 export const CowActionSummaryCard: React.FC = () => {
-  const navigate = useNavigate();
   const { data, isLoading } = useCowActionSummary();
+  const [openCategory, setOpenCategory] = useState<ActionCategory | null>(null);
 
   const tiles: Tile[] = [
     {
