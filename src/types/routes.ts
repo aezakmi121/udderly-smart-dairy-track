@@ -14,4 +14,5 @@ export interface UserPermissions {
   analytics: boolean;
   expenses: boolean;
   settings: boolean;
+  payouts: boolean;
 }
