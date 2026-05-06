@@ -79,6 +79,9 @@ export const Dashboard = () => {
         </div>
       </div>
 
+      {/* Cow Action Summary - prominent */}
+      {canEdit.cows && <CowActionSummaryCard />}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statsCards.map((stat) => {
