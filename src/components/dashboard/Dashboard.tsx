@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
+import { CowActionSummaryCard } from './CowActionSummaryCard';
 import { formatDate } from '@/lib/dateUtils';
 
 export const Dashboard = () => {
