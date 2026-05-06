@@ -16,6 +16,7 @@ import { EnhancedToastProvider } from "@/components/ui/enhanced-toast";
 import { useEnhancedToast } from "@/hooks/useEnhancedToast";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import FarmerPortal from "./pages/FarmerPortal";
 import { RecoveryRedirect } from "@/components/auth/RecoveryRedirect";
 import { StatementReviewScreen } from "@/components/expenses/StatementReviewScreen";
 
@@ -35,6 +36,7 @@ const AppContent = () => {
                 <RecoveryRedirect />
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/farmer" element={<FarmerPortal />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route
                     path="/*"
