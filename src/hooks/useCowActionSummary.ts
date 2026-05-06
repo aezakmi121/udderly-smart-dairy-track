@@ -31,13 +31,13 @@ export const useCowActionSummary = () => {
       const sb: any = supabase;
       const [pdDueRes, closeRes, overdueRes, allActiveRes, latestPregRes] = await Promise.allSettled([
         // PD Due: AI done >=60 days ago, no PD result yet
-        supabase
+        sb
           .from('ai_records')
           .select('id', { count: 'exact', head: true })
           .lte('ai_date', sixtyDaysAgo)
           .eq('pd_done', false),
         // Close to delivery (next 60 days, not delivered yet)
-        supabase
+        sb
           .from('ai_records')
           .select('id', { count: 'exact', head: true })
           .eq('pd_result', 'positive')
@@ -45,19 +45,19 @@ export const useCowActionSummary = () => {
           .gte('expected_delivery_date', today)
           .lte('expected_delivery_date', sixtyDaysAhead),
         // Overdue delivery
-        supabase
+        sb
           .from('ai_records')
           .select('id', { count: 'exact', head: true })
           .eq('pd_result', 'positive')
           .is('actual_delivery_date', null)
           .lt('expected_delivery_date', today),
         // Active cows count
-        supabase
+        sb
           .from('cows')
           .select('id', { count: 'exact', head: true })
           .eq('is_active', true),
         // Cows that have an active pregnancy (positive PD, not delivered)
-        supabase
+        sb
           .from('ai_records')
           .select('cow_id')
           .eq('pd_result', 'positive')
