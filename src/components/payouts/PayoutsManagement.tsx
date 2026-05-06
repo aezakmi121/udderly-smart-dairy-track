@@ -11,7 +11,8 @@ import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { usePayoutCycles, useCyclePayouts, useCurrentCycleLive, type PayoutCycle, type PayoutRow } from '@/hooks/usePayouts';
 import { PaymentDialog } from './PaymentDialog';
 import { AdvancesTab } from './AdvancesTab';
-import { Wallet, FileText, CheckCircle2, Loader2, Hourglass, Search, Receipt } from 'lucide-react';
+import { BulkPayDialog, downloadPaymentRegisterCsv } from './BulkPayDialog';
+import { Wallet, FileText, CheckCircle2, Loader2, Hourglass, Search, Receipt, Download, Users } from 'lucide-react';
 
 const inrFmt = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 const inr = (n: number) => `₹${inrFmt.format(Math.round(n))}`;
@@ -225,6 +226,7 @@ const PaymentsCard: React.FC<{ cycle: PayoutCycle }> = ({ cycle }) => {
   const [filter, setFilter] = useState('');
   const [showPaid, setShowPaid] = useState(false);
   const [payRow, setPayRow] = useState<PayoutRow | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return payouts.filter((p) => {
@@ -236,6 +238,7 @@ const PaymentsCard: React.FC<{ cycle: PayoutCycle }> = ({ cycle }) => {
   }, [payouts, filter, showPaid]);
 
   const unpaidTotal = filtered.reduce((s, p) => s + (Number(p.net_payable) - Number(p.paid_amount)), 0);
+  const cycleLabel = `${cycle.cycle_start}_${cycle.cycle_end}`;
 
   return (
     <Card>
@@ -253,18 +256,21 @@ const PaymentsCard: React.FC<{ cycle: PayoutCycle }> = ({ cycle }) => {
           <Button size="sm" variant={showPaid ? 'default' : 'outline'} onClick={() => setShowPaid((v) => !v)}>
             {showPaid ? 'Hide paid' : 'Show paid'}
           </Button>
+          <Button size="sm" variant="outline" onClick={() => setBulkOpen(true)}>
+            <Users className="h-4 w-4 mr-1" /> Bulk pay
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => downloadPaymentRegisterCsv(cycleLabel, filtered)}>
+            <Download className="h-4 w-4 mr-1" /> Register CSV
+          </Button>
         </div>
-        <div className="text-xs text-muted-foreground">
-          {filtered.length} bills · Outstanding {inr(unpaidTotal)}
-        </div>
+        <div className="text-xs text-muted-foreground">{filtered.length} bills · Outstanding {inr(unpaidTotal)}</div>
         {isLoading && <div className="flex justify-center p-4"><Loader2 className="animate-spin" /></div>}
         <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-          {filtered.map((p) => (
-            <PayRow key={p.id} p={p} onPay={() => setPayRow(p)} />
-          ))}
+          {filtered.map((p) => (<PayRow key={p.id} p={p} onPay={() => setPayRow(p)} />))}
         </div>
       </CardContent>
       {payRow && <PaymentDialog payout={payRow} open={!!payRow} onOpenChange={(o) => !o && setPayRow(null)} />}
+      {bulkOpen && <BulkPayDialog rows={filtered} open={bulkOpen} onOpenChange={setBulkOpen} />}
     </Card>
   );
 };

@@ -99,3 +99,12 @@ verify_jwt = false
 
 [functions.farmer-bill-pdf]
 verify_jwt = false
+
+[functions.bulk-record-payments]
+verify_jwt = false
+
+[functions.farmer-request-advance]
+verify_jwt = false
+
+[functions.farmer-payment-receipt-pdf]
+verify_jwt = false

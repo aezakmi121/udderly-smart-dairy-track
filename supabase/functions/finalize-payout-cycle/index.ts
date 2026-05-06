@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sendWhatsAppTemplate } from "../_shared/whatsapp.ts";
 import { billNumber } from "../_shared/cycles.ts";
+import { buildFarmerBillPdf, type BillData } from "../_shared/billPdf.ts";
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -24,24 +25,73 @@ Deno.serve(async (req) => {
 
     const { data: payouts } = await supabase
       .from('farmer_payouts')
-      .select('id, farmer_id, bill_number, net_payable')
+      .select('id, farmer_id, bill_number, net_payable, total_quantity, total_amount, sessions_count, avg_fat, avg_snf, advances_deducted, carry_forward_in, other_deductions')
       .eq('cycle_id', cycle_id);
 
-    // Pull farmer codes/phones
     const farmerIds = (payouts ?? []).map((p) => p.farmer_id);
     const { data: farmers } = await supabase
       .from('farmers').select('id, name, farmer_code, phone_number').in('id', farmerIds);
     const fmap = new Map((farmers ?? []).map((f) => [f.id, f]));
 
-    // Assign bill numbers + lock
+    // Org name from app_settings
+    const { data: orgSetting } = await supabase.from('app_settings').select('value').eq('key', 'organization_settings').maybeSingle();
+    const orgName = (orgSetting?.value as any)?.organization_name ?? "Dairy";
+
+    let pdfsCreated = 0;
+
     for (const p of (payouts ?? [])) {
       const f = fmap.get(p.farmer_id);
       const bn = p.bill_number ?? billNumber(cycle.year_month, cycle.half, f?.farmer_code ?? p.farmer_id.slice(0, 6));
+
+      // Daily detail
+      const { data: rows } = await supabase.from('milk_collections')
+        .select('collection_date, session, quantity, fat_percentage, snf_percentage, rate_per_liter, total_amount')
+        .eq('farmer_id', p.farmer_id).eq('is_accepted', true)
+        .gte('collection_date', cycle.cycle_start).lte('collection_date', cycle.cycle_end)
+        .order('collection_date', { ascending: true });
+
+      // Generate PDF
+      let pdfPath: string | null = null;
+      try {
+        const billData: BillData = {
+          bill_number: bn,
+          cycle_start: cycle.cycle_start,
+          cycle_end: cycle.cycle_end,
+          farmer: { name: f?.name ?? '', farmer_code: f?.farmer_code ?? '', phone_number: f?.phone_number ?? null },
+          org_name: orgName,
+          payout: {
+            total_quantity: Number(p.total_quantity ?? 0),
+            total_amount: Number(p.total_amount ?? 0),
+            sessions_count: Number(p.sessions_count ?? 0),
+            avg_fat: p.avg_fat as any,
+            avg_snf: p.avg_snf as any,
+            advances_deducted: Number(p.advances_deducted ?? 0),
+            carry_forward_in: Number(p.carry_forward_in ?? 0),
+            other_deductions: Number(p.other_deductions ?? 0),
+            net_payable: Number(p.net_payable ?? 0),
+          },
+          rows: (rows ?? []) as any,
+        };
+        const bytes = buildFarmerBillPdf(billData);
+        pdfPath = `${cycle.year_month}/${cycle.half}/${bn}.pdf`;
+        const { error: upErr } = await supabase.storage.from('farmer-bills')
+          .upload(pdfPath, bytes, { contentType: 'application/pdf', upsert: true });
+        if (upErr) { console.error('pdf upload', upErr); pdfPath = null; }
+        else pdfsCreated++;
+      } catch (e) {
+        console.error('pdf build error', (e as Error).message);
+      }
+
       await supabase.from('farmer_payouts')
-        .update({ bill_number: bn, status: 'finalized', finalized_at: new Date().toISOString() })
+        .update({
+          bill_number: bn,
+          status: 'finalized',
+          finalized_at: new Date().toISOString(),
+          pdf_storage_path: pdfPath,
+        })
         .eq('id', p.id);
 
-      // Mark advances as recovered up to deducted amount (simple FIFO)
+      // Mark advances recovered (FIFO)
       const { data: payoutRow } = await supabase.from('farmer_payouts').select('advances_deducted').eq('id', p.id).single();
       let remaining = Number(payoutRow?.advances_deducted ?? 0);
       if (remaining > 0) {
@@ -67,7 +117,7 @@ Deno.serve(async (req) => {
       .update({ status: 'finalized', finalized_at: new Date().toISOString(), finalized_by: userData.user.id })
       .eq('id', cycle_id);
 
-    // Notify (best-effort)
+    // WhatsApp notify (best-effort, only if configured)
     const tplName = Deno.env.get('WHATSAPP_BILL_TEMPLATE_NAME') ?? 'farmer_bill_ready_v1';
     for (const p of (payouts ?? [])) {
       const f = fmap.get(p.farmer_id);
@@ -84,7 +134,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ ok: true, finalized: payouts?.length ?? 0 }), {
+    return new Response(JSON.stringify({ ok: true, finalized: payouts?.length ?? 0, pdfs: pdfsCreated }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
