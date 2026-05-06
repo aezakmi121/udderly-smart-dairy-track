@@ -75,3 +75,27 @@ verify_jwt = true
 [functions.send-expense-digest]
 verify_jwt = false
 
+
+[functions.rollover-payout-cycle]
+verify_jwt = false
+
+[functions.generate-payout-cycle]
+verify_jwt = false
+
+[functions.finalize-payout-cycle]
+verify_jwt = false
+
+[functions.record-payment-event]
+verify_jwt = false
+
+[functions.farmer-send-otp]
+verify_jwt = false
+
+[functions.farmer-verify-otp]
+verify_jwt = false
+
+[functions.farmer-portal-data]
+verify_jwt = false
+
+[functions.farmer-bill-pdf]
+verify_jwt = false
