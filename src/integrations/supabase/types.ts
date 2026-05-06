@@ -795,6 +795,63 @@ export type Database = {
           },
         ]
       }
+      farmer_advance_requests: {
+        Row: {
+          amount: number
+          approved_advance_id: string | null
+          created_at: string
+          farmer_id: string
+          id: string
+          reason: string | null
+          reviewed_at: string | null
+          reviewed_by_user_id: string | null
+          reviewer_note: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          approved_advance_id?: string | null
+          created_at?: string
+          farmer_id: string
+          id?: string
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          reviewer_note?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approved_advance_id?: string | null
+          created_at?: string
+          farmer_id?: string
+          id?: string
+          reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by_user_id?: string | null
+          reviewer_note?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farmer_advance_requests_approved_advance_id_fkey"
+            columns: ["approved_advance_id"]
+            isOneToOne: false
+            referencedRelation: "farmer_advances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "farmer_advance_requests_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "farmers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farmer_advances: {
         Row: {
           advance_date: string
@@ -938,6 +995,7 @@ export type Database = {
           paid_by_user_id: string | null
           paid_on: string
           payout_id: string
+          receipt_storage_path: string | null
           reference: string | null
         }
         Insert: {
@@ -949,6 +1007,7 @@ export type Database = {
           paid_by_user_id?: string | null
           paid_on?: string
           payout_id: string
+          receipt_storage_path?: string | null
           reference?: string | null
         }
         Update: {
@@ -960,6 +1019,7 @@ export type Database = {
           paid_by_user_id?: string | null
           paid_on?: string
           payout_id?: string
+          receipt_storage_path?: string | null
           reference?: string | null
         }
         Relationships: [
@@ -1172,6 +1232,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           phone_number: string
+          preferred_language: string | null
         }
         Insert: {
           address?: string | null
@@ -1181,6 +1242,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           phone_number: string
+          preferred_language?: string | null
         }
         Update: {
           address?: string | null
@@ -1190,6 +1252,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           phone_number?: string
+          preferred_language?: string | null
         }
         Relationships: []
       }
