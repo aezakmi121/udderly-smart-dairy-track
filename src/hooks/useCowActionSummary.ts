@@ -28,6 +28,7 @@ export const useCowActionSummary = () => {
       const sixtyDaysAgo = daysAgo(60);
       const sixtyDaysAhead = daysAhead(60);
 
+      const sb: any = supabase;
       const [pdDueRes, closeRes, overdueRes, allActiveRes, latestPregRes] = await Promise.allSettled([
         // PD Due: AI done >=60 days ago, no PD result yet
         supabase
