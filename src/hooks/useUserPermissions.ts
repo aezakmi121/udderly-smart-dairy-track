@@ -48,6 +48,7 @@ export const useUserPermissions = () => {
       analytics: !hasNoRole && (isAdmin || isFarmWorker),
       expenses: !hasNoRole && isAdmin,
       settings: !hasNoRole && isAdmin,
+      payouts: !hasNoRole && (isAdmin || isCollectionCentre),
     }
   };
 };

@@ -16,7 +16,8 @@ import {
   TrendingUp,
   ShoppingBag,
   Droplet,
-  FileText
+  FileText,
+  Wallet
 } from 'lucide-react';
 import { RouteConfig } from '@/types/routes';
 import { Dashboard } from '@/components/dashboard/Dashboard';
@@ -42,6 +43,7 @@ import { StoreReceiptManagement } from '@/components/revenue/StoreReceiptManagem
 import { SlipVerificationManagement } from '@/components/revenue/SlipVerificationManagement';
 import { DahiProductionManagement } from '@/components/revenue/DahiProductionManagement';
 import { DistributionReports } from '@/components/reports/DistributionReports';
+import { PayoutsManagement } from '@/components/payouts/PayoutsManagement';
 
 export const routes: RouteConfig[] = [
   {
@@ -125,6 +127,13 @@ export const routes: RouteConfig[] = [
     permission: 'analytics',
     label: 'Reports',
     icon: BarChart3
+  },
+  {
+    path: '/payouts',
+    component: PayoutsManagement,
+    permission: 'payouts',
+    label: 'Farmer Payouts',
+    icon: Wallet
   },
   {
     path: '/expenses',
