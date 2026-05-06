@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
+import { CowActionSummaryCard } from './CowActionSummaryCard';
 import { formatDate } from '@/lib/dateUtils';
 
 export const Dashboard = () => {
@@ -77,6 +78,9 @@ export const Dashboard = () => {
           {formatDate(new Date())}
         </div>
       </div>
+
+      {/* Cow Action Summary - prominent */}
+      {canEdit.cows && <CowActionSummaryCard />}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
