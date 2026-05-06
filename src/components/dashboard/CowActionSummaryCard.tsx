@@ -73,7 +73,7 @@ export const CowActionSummaryCard: React.FC = () => {
             <button
               key={t.key}
               type="button"
-              onClick={() => navigate(`/ai-tracking?filter=${t.filter}`)}
+              onClick={() => setOpenCategory(t.key)}
               className={cn(
                 'rounded-lg border-2 p-4 sm:p-5 text-left transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-ring',
                 t.tone
