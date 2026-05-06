@@ -795,6 +795,374 @@ export type Database = {
           },
         ]
       }
+      farmer_advances: {
+        Row: {
+          advance_date: string
+          amount: number
+          created_at: string
+          created_by: string | null
+          farmer_id: string
+          id: string
+          notes: string | null
+          recovered_amount: number
+          recovered_in_payout_id: string | null
+          status: Database["public"]["Enums"]["advance_status"]
+          updated_at: string
+        }
+        Insert: {
+          advance_date?: string
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          farmer_id: string
+          id?: string
+          notes?: string | null
+          recovered_amount?: number
+          recovered_in_payout_id?: string | null
+          status?: Database["public"]["Enums"]["advance_status"]
+          updated_at?: string
+        }
+        Update: {
+          advance_date?: string
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          farmer_id?: string
+          id?: string
+          notes?: string | null
+          recovered_amount?: number
+          recovered_in_payout_id?: string | null
+          status?: Database["public"]["Enums"]["advance_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farmer_advances_recovered_in_payout_id_fkey"
+            columns: ["recovered_in_payout_id"]
+            isOneToOne: false
+            referencedRelation: "farmer_payouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      farmer_notifications: {
+        Row: {
+          channel: string
+          created_at: string
+          error: string | null
+          farmer_id: string | null
+          id: string
+          payload: Json | null
+          payout_id: string | null
+          sent_at: string | null
+          status: string
+          template: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          error?: string | null
+          farmer_id?: string | null
+          id?: string
+          payload?: Json | null
+          payout_id?: string | null
+          sent_at?: string | null
+          status?: string
+          template: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          error?: string | null
+          farmer_id?: string | null
+          id?: string
+          payload?: Json | null
+          payout_id?: string | null
+          sent_at?: string | null
+          status?: string
+          template?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farmer_notifications_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "farmer_payouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      farmer_otp_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          delivery_channel: string
+          delivery_status: string
+          expires_at: string
+          id: string
+          phone_number: string
+          used_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          delivery_channel?: string
+          delivery_status?: string
+          expires_at: string
+          id?: string
+          phone_number: string
+          used_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          delivery_channel?: string
+          delivery_status?: string
+          expires_at?: string
+          id?: string
+          phone_number?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
+      farmer_payment_events: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          method: Database["public"]["Enums"]["payment_method"]
+          note: string | null
+          paid_by_user_id: string | null
+          paid_on: string
+          payout_id: string
+          reference: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          method: Database["public"]["Enums"]["payment_method"]
+          note?: string | null
+          paid_by_user_id?: string | null
+          paid_on?: string
+          payout_id: string
+          reference?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"]
+          note?: string | null
+          paid_by_user_id?: string | null
+          paid_on?: string
+          payout_id?: string
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farmer_payment_events_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "farmer_payouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      farmer_payout_audit: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          after: Json | null
+          at: string
+          before: Json | null
+          cycle_id: string | null
+          id: string
+          payout_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          after?: Json | null
+          at?: string
+          before?: Json | null
+          cycle_id?: string | null
+          id?: string
+          payout_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          after?: Json | null
+          at?: string
+          before?: Json | null
+          cycle_id?: string | null
+          id?: string
+          payout_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farmer_payout_audit_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "farmer_payout_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "farmer_payout_audit_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "farmer_payouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      farmer_payout_cycles: {
+        Row: {
+          created_at: string
+          cycle_end: string
+          cycle_start: string
+          finalized_at: string | null
+          finalized_by: string | null
+          fully_paid_at: string | null
+          half: string
+          id: string
+          notes: string | null
+          status: Database["public"]["Enums"]["payout_cycle_status"]
+          updated_at: string
+          year_month: string
+        }
+        Insert: {
+          created_at?: string
+          cycle_end: string
+          cycle_start: string
+          finalized_at?: string | null
+          finalized_by?: string | null
+          fully_paid_at?: string | null
+          half: string
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["payout_cycle_status"]
+          updated_at?: string
+          year_month: string
+        }
+        Update: {
+          created_at?: string
+          cycle_end?: string
+          cycle_start?: string
+          finalized_at?: string | null
+          finalized_by?: string | null
+          fully_paid_at?: string | null
+          half?: string
+          id?: string
+          notes?: string | null
+          status?: Database["public"]["Enums"]["payout_cycle_status"]
+          updated_at?: string
+          year_month?: string
+        }
+        Relationships: []
+      }
+      farmer_payouts: {
+        Row: {
+          advances_deducted: number
+          avg_fat: number | null
+          avg_snf: number | null
+          bill_number: string | null
+          carry_forward_in: number
+          created_at: string
+          cycle_id: string
+          farmer_id: string
+          finalized_at: string | null
+          id: string
+          last_payment_method:
+            | Database["public"]["Enums"]["payment_method"]
+            | null
+          last_payment_ref: string | null
+          net_payable: number
+          notes: string | null
+          other_deductions: number
+          paid_amount: number
+          paid_on: string | null
+          pdf_storage_path: string | null
+          revision: number
+          sessions_count: number
+          status: Database["public"]["Enums"]["payout_status"]
+          total_amount: number
+          total_quantity: number
+          unpaid_balance: number
+          updated_at: string
+        }
+        Insert: {
+          advances_deducted?: number
+          avg_fat?: number | null
+          avg_snf?: number | null
+          bill_number?: string | null
+          carry_forward_in?: number
+          created_at?: string
+          cycle_id: string
+          farmer_id: string
+          finalized_at?: string | null
+          id?: string
+          last_payment_method?:
+            | Database["public"]["Enums"]["payment_method"]
+            | null
+          last_payment_ref?: string | null
+          net_payable?: number
+          notes?: string | null
+          other_deductions?: number
+          paid_amount?: number
+          paid_on?: string | null
+          pdf_storage_path?: string | null
+          revision?: number
+          sessions_count?: number
+          status?: Database["public"]["Enums"]["payout_status"]
+          total_amount?: number
+          total_quantity?: number
+          unpaid_balance?: number
+          updated_at?: string
+        }
+        Update: {
+          advances_deducted?: number
+          avg_fat?: number | null
+          avg_snf?: number | null
+          bill_number?: string | null
+          carry_forward_in?: number
+          created_at?: string
+          cycle_id?: string
+          farmer_id?: string
+          finalized_at?: string | null
+          id?: string
+          last_payment_method?:
+            | Database["public"]["Enums"]["payment_method"]
+            | null
+          last_payment_ref?: string | null
+          net_payable?: number
+          notes?: string | null
+          other_deductions?: number
+          paid_amount?: number
+          paid_on?: string | null
+          pdf_storage_path?: string | null
+          revision?: number
+          sessions_count?: number
+          status?: Database["public"]["Enums"]["payout_status"]
+          total_amount?: number
+          total_quantity?: number
+          unpaid_balance?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farmer_payouts_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "farmer_payout_cycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farmers: {
         Row: {
           address: string | null
@@ -2237,12 +2605,21 @@ export type Database = {
       }
     }
     Enums: {
+      advance_status: "outstanding" | "recovered" | "written_off"
       ai_status: "pending" | "done" | "failed"
       app_role: "admin" | "farmer" | "worker" | "store_manager" | "delivery_boy"
       calf_status: "alive" | "dead" | "sold" | "promoted"
       cow_status: "active" | "dry" | "pregnant" | "sick" | "sold" | "dead"
       expense_status: "pending" | "paid" | "overdue" | "cancelled"
       gender: "male" | "female"
+      payment_method: "cash" | "upi" | "cheque" | "bank_transfer" | "adjustment"
+      payout_cycle_status:
+        | "open"
+        | "closed_for_collection"
+        | "drafted"
+        | "finalized"
+        | "fully_paid"
+      payout_status: "draft" | "finalized" | "paid" | "void"
       pd_result: "positive" | "negative" | "inconclusive"
       session_type: "morning" | "evening"
       transaction_type: "incoming" | "outgoing"
@@ -2373,12 +2750,22 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      advance_status: ["outstanding", "recovered", "written_off"],
       ai_status: ["pending", "done", "failed"],
       app_role: ["admin", "farmer", "worker", "store_manager", "delivery_boy"],
       calf_status: ["alive", "dead", "sold", "promoted"],
       cow_status: ["active", "dry", "pregnant", "sick", "sold", "dead"],
       expense_status: ["pending", "paid", "overdue", "cancelled"],
       gender: ["male", "female"],
+      payment_method: ["cash", "upi", "cheque", "bank_transfer", "adjustment"],
+      payout_cycle_status: [
+        "open",
+        "closed_for_collection",
+        "drafted",
+        "finalized",
+        "fully_paid",
+      ],
+      payout_status: ["draft", "finalized", "paid", "void"],
       pd_result: ["positive", "negative", "inconclusive"],
       session_type: ["morning", "evening"],
       transaction_type: ["incoming", "outgoing"],
