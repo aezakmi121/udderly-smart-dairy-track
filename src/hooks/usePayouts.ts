@@ -55,11 +55,17 @@ export const useCyclePayouts = (cycleId: string | null) => useQuery({
   queryFn: async () => {
     const { data, error } = await supabase
       .from('farmer_payouts')
-      .select('*, farmers(name, farmer_code, phone_number)')
+      .select('*')
       .eq('cycle_id', cycleId!)
       .order('bill_number', { ascending: true, nullsFirst: false });
     if (error) throw error;
-    return (data ?? []) as PayoutRow[];
+    const rows = (data ?? []) as any[];
+    const ids = Array.from(new Set(rows.map((r) => r.farmer_id)));
+    if (ids.length === 0) return [] as PayoutRow[];
+    const { data: farmers } = await supabase.from('farmers')
+      .select('id, name, farmer_code, phone_number').in('id', ids);
+    const fmap = new Map((farmers ?? []).map((f) => [f.id, f]));
+    return rows.map((r) => ({ ...r, farmers: fmap.get(r.farmer_id) })) as PayoutRow[];
   },
 });
 
@@ -69,20 +75,28 @@ export const useCurrentCycleLive = (cycle: PayoutCycle | null | undefined) => us
   queryFn: async () => {
     const { data, error } = await supabase
       .from('milk_collections')
-      .select('farmer_id, quantity, total_amount, farmers(name, farmer_code, phone_number)')
+      .select('farmer_id, quantity, total_amount')
       .gte('collection_date', cycle!.cycle_start)
       .lte('collection_date', cycle!.cycle_end)
       .eq('is_accepted', true);
     if (error) throw error;
-    const map = new Map<string, { farmer_id: string; name: string; code: string; phone: string; qty: number; amount: number; sessions: number }>();
+    const map = new Map<string, { farmer_id: string; qty: number; amount: number; sessions: number }>();
     for (const r of (data ?? []) as any[]) {
       if (!r.farmer_id) continue;
-      const cur = map.get(r.farmer_id) ?? { farmer_id: r.farmer_id, name: r.farmers?.name ?? '', code: r.farmers?.farmer_code ?? '', phone: r.farmers?.phone_number ?? '', qty: 0, amount: 0, sessions: 0 };
+      const cur = map.get(r.farmer_id) ?? { farmer_id: r.farmer_id, qty: 0, amount: 0, sessions: 0 };
       cur.qty += Number(r.quantity ?? 0);
       cur.amount += Number(r.total_amount ?? 0);
       cur.sessions += 1;
       map.set(r.farmer_id, cur);
     }
-    return Array.from(map.values()).sort((a, b) => a.code.localeCompare(b.code));
+    const ids = Array.from(map.keys());
+    const { data: farmers } = ids.length
+      ? await supabase.from('farmers').select('id, name, farmer_code, phone_number').in('id', ids)
+      : { data: [] as any[] };
+    const fmap = new Map((farmers ?? []).map((f: any) => [f.id, f]));
+    return Array.from(map.values()).map((r) => {
+      const f = fmap.get(r.farmer_id);
+      return { ...r, name: f?.name ?? '', code: f?.farmer_code ?? '', phone: f?.phone_number ?? '' };
+    }).sort((a, b) => a.code.localeCompare(b.code));
   },
 });
