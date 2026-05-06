@@ -129,6 +129,13 @@ export const routes: RouteConfig[] = [
     icon: BarChart3
   },
   {
+    path: '/payouts',
+    component: PayoutsManagement,
+    permission: 'payouts',
+    label: 'Farmer Payouts',
+    icon: Wallet
+  },
+  {
     path: '/expenses',
     component: ExpenseManagement,
     permission: 'expenses',
