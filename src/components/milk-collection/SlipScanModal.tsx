@@ -200,14 +200,61 @@ export const SlipScanModal: React.FC<Props> = ({ open, onOpenChange, defaultDate
               </div>
               <div>
                 <Label>Slip Photo</Label>
-                <Input
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => document.getElementById('slip-camera-input')?.click()}
+                  >
+                    <Camera className="h-4 w-4 mr-2" /> Take Photo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => document.getElementById('slip-gallery-input')?.click()}
+                  >
+                    <ImageIcon className="h-4 w-4 mr-2" /> From Gallery
+                  </Button>
+                </div>
+                <input
+                  id="slip-camera-input"
                   type="file"
                   accept="image/*"
                   capture="environment"
+                  className="hidden"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                />
+                <input
+                  id="slip-gallery-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 />
               </div>
             </div>
+            {file && (
+              <div className="flex items-center gap-3 p-2 border rounded">
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt="Slip preview"
+                  className="h-20 w-20 object-cover rounded"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{file.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {(file.size / 1024).toFixed(0)} KB
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setFile(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
               The AI will read the slip and compute amounts using the rate matrix (with clamping for out-of-range fat/SNF).
               Review every row before saving.
