@@ -16,7 +16,8 @@ import {
   TrendingUp,
   ShoppingBag,
   Droplet,
-  FileText
+  FileText,
+  Wallet
 } from 'lucide-react';
 import { RouteConfig } from '@/types/routes';
 import { Dashboard } from '@/components/dashboard/Dashboard';
