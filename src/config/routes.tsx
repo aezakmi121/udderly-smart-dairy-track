@@ -43,6 +43,7 @@ import { StoreReceiptManagement } from '@/components/revenue/StoreReceiptManagem
 import { SlipVerificationManagement } from '@/components/revenue/SlipVerificationManagement';
 import { DahiProductionManagement } from '@/components/revenue/DahiProductionManagement';
 import { DistributionReports } from '@/components/reports/DistributionReports';
+import { PayoutsManagement } from '@/components/payouts/PayoutsManagement';
 
 export const routes: RouteConfig[] = [
   {
