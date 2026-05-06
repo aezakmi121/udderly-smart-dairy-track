@@ -21,8 +21,22 @@ export const AITrackingManagement = () => {
     status: 'all',
     pdStatus: 'all'
   });
-  
+
+  const [searchParams] = useSearchParams();
+  const presetFilter = searchParams.get('filter');
+
   const { aiRecords, isLoading, addAIRecordMutation, updateAIRecordMutation, deleteAIRecordMutation } = useAITracking();
+
+  // Apply preset filter when arriving from dashboard quick links
+  useEffect(() => {
+    if (!presetFilter) return;
+    if (presetFilter === 'pd-due') {
+      setFilters(f => ({ ...f, pdStatus: 'pending' }));
+    }
+    // close-delivery, overdue-delivery, needs-ai are computed presets — they
+    // don't map cleanly onto the existing filter shape, so we just open the
+    // page; the user sees all records and can refine via filters.
+  }, [presetFilter]);
 
   const filteredRecords = useMemo(() => {
     if (!aiRecords) return [];
