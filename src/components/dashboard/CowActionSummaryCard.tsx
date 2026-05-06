@@ -1,23 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { useNavigate } from 'react-router-dom';
 import { useCowActionSummary } from '@/hooks/useCowActionSummary';
 import { Stethoscope, CalendarClock, AlertTriangle, Syringe, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CowActionDetailsModal } from './CowActionDetailsModal';
+import type { ActionCategory } from '@/hooks/useCowActionDetails';
 
 interface Tile {
-  key: string;
+  key: ActionCategory;
   label: string;
   count: number;
   icon: React.ComponentType<{ className?: string }>;
-  filter: string;
   tone: string;
   iconTone: string;
 }
 
 export const CowActionSummaryCard: React.FC = () => {
-  const navigate = useNavigate();
   const { data, isLoading } = useCowActionSummary();
+  const [openCategory, setOpenCategory] = useState<ActionCategory | null>(null);
 
   const tiles: Tile[] = [
     {
@@ -25,7 +25,6 @@ export const CowActionSummaryCard: React.FC = () => {
       label: 'PD Due',
       count: data?.pdDue ?? 0,
       icon: Stethoscope,
-      filter: 'pd-due',
       tone: 'bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/30 dark:hover:bg-amber-950/50 border-amber-200 dark:border-amber-900',
       iconTone: 'text-amber-600 dark:text-amber-400',
     },
@@ -34,7 +33,6 @@ export const CowActionSummaryCard: React.FC = () => {
       label: 'Close to Delivery',
       count: data?.closeToDelivery ?? 0,
       icon: CalendarClock,
-      filter: 'close-delivery',
       tone: 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-950/50 border-blue-200 dark:border-blue-900',
       iconTone: 'text-blue-600 dark:text-blue-400',
     },
@@ -43,7 +41,6 @@ export const CowActionSummaryCard: React.FC = () => {
       label: 'Overdue Delivery',
       count: data?.overdueDelivery ?? 0,
       icon: AlertTriangle,
-      filter: 'overdue-delivery',
       tone: 'bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 border-red-200 dark:border-red-900',
       iconTone: 'text-red-600 dark:text-red-400',
     },
@@ -52,7 +49,6 @@ export const CowActionSummaryCard: React.FC = () => {
       label: 'Needs AI',
       count: data?.needsAI ?? 0,
       icon: Syringe,
-      filter: 'needs-ai',
       tone: 'bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/30 dark:hover:bg-purple-950/50 border-purple-200 dark:border-purple-900',
       iconTone: 'text-purple-600 dark:text-purple-400',
     },
@@ -77,7 +73,7 @@ export const CowActionSummaryCard: React.FC = () => {
             <button
               key={t.key}
               type="button"
-              onClick={() => navigate(`/ai-tracking?filter=${t.filter}`)}
+              onClick={() => setOpenCategory(t.key)}
               className={cn(
                 'rounded-lg border-2 p-4 sm:p-5 text-left transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-ring',
                 t.tone
@@ -96,6 +92,11 @@ export const CowActionSummaryCard: React.FC = () => {
           );
         })}
       </div>
+
+      <CowActionDetailsModal
+        category={openCategory}
+        onClose={() => setOpenCategory(null)}
+      />
     </Card>
   );
 };
