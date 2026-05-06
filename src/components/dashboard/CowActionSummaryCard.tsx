@@ -92,6 +92,11 @@ export const CowActionSummaryCard: React.FC = () => {
           );
         })}
       </div>
+
+      <CowActionDetailsModal
+        category={openCategory}
+        onClose={() => setOpenCategory(null)}
+      />
     </Card>
   );
 };
