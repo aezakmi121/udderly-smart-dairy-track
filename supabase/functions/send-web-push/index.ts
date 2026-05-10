@@ -138,6 +138,14 @@ Deno.serve(async (req) => {
     let sent = 0;
     let failed = 0;
     const expiredIds: string[] = [];
+    const tag = (data as any)?.tag ?? null;
+
+    async function sha256Hex(s: string): Promise<string> {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    const events: any[] = [];
 
     await Promise.all(
       subscriptions.map(async (sub) => {
@@ -145,16 +153,35 @@ Deno.serve(async (req) => {
           endpoint: sub.endpoint,
           keys: { p256dh: sub.p256dh, auth: sub.auth },
         } as any);
+        const epHash = await sha256Hex(sub.endpoint);
         try {
           await subscriber.pushTextMessage(payload, {});
           sent++;
+          events.push({
+            user_id: sub.user_id,
+            subscription_endpoint_hash: epHash,
+            event_type: "dispatch_ok",
+            payload_tag: tag,
+            source: "send-web-push",
+            status: "sent",
+            meta: { title },
+          });
         } catch (err: any) {
           failed++;
           const status = err?.response?.status ?? err?.status;
-          // 404/410 — subscription is dead, prune it
           if (status === 404 || status === 410) {
             expiredIds.push(sub.id);
           }
+          events.push({
+            user_id: sub.user_id,
+            subscription_endpoint_hash: epHash,
+            event_type: "dispatch_fail",
+            payload_tag: tag,
+            source: "send-web-push",
+            status: "failed",
+            error_code: typeof status === "number" ? status : null,
+            meta: { title, error: err?.message },
+          });
           console.error("[send-web-push] failed", sub.endpoint.slice(0, 50), status, err?.message);
         }
       }),
@@ -162,6 +189,10 @@ Deno.serve(async (req) => {
 
     if (expiredIds.length > 0) {
       await supabase.from("push_subscriptions").delete().in("id", expiredIds);
+    }
+
+    if (events.length > 0) {
+      await supabase.from("notification_events").insert(events);
     }
 
     // Log to notification_history (one row per target user)

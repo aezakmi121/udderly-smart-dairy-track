@@ -13,6 +13,7 @@ import { useAppSetting } from '@/hooks/useAppSettings';
 import { useNotificationSettings } from '@/hooks/useNotificationSettings';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { NotificationDiagnosticsPanel } from './NotificationDiagnosticsPanel';
 
 const DEFAULT_ALERT_CONFIG = {
   pd_check_days: 60,
@@ -141,6 +142,10 @@ export const NotificationSettings = () => {
           </Button>
         )}
       </div>
+
+      <Separator />
+
+      <NotificationDiagnosticsPanel />
 
       <Separator />
 

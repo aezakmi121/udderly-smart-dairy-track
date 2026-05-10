@@ -24,7 +24,23 @@ export const usePushNotifications = () => {
       if (!user) return;
 
       const sub = await webPushService.getSubscription();
+
+      // Permission granted but no browser subscription → silently re-subscribe
+      // (handles Chrome's ~30-day rotation / SW garbage collection).
       if (!sub) {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && webPushService.isConfigured()) {
+          try {
+            const newSub = await webPushService.subscribe(user.id);
+            if (newSub) {
+              setIsEnabled(true);
+              setSubscriptionId(newSub.endpoint.slice(-12));
+              console.log('[push] silently re-subscribed expired device');
+              return;
+            }
+          } catch (e) {
+            console.warn('[push] silent re-subscribe failed', e);
+          }
+        }
         setIsEnabled(false);
         setSubscriptionId(null);
         return;

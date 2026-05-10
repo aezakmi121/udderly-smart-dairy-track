@@ -1882,6 +1882,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_events: {
+        Row: {
+          created_at: string
+          error_code: number | null
+          event_type: string
+          id: string
+          meta: Json | null
+          payload_tag: string | null
+          source: string | null
+          status: string | null
+          subscription_endpoint_hash: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_code?: number | null
+          event_type: string
+          id?: string
+          meta?: Json | null
+          payload_tag?: string | null
+          source?: string | null
+          status?: string | null
+          subscription_endpoint_hash?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_code?: number | null
+          event_type?: string
+          id?: string
+          meta?: Json | null
+          payload_tag?: string | null
+          source?: string | null
+          status?: string | null
+          subscription_endpoint_hash?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       notification_history: {
         Row: {
           created_at: string
