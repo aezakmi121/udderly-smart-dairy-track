@@ -108,3 +108,9 @@ verify_jwt = false
 
 [functions.farmer-payment-receipt-pdf]
 verify_jwt = false
+
+[functions.prune-stale-subscriptions]
+verify_jwt = false
+
+[functions.log-notification-event]
+verify_jwt = false
