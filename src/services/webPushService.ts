@@ -43,8 +43,15 @@ class WebPushService {
     if (!('serviceWorker' in navigator)) return null;
     try {
       const existing = await navigator.serviceWorker.getRegistration('/');
-      if (existing) return existing;
-      return await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      const reg = existing ?? await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      // Tell SW where to POST diagnostics events
+      try {
+        const supaUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+        const base = supaUrl ? `${supaUrl}/functions/v1` : '';
+        const target = reg.active || reg.waiting || reg.installing;
+        target?.postMessage({ type: 'SET_API_BASE', base });
+      } catch {}
+      return reg;
     } catch (e) {
       console.error('[webPush] SW register failed', e);
       return null;
