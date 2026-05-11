@@ -119,27 +119,41 @@ Deno.serve(async (req) => {
     const userIds = Array.from(new Set((targetUsers || []).map((u: any) => u.user_id)));
 
     if (userIds.length === 0) {
+      await supabase.from('notification_events').update({
+        event_type: 'dispatch_skipped_no_users',
+        status: 'skipped',
+        meta: { userCount: 0 },
+      }).in('id', notifications.map((n) => n.claimId));
       return new Response(JSON.stringify({ success: true, sent: 0, noUsers: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     let sent = 0;
     for (const notif of notifications) {
-      const { data: resp, error } = await supabase.functions.invoke('send-web-push', {
-        body: {
-          title: notif.title,
-          body: notif.body,
-          userIds,
-        data: { type: 'milking_reminder', session: notif.session, tag: notif.tag, sentAt: new Date().toISOString() },
-        },
-      });
-      const ok = !error && (resp?.sent ?? 0) > 0;
-      await supabase.from('notification_events').update({
-        event_type: ok ? 'dispatch_ok' : 'dispatch_fail',
-        status: ok ? 'sent' : 'failed',
-        meta: { recipients: resp?.sent ?? 0, error: error?.message ?? null, userCount: userIds.length },
-      }).eq('id', notif.claimId);
-      if (ok) sent++;
+      const sentAt = new Date().toISOString();
+      try {
+        const { data: resp, error } = await supabase.functions.invoke('send-web-push', {
+          body: {
+            title: notif.title,
+            body: notif.body,
+            userIds,
+            data: { type: 'milking_reminder', session: notif.session, tag: notif.tag, sentAt },
+          },
+        });
+        const ok = !error && (resp?.sent ?? 0) > 0;
+        await supabase.from('notification_events').update({
+          event_type: ok ? 'dispatch_ok' : 'dispatch_fail',
+          status: ok ? 'sent' : 'failed',
+          meta: { recipients: resp?.sent ?? 0, error: error?.message ?? null, userCount: userIds.length, sentAt },
+        }).eq('id', notif.claimId);
+        if (ok) sent++;
+      } catch (invokeError: any) {
+        await supabase.from('notification_events').update({
+          event_type: 'dispatch_fail',
+          status: 'failed',
+          meta: { error: invokeError?.message ?? 'Unknown error', userCount: userIds.length, sentAt },
+        }).eq('id', notif.claimId);
+      }
     }
 
     return new Response(
