@@ -24,6 +24,16 @@ function isWithinWindow(currentHHMM: string, targetHHMM: string, windowMinutes =
   return Math.abs((ch * 60 + cm) - (th * 60 + tm)) <= windowMinutes;
 }
 
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function tagToUuid(tag: string): Promise<string> {
+  const hex = await sha256Hex(tag);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -78,27 +88,25 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Idempotency guard: skip if a dispatch for this tag was already logged today
-    const notifications: typeof candidates = [];
+    // Atomic idempotency: claim a payload tag once using a deterministic UUID.
+    const notifications: ({ claimId: string } & typeof candidates[number])[] = [];
     for (const c of candidates) {
-      const { data: existing } = await supabase
-        .from('notification_events')
-        .select('id')
-        .eq('payload_tag', c.tag)
-        .eq('event_type', 'dispatch_ok')
-        .limit(1)
-        .maybeSingle();
-      if (existing) {
+      const claimId = await tagToUuid(`send-milking-reminders:${c.tag}`);
+      const { error: claimError } = await supabase.from('notification_events').insert({
+        id: claimId,
+        event_type: 'dispatch_claimed',
+        payload_tag: c.tag,
+        source: 'send-milking-reminders',
+        status: 'processing',
+        meta: { currentTime, timezone },
+      });
+      if (claimError) {
+        const duplicate = (claimError as any)?.code === '23505' || String(claimError.message || '').toLowerCase().includes('duplicate');
+        if (!duplicate) throw claimError;
         console.log(`[milking-reminders] skip duplicate tag=${c.tag}`);
-        await supabase.from('notification_events').insert({
-          event_type: 'dispatch_skipped_duplicate',
-          payload_tag: c.tag,
-          source: 'send-milking-reminders',
-          status: 'skipped',
-        });
         continue;
       }
-      notifications.push(c);
+      notifications.push({ ...c, claimId });
     }
 
     if (notifications.length === 0) {
@@ -122,17 +130,15 @@ Deno.serve(async (req) => {
           title: notif.title,
           body: notif.body,
           userIds,
-          data: { type: 'milking_reminder', session: notif.session, tag: notif.tag },
+        data: { type: 'milking_reminder', session: notif.session, tag: notif.tag, sentAt: new Date().toISOString() },
         },
       });
       const ok = !error && (resp?.sent ?? 0) > 0;
-      await supabase.from('notification_events').insert({
+      await supabase.from('notification_events').update({
         event_type: ok ? 'dispatch_ok' : 'dispatch_fail',
-        payload_tag: notif.tag,
-        source: 'send-milking-reminders',
         status: ok ? 'sent' : 'failed',
         meta: { recipients: resp?.sent ?? 0, error: error?.message ?? null, userCount: userIds.length },
-      });
+      }).eq('id', notif.claimId);
       if (ok) sent++;
     }
 
