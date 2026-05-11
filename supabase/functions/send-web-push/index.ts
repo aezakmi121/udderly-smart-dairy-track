@@ -133,11 +133,18 @@ Deno.serve(async (req) => {
 
     const appServer = await loadAppServer();
 
-    const payload = JSON.stringify({ title, body: msg, data: data || {} });
+    const apiBase = `${Deno.env.get("SUPABASE_URL")}/functions/v1`;
+    const payloadData = {
+      ...(data || {}),
+      apiBase,
+      sentAt: typeof (data as any)?.sentAt === "string" ? (data as any).sentAt : new Date().toISOString(),
+    };
+    const payload = JSON.stringify({ title, body: msg, data: payloadData });
 
     let sent = 0;
     let failed = 0;
     const expiredIds: string[] = [];
+    const successfulIds: string[] = [];
     const tag = (data as any)?.tag ?? null;
 
     async function sha256Hex(s: string): Promise<string> {
@@ -156,15 +163,16 @@ Deno.serve(async (req) => {
         const epHash = await sha256Hex(sub.endpoint);
         try {
           await subscriber.pushTextMessage(payload, {});
-          sent++;
+            sent++;
+            successfulIds.push(sub.id);
           events.push({
             user_id: sub.user_id,
             subscription_endpoint_hash: epHash,
-            event_type: "dispatch_ok",
+              event_type: "delivery_ok",
             payload_tag: tag,
             source: "send-web-push",
             status: "sent",
-            meta: { title },
+              meta: { title, sentAt: payloadData.sentAt },
           });
         } catch (err: any) {
           failed++;
@@ -175,12 +183,12 @@ Deno.serve(async (req) => {
           events.push({
             user_id: sub.user_id,
             subscription_endpoint_hash: epHash,
-            event_type: "dispatch_fail",
+              event_type: "delivery_fail",
             payload_tag: tag,
             source: "send-web-push",
             status: "failed",
             error_code: typeof status === "number" ? status : null,
-            meta: { title, error: err?.message },
+              meta: { title, error: err?.message, sentAt: payloadData.sentAt },
           });
           console.error("[send-web-push] failed", sub.endpoint.slice(0, 50), status, err?.message);
         }
@@ -189,6 +197,10 @@ Deno.serve(async (req) => {
 
     if (expiredIds.length > 0) {
       await supabase.from("push_subscriptions").delete().in("id", expiredIds);
+    }
+
+    if (successfulIds.length > 0) {
+      await supabase.from("push_subscriptions").update({ last_used_at: new Date().toISOString() }).in("id", successfulIds);
     }
 
     if (events.length > 0) {
