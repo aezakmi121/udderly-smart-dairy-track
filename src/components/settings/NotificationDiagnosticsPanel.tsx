@@ -58,14 +58,26 @@ export const NotificationDiagnosticsPanel = () => {
 
   useEffect(() => { load(); }, []);
 
-  // Triple-fire detection: same payload_tag with >1 dispatch_ok in 24h
+  // Duplicate scheduler detection only — per-device delivery rows are expected.
   const tripleFires = useMemo(() => {
     const map = new Map<string, number>();
     for (const e of events) {
-      if (e.event_type !== 'dispatch_ok' || !e.payload_tag) continue;
+      if (e.source !== 'send-milking-reminders' || e.event_type !== 'dispatch_ok' || !e.payload_tag) continue;
       map.set(e.payload_tag, (map.get(e.payload_tag) || 0) + 1);
     }
     return Array.from(map.entries()).filter(([, n]) => n > 1);
+  }, [events]);
+
+  const delayedDisplays = useMemo(() => {
+    return events
+      .filter((e) => e.event_type === 'sw_displayed' && e.payload_tag)
+      .map((e) => {
+        const sentAt = typeof e.meta?.sentAt === 'string' ? new Date(e.meta.sentAt) : null;
+        const delayMinutes = sentAt ? Math.round((new Date(e.created_at).getTime() - sentAt.getTime()) / 60000) : null;
+        return { ...e, delayMinutes };
+      })
+      .filter((e) => typeof e.delayMinutes === 'number' && e.delayMinutes >= 10)
+      .slice(0, 5);
   }, [events]);
 
   const counts = useMemo(() => {
@@ -123,8 +135,24 @@ export const NotificationDiagnosticsPanel = () => {
         </Card>
       )}
 
+      {delayedDisplays.length > 0 && (
+        <Card className="border-destructive/50">
+          <CardContent className="pt-4 flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-destructive">Delayed device delivery detected</p>
+              <ul className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                {delayedDisplays.map((e) => (
+                  <li key={e.id}><code>{e.payload_tag}</code> displayed {e.delayMinutes} min after send</li>
+                ))}
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {['dispatch_ok', 'dispatch_fail', 'sw_received', 'sw_clicked'].map((k) => (
+        {['dispatch_ok', 'delivery_ok', 'sw_received', 'sw_clicked'].map((k) => (
           <Card key={k}>
             <CardContent className="p-3">
               <p className="text-xs text-muted-foreground">{k.replace(/_/g, ' ')}</p>

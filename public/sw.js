@@ -24,6 +24,12 @@ self.addEventListener('message', (e) => {
   }
 });
 
+function resolveApiBase(payload) {
+  const candidate = payload?.data?.apiBase;
+  if (!API_BASE && typeof candidate === 'string') API_BASE = candidate;
+  return API_BASE;
+}
+
 async function getEndpoint() {
   try {
     const sub = await self.registration.pushManager.getSubscription();
@@ -56,6 +62,7 @@ self.addEventListener('push', (event) => {
   } catch (e) { console.error('[sw] push parse error', e); }
 
   const tag = payload.data?.tag;
+  resolveApiBase(payload);
 
   // Health pings: log + show a tiny silent-ish notif to satisfy userVisibleOnly,
   // immediately closed.
@@ -83,9 +90,9 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil((async () => {
-    await logEvent('sw_received', tag, { title });
+    await logEvent('sw_received', tag, { title, sentAt: payload.data?.sentAt || null, receivedAt: new Date().toISOString() });
     await self.registration.showNotification(title, options);
-    await logEvent('sw_displayed', tag, null);
+    await logEvent('sw_displayed', tag, { sentAt: payload.data?.sentAt || null, displayedAt: new Date().toISOString() });
   })());
 });
 
@@ -94,7 +101,7 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = (event.notification.data && event.notification.data.url) || '/';
   event.waitUntil((async () => {
-    await logEvent('sw_clicked', tag, { url });
+    await logEvent('sw_clicked', tag, { url, clickedAt: new Date().toISOString() });
     const wins = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const w of wins) {
       if ('focus' in w) {
