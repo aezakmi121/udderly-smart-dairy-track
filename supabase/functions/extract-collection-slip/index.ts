@@ -201,7 +201,7 @@ serve(async (req) => {
         );
       }
       return new Response(
-        JSON.stringify({ error: "AI extraction failed" }),
+        JSON.stringify({ error: "AI extraction failed", status: aiResp.status, detail: t.slice(0, 500) }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -210,18 +210,44 @@ serve(async (req) => {
     }
 
     const aiJson = await aiResp.json();
-    const toolCall =
-      aiJson.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (!toolCall) {
+    const msg = aiJson.choices?.[0]?.message;
+    let toolArgs: string | undefined = msg?.tool_calls?.[0]?.function?.arguments;
+
+    // Fallback: some models put JSON in content instead of tool_calls
+    if (!toolArgs && typeof msg?.content === "string") {
+      const c = msg.content.trim();
+      const jsonStart = c.indexOf("{");
+      const jsonEnd = c.lastIndexOf("}");
+      if (jsonStart >= 0 && jsonEnd > jsonStart) {
+        toolArgs = c.slice(jsonStart, jsonEnd + 1);
+      }
+    }
+
+    if (!toolArgs) {
+      console.error("extract-slip: no structured output", JSON.stringify(aiJson).slice(0, 800));
       return new Response(
-        JSON.stringify({ error: "AI did not return structured output" }),
+        JSON.stringify({
+          error: "AI did not return structured output",
+          finish_reason: aiJson.choices?.[0]?.finish_reason,
+          content_preview: typeof msg?.content === "string" ? msg.content.slice(0, 300) : null,
+        }),
         {
-          status: 500,
+          status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
     }
-    const parsed = JSON.parse(toolCall);
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(toolArgs);
+    } catch (e) {
+      console.error("extract-slip: JSON parse failed", toolArgs.slice(0, 500));
+      return new Response(
+        JSON.stringify({ error: "AI returned invalid JSON", preview: toolArgs.slice(0, 300) }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // Resolve date and session
     const collection_date =
