@@ -62,19 +62,37 @@ export const SlipScanModal: React.FC<Props> = ({ open, onOpenChange, defaultDate
     }
   }, [open, defaultDate, defaultSession]);
 
-  const fileToDataUrl = (f: File): Promise<string> =>
+  // Downscale + JPEG-compress so we stay well under the 6MB Edge Function body limit.
+  const fileToCompressedDataUrl = (f: File, maxEdge = 1800, quality = 0.85): Promise<string> =>
     new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload = () => res(r.result as string);
-      r.onerror = rej;
-      r.readAsDataURL(f);
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return rej(new Error('canvas ctx unavailable'));
+          ctx.drawImage(img, 0, 0, w, h);
+          res(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = rej;
+        img.src = reader.result as string;
+      };
+      reader.onerror = rej;
+      reader.readAsDataURL(f);
     });
 
   const handleExtract = async () => {
     if (!file) return;
     setExtracting(true);
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const dataUrl = await fileToCompressedDataUrl(file);
+      console.log('slip-scan: payload kb', Math.round(dataUrl.length / 1024));
       const { data, error } = await supabase.functions.invoke('extract-collection-slip', {
         body: {
           image_data_url: dataUrl,
@@ -89,6 +107,7 @@ export const SlipScanModal: React.FC<Props> = ({ open, onOpenChange, defaultDate
       if (data.session === 'morning' || data.session === 'evening') setSession(data.session);
       toast({ title: 'Slip extracted', description: 'Review rows below before saving.' });
     } catch (e: any) {
+      console.error('slip-scan error', e);
       toast({
         title: 'Extraction failed',
         description: e?.message || 'Could not parse slip.',
