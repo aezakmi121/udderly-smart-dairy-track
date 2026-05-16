@@ -128,7 +128,25 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Call Lovable AI Gateway with vision + tool calling
+    // Rough body-size guard: base64 ~1.37x raw. 5MB raw -> ~6.8MB base64 (Functions limit ~6MB).
+    const approxBytes = Math.floor((imageDataUrl.length * 3) / 4);
+    console.log("extract-slip: image approx bytes", approxBytes);
+    if (approxBytes > 5_500_000) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Image too large. Please retake at lower resolution (client should compress to <4MB).",
+        }),
+        {
+          status: 413,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    // Call Lovable AI Gateway with vision + tool calling.
+    // Use flash (free + vision) and tool_choice "required" — Gemini honors this more reliably
+    // than the OpenAI-style {type:"function",function:{name:...}} object.
     const aiResp = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
@@ -138,7 +156,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-pro",
+          model: "google/gemini-2.5-flash",
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             {
@@ -146,17 +164,14 @@ serve(async (req) => {
               content: [
                 {
                   type: "text",
-                  text: "Extract the slip data. Include every row from every species section.",
+                  text: "Extract the slip data. Include every row from every species section. Call return_slip_data with the result.",
                 },
                 { type: "image_url", image_url: { url: imageDataUrl } },
               ],
             },
           ],
           tools: [TOOL],
-          tool_choice: {
-            type: "function",
-            function: { name: "return_slip_data" },
-          },
+          tool_choice: "required",
         }),
       },
     );
@@ -186,7 +201,7 @@ serve(async (req) => {
         );
       }
       return new Response(
-        JSON.stringify({ error: "AI extraction failed" }),
+        JSON.stringify({ error: "AI extraction failed", status: aiResp.status, detail: t.slice(0, 500) }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -195,18 +210,44 @@ serve(async (req) => {
     }
 
     const aiJson = await aiResp.json();
-    const toolCall =
-      aiJson.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (!toolCall) {
+    const msg = aiJson.choices?.[0]?.message;
+    let toolArgs: string | undefined = msg?.tool_calls?.[0]?.function?.arguments;
+
+    // Fallback: some models put JSON in content instead of tool_calls
+    if (!toolArgs && typeof msg?.content === "string") {
+      const c = msg.content.trim();
+      const jsonStart = c.indexOf("{");
+      const jsonEnd = c.lastIndexOf("}");
+      if (jsonStart >= 0 && jsonEnd > jsonStart) {
+        toolArgs = c.slice(jsonStart, jsonEnd + 1);
+      }
+    }
+
+    if (!toolArgs) {
+      console.error("extract-slip: no structured output", JSON.stringify(aiJson).slice(0, 800));
       return new Response(
-        JSON.stringify({ error: "AI did not return structured output" }),
+        JSON.stringify({
+          error: "AI did not return structured output",
+          finish_reason: aiJson.choices?.[0]?.finish_reason,
+          content_preview: typeof msg?.content === "string" ? msg.content.slice(0, 300) : null,
+        }),
         {
-          status: 500,
+          status: 502,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
     }
-    const parsed = JSON.parse(toolCall);
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(toolArgs);
+    } catch (e) {
+      console.error("extract-slip: JSON parse failed", toolArgs.slice(0, 500));
+      return new Response(
+        JSON.stringify({ error: "AI returned invalid JSON", preview: toolArgs.slice(0, 300) }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // Resolve date and session
     const collection_date =
