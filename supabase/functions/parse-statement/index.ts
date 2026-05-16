@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
 
     await admin.from("statement_imports").update({ status: "extracted" }).eq("id", importId);
 
-    // Stage 2: send PDF directly to Gemini 2.5 Pro (multimodal)
+    // Stage 2: send PDF directly to Gemini (multimodal)
     const debitRows = await extractWithGemini(pdfBuf, categoryList, pmList);
     console.log(`Gemini extracted ${debitRows.length} debit rows.`);
 
@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// Gemini 2.5 Pro multimodal: PDF → debit rows + categorisation
+// Gemini multimodal: PDF → debit rows + categorisation
 // ─────────────────────────────────────────────────────────────
 async function extractWithGemini(pdfBuf: Uint8Array, categoryList: string, pmList: string): Promise<DebitRow[]> {
   const base64 = bufToBase64(pdfBuf);
@@ -206,8 +206,9 @@ Vendor: extract real merchant from UPI handles, e.g. "UPI-SWIGGY LIMITED-swiggy@
 Confidence: 0.95+ obvious, 0.7-0.9 reasonable, <0.7 guess. Return ONLY UUIDs from the lists above.`;
 
   // Google Gemini native API — multimodal PDF input via inline_data (free tier).
+  // gemini-2.5-flash is covered by the free tier; 2.5-pro is paid-only.
   const aiResp = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
     {
       method: "POST",
       headers: { "x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json" },
