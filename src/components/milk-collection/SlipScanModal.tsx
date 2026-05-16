@@ -101,7 +101,21 @@ export const SlipScanModal: React.FC<Props> = ({ open, onOpenChange, defaultDate
           session_override: session,
         },
       });
-      if (error) throw error;
+      if (error) {
+        // supabase.functions.invoke wraps non-2xx as FunctionsHttpError; the real
+        // JSON body (error + detail) lives on error.context (a Response).
+        let msg = error.message || 'Extraction failed';
+        const ctx = (error as any)?.context;
+        if (ctx && typeof ctx.json === 'function') {
+          try {
+            const body = await ctx.json();
+            msg = [body?.error, body?.detail].filter(Boolean).join(' — ') || msg;
+          } catch {
+            /* keep generic message */
+          }
+        }
+        throw new Error(msg);
+      }
       if (!data?.success) throw new Error(data?.error || 'Extraction failed');
       setResult(data as ExtractionResult);
       if (data.collection_date) setDate(data.collection_date);

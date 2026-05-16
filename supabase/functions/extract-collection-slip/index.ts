@@ -197,6 +197,7 @@ serve(async (req) => {
           JSON.stringify({
             error:
               "Gemini rate limit or daily free-tier quota hit. Try again shortly.",
+            detail: t.slice(0, 800),
           }),
           {
             status: 429,
@@ -209,6 +210,7 @@ serve(async (req) => {
           JSON.stringify({
             error:
               "Gemini rejected the API key. Check the GEMINI_API_KEY secret in Supabase.",
+            detail: t.slice(0, 800),
           }),
           {
             status: aiResp.status,
