@@ -10,8 +10,22 @@ const corsHeaders = {
 const SYSTEM_PROMPT = `You extract structured data from photos of dairy milk-collection printed slips.
 The slip has a header (date, shift M/E/All, MPP code), then per-species sections (Cow, Buff/Buffalo).
 Each section has rows with: Code, Qty(Lt), Fat%, SNF%, Amount.
-Numbers may have decimal points; preserve exactly. Codes are integers as strings.
-Return ALL rows you can read, even if Amount is 0.00 (we will recompute).
+
+CRITICAL — do NOT return these as rows:
+- The SECTION TOTAL line printed after each species' rows. It is a summary, not a farmer.
+  Its first number is the COUNT of rows in that section (e.g. "9" after 9 Cow rows,
+  "18" after 18 Buff rows); its other columns are sums/averages of the section.
+- The "Total Summary" block at the bottom (Total Qty, Average Fat, Average SNF,
+  Average Rate, Total Amount). Never return any of those.
+- Page headers, the MPP/date/rate header lines, and the "User" / "Print Time" lines.
+
+Only return genuine per-farmer rows: a small integer farmer Code followed by that
+farmer's own Qty, Fat%, SNF% and Amount.
+
+DIGIT ACCURACY: these slips are dot-matrix/thermal printed. Read every digit
+carefully — 0 vs 8, 1 vs 7, 3 vs 9, 5 vs 6 are easy to confuse. Preserve decimal
+points exactly. Codes are integers as strings.
+Return every genuine farmer row even if its Amount is 0.00 (we recompute it).
 Shift values: "M" = morning, "E" = evening, "All" = both sessions.`;
 
 const TOOL = {
@@ -125,8 +139,8 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not configured");
 
     // Rough body-size guard: base64 ~1.37x raw. 5MB raw -> ~6.8MB base64 (Functions limit ~6MB).
     const approxBytes = Math.floor((imageDataUrl.length * 3) / 4);
@@ -144,19 +158,18 @@ serve(async (req) => {
       );
     }
 
-    // Call Lovable AI Gateway with vision + tool calling.
-    // Use flash (free + vision) and tool_choice "required" — Gemini honors this more reliably
-    // than the OpenAI-style {type:"function",function:{name:...}} object.
+    // Call Google Gemini directly via its OpenAI-compatible endpoint (free tier).
+    // gemini-2.5-pro reads dot-matrix slip digits more reliably than flash.
     const aiResp = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          Authorization: `Bearer ${GEMINI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
+          model: "gemini-2.5-pro",
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             {
@@ -181,21 +194,24 @@ serve(async (req) => {
       console.error("AI gateway error", aiResp.status, t);
       if (aiResp.status === 429) {
         return new Response(
-          JSON.stringify({ error: "AI rate limit hit. Try again shortly." }),
+          JSON.stringify({
+            error:
+              "Gemini rate limit or daily free-tier quota hit. Try again shortly.",
+          }),
           {
             status: 429,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           },
         );
       }
-      if (aiResp.status === 402) {
+      if (aiResp.status === 401 || aiResp.status === 403) {
         return new Response(
           JSON.stringify({
             error:
-              "AI credits exhausted. Add funds in Lovable Workspace settings.",
+              "Gemini rejected the API key. Check the GEMINI_API_KEY secret in Supabase.",
           }),
           {
-            status: 402,
+            status: aiResp.status,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           },
         );
@@ -247,6 +263,30 @@ serve(async (req) => {
         JSON.stringify({ error: "AI returned invalid JSON", preview: toolArgs.slice(0, 300) }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    // Drop section-total / summary rows the model sometimes mistakes for farmers.
+    // A total row's qty equals the sum of the other rows in its section.
+    for (const sec of parsed.sections || []) {
+      const rows: any[] = Array.isArray(sec.rows) ? sec.rows : [];
+      if (rows.length >= 3) {
+        const qtySum = rows.reduce(
+          (s: number, r: any) => s + (Number(r.qty) || 0),
+          0,
+        );
+        sec.rows = rows.filter((r: any) => {
+          const qty = Number(r.qty) || 0;
+          const others = qtySum - qty;
+          const looksLikeTotal = qty > 0 && Math.abs(qty - others) < 0.02;
+          if (looksLikeTotal) {
+            console.log(
+              "extract-slip: dropped total-like row",
+              JSON.stringify(r),
+            );
+          }
+          return !looksLikeTotal;
+        });
+      }
     }
 
     // Resolve date and session

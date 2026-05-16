@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY")!;
 
 interface DebitRow {
   txn_date: string; // YYYY-MM-DD
@@ -149,36 +149,31 @@ Deno.serve(async (req) => {
 async function extractWithGemini(pdfBuf: Uint8Array, categoryList: string, pmList: string): Promise<DebitRow[]> {
   const base64 = bufToBase64(pdfBuf);
 
-  const tools = [{
-    type: "function",
-    function: {
-      name: "return_debit_transactions",
-      description: "Return all DEBIT transactions (money leaving account) from this Indian bank statement PDF.",
-      parameters: {
-        type: "object",
-        properties: {
-          transactions: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                txn_date: { type: "string", description: "ISO date YYYY-MM-DD" },
-                narration: { type: "string", description: "Full narration / description text from the statement, joined onto one line" },
-                ref_no: { type: "string", description: "Cheque or reference number, empty string if none" },
-                amount: { type: "number", description: "Withdrawal amount in rupees, positive number" },
-                category_id: { type: "string", description: "UUID from category list, empty string if no good match" },
-                payment_method_id: { type: "string", description: "UUID from payment method list, empty string if none" },
-                vendor_name: { type: "string", description: "Cleaned vendor name (e.g. UPI-SWIGGY-... → Swiggy)" },
-                confidence: { type: "number", description: "0-1 confidence in category/payment_method/vendor" },
-              },
-              required: ["txn_date", "narration", "amount", "confidence"],
-              additionalProperties: false,
+  const functionDeclarations = [{
+    name: "return_debit_transactions",
+    description: "Return all DEBIT transactions (money leaving account) from this Indian bank statement PDF.",
+    parameters: {
+      type: "object",
+      properties: {
+        transactions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              txn_date: { type: "string", description: "ISO date YYYY-MM-DD" },
+              narration: { type: "string", description: "Full narration / description text from the statement, joined onto one line" },
+              ref_no: { type: "string", description: "Cheque or reference number, empty string if none" },
+              amount: { type: "number", description: "Withdrawal amount in rupees, positive number" },
+              category_id: { type: "string", description: "UUID from category list, empty string if no good match" },
+              payment_method_id: { type: "string", description: "UUID from payment method list, empty string if none" },
+              vendor_name: { type: "string", description: "Cleaned vendor name (e.g. UPI-SWIGGY-... → Swiggy)" },
+              confidence: { type: "number", description: "0-1 confidence in category/payment_method/vendor" },
             },
+            required: ["txn_date", "narration", "amount", "confidence"],
           },
         },
-        required: ["transactions"],
-        additionalProperties: false,
       },
+      required: ["transactions"],
     },
   }];
 
@@ -210,36 +205,44 @@ Vendor: extract real merchant from UPI handles, e.g. "UPI-SWIGGY LIMITED-swiggy@
 
 Confidence: 0.95+ obvious, 0.7-0.9 reasonable, <0.7 guess. Return ONLY UUIDs from the lists above.`;
 
-  const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-pro",
-      messages: [
-        { role: "system", content: systemPrompt },
-        {
+  // Google Gemini native API — multimodal PDF input via inline_data (free tier).
+  const aiResp = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
+    {
+      method: "POST",
+      headers: { "x-goog-api-key": GEMINI_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{
           role: "user",
-          content: [
-            { type: "text", text: "Extract every debit transaction from this statement. Return them in chronological order." },
-            { type: "file", file: { filename: "statement.pdf", file_data: `data:application/pdf;base64,${base64}` } },
+          parts: [
+            { text: "Extract every debit transaction from this statement. Return them in chronological order." },
+            { inline_data: { mime_type: "application/pdf", data: base64 } },
           ],
+        }],
+        tools: [{ function_declarations: functionDeclarations }],
+        tool_config: {
+          function_calling_config: {
+            mode: "ANY",
+            allowed_function_names: ["return_debit_transactions"],
+          },
         },
-      ],
-      tools,
-      tool_choice: { type: "function", function: { name: "return_debit_transactions" } },
-    }),
-  });
+      }),
+    },
+  );
 
   if (!aiResp.ok) {
     const t = await aiResp.text();
-    if (aiResp.status === 429) throw new Error("AI rate limit exceeded, please try again in a minute");
-    if (aiResp.status === 402) throw new Error("Lovable AI credits exhausted. Add credits in Settings → Workspace → Usage.");
+    if (aiResp.status === 429) throw new Error("Gemini rate limit or daily free-tier quota hit, please try again later");
+    if (aiResp.status === 401 || aiResp.status === 403) throw new Error("Gemini rejected the API key. Check the GEMINI_API_KEY secret in Supabase.");
     throw new Error("AI gateway error: " + t.slice(0, 500));
   }
   const aiJson = await aiResp.json();
-  const toolCall = aiJson.choices?.[0]?.message?.tool_calls?.[0];
-  if (!toolCall) throw new Error("AI did not return any transactions");
-  const parsed = JSON.parse(toolCall.function.arguments);
+  const fnCall = (aiJson.candidates?.[0]?.content?.parts ?? [])
+    .map((p: any) => p.functionCall)
+    .find((fc: any) => fc && fc.name === "return_debit_transactions");
+  if (!fnCall) throw new Error("AI did not return any transactions");
+  const parsed = fnCall.args ?? {};
   const txns: any[] = parsed.transactions ?? [];
 
   return txns
