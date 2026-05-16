@@ -158,8 +158,8 @@ serve(async (req) => {
       );
     }
 
-    // Call Google Gemini directly via its OpenAI-compatible endpoint (free tier).
-    // gemini-2.5-pro reads dot-matrix slip digits more reliably than flash.
+    // Call Google Gemini directly via its OpenAI-compatible endpoint.
+    // gemini-2.5-flash is the vision model covered by the free tier (2.5-pro is paid-only).
     const aiResp = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
       {
@@ -169,7 +169,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gemini-2.5-pro",
+          model: "gemini-2.5-flash",
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             {
