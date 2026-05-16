@@ -63,7 +63,8 @@ export const SlipScanModal: React.FC<Props> = ({ open, onOpenChange, defaultDate
   }, [open, defaultDate, defaultSession]);
 
   // Downscale + JPEG-compress so we stay well under the 6MB Edge Function body limit.
-  const fileToCompressedDataUrl = (f: File, maxEdge = 1800, quality = 0.85): Promise<string> =>
+  // Higher res + quality than before: small slip digits (0 vs 8) need the detail.
+  const fileToCompressedDataUrl = (f: File, maxEdge = 2400, quality = 0.92): Promise<string> =>
     new Promise((res, rej) => {
       const reader = new FileReader();
       reader.onload = () => {
