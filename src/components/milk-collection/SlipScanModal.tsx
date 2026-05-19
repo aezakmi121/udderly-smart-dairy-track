@@ -189,6 +189,23 @@ export const SlipScanModal: React.FC<Props> = ({ open, onOpenChange, defaultDate
       toast({ title: 'Saved', description: `${rows.length} collections recorded.` });
       qc.invalidateQueries({ queryKey: ['milk-collections'] });
       qc.invalidateQueries({ queryKey: ['daily-collection-stats'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-overview'] });
+
+      // Fire-and-forget: push a collection summary to staff. A failure here
+      // must not affect the (already successful) save.
+      void supabase.functions
+        .invoke('notify-collection-summary', {
+          body: {
+            collection_date: date,
+            session,
+            total_quantity: totals.qty,
+            total_amount: totals.amount,
+            farmer_count: totals.count,
+            source: 'slip-scan',
+          },
+        })
+        .catch((err) => console.warn('collection summary notification failed', err));
+
       onOpenChange(false);
     } catch (e: any) {
       toast({

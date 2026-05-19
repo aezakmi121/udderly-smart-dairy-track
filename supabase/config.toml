@@ -106,6 +106,9 @@ verify_jwt = false
 [functions.farmer-request-advance]
 verify_jwt = false
 
+[functions.notify-collection-summary]
+verify_jwt = true
+
 [functions.farmer-payment-receipt-pdf]
 verify_jwt = false
 

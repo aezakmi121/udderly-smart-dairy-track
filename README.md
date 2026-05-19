@@ -71,6 +71,10 @@ npm run dev
 |----------|-----------------|
 | `VITE_SUPABASE_URL` | Supabase Dashboard → Settings → API |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase Dashboard → Settings → API (anon key) |
+| `VITE_SUPABASE_PROJECT_ID` | Supabase Dashboard → Settings → General |
+| `VITE_VAPID_PUBLIC_KEY` | VAPID public key for Web Push notifications |
+
+> Edge functions also need server-side secrets set in Supabase (Project Settings → Edge Functions → Secrets), including `GEMINI_API_KEY` for AI slip/statement extraction.
 
 ### Database Setup
 
@@ -108,5 +112,6 @@ The app is deployed on Vercel. Push to `main` to trigger a production deploy.
 
 - **Frontend**: React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui
 - **Backend**: Supabase (PostgreSQL + Auth + Edge Functions)
-- **Push Notifications**: OneSignal
+- **Push Notifications**: Native Web Push (VAPID)
+- **AI Extraction**: Google Gemini (slip scanning, bank-statement parsing)
 - **Deployment**: Vercel
