@@ -1,73 +1,35 @@
-
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Beef, Baby, Milk, Users, TrendingUp, Calendar } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent } from '@/components/ui/card';
+import { Beef, Baby, Users, Wallet, Calendar } from 'lucide-react';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { useDashboardOverview } from '@/hooks/useDashboardOverview';
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
 import { CowActionSummaryCard } from './CowActionSummaryCard';
+import { TodaySnapshot } from './TodaySnapshot';
+import { WeeklyTrendChart } from './WeeklyTrendChart';
 import { formatDate } from '@/lib/dateUtils';
 
 export const Dashboard = () => {
-  const { canEdit, userRole } = useUserPermissions();
+  const { canEdit } = useUserPermissions();
+  const { data: overview, isLoading } = useDashboardOverview();
 
-  // Query for dashboard stats - only run when user role is loaded
-  const { data: stats, isLoading } = useQuery({
-    queryKey: ['dashboard-stats', userRole],
-    queryFn: async () => {
-      const results = await Promise.allSettled([
-        canEdit.cows ? supabase.from('cows').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
-        canEdit.calves ? supabase.from('calves').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
-        canEdit.milkProduction ? supabase
-          .from('milk_production')
-          .select('quantity')
-          .gte('production_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]) : Promise.resolve({ data: [] }),
-        canEdit.farmers ? supabase.from('farmers').select('*', { count: 'exact' }) : Promise.resolve({ count: 0 }),
-      ]);
+  const showCollection = canEdit.milkCollection;
+  const showProduction = canEdit.milkProduction;
 
-      return {
-        totalCows: results[0].status === 'fulfilled' ? results[0].value.count || 0 : 0,
-        totalCalves: results[1].status === 'fulfilled' ? results[1].value.count || 0 : 0,
-        monthlyMilk: results[2].status === 'fulfilled' && results[2].value.data 
-          ? (results[2].value.data as Array<{ quantity: number }>).reduce((sum: number, record: { quantity: number }) => sum + (record.quantity || 0), 0)
-          : 0,
-        totalFarmers: results[3].status === 'fulfilled' ? results[3].value.count || 0 : 0,
-      };
+  const refStats = [
+    canEdit.cows && { label: 'Cows', value: overview?.counts.cows ?? 0, icon: Beef },
+    canEdit.calves && { label: 'Calves', value: overview?.counts.calves ?? 0, icon: Baby },
+    canEdit.farmers && { label: 'Farmers', value: overview?.counts.farmers ?? 0, icon: Users },
+    showCollection && {
+      label: '7-day collection',
+      value: `₹${(overview?.weekCollectionValue ?? 0).toFixed(0)}`,
+      icon: Wallet,
     },
-    enabled: !!userRole, // Only run query when user role is loaded
-  });
-
-  const statsCards = [
-    {
-      title: 'Total Cows',
-      value: stats?.totalCows || 0,
-      icon: Beef,
-      color: 'text-blue-600',
-      show: canEdit.cows
-    },
-    {
-      title: 'Total Calves',
-      value: stats?.totalCalves || 0,
-      icon: Baby,
-      color: 'text-pink-600',
-      show: canEdit.calves
-    },
-    {
-      title: 'Monthly Milk (L)',
-      value: stats?.monthlyMilk?.toFixed(1) || '0',
-      icon: Milk,
-      color: 'text-green-600',
-      show: canEdit.milkProduction
-    },
-    {
-      title: 'Total Farmers',
-      value: stats?.totalFarmers || 0,
-      icon: Users,
-      color: 'text-purple-600',
-      show: canEdit.farmers
-    },
-  ].filter(card => card.show);
+  ].filter(Boolean) as Array<{
+    label: string;
+    value: React.ReactNode;
+    icon: React.ComponentType<{ className?: string }>;
+  }>;
 
   return (
     <div className="space-y-6">
@@ -79,35 +41,52 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* Cow Action Summary - prominent */}
+      {/* Cows that need attention */}
       {canEdit.cows && <CowActionSummaryCard />}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statsCards.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {stat.title}
-                </CardTitle>
-                <Icon className={`h-4 w-4 ${stat.color}`} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {isLoading ? '...' : stat.value}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+      {/* Today's milk operations vs yesterday */}
+      {(showCollection || showProduction) && (
+        <TodaySnapshot
+          overview={overview}
+          isLoading={isLoading}
+          showCollection={showCollection}
+          showProduction={showProduction}
+        />
+      )}
 
-      {/* Notifications Panel */}
-      <div>
-        <NotificationPanel />
-      </div>
+      {/* 7-day trend */}
+      {(showCollection || showProduction) && overview && (
+        <WeeklyTrendChart
+          data={overview.trend}
+          showCollection={showCollection}
+          showProduction={showProduction}
+        />
+      )}
+
+      {/* Reference counts */}
+      {refStats.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {refStats.map((s) => {
+            const Icon = s.icon;
+            return (
+              <Card key={s.label}>
+                <CardContent className="flex items-center gap-3 py-4">
+                  <Icon className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <div className="text-lg font-bold leading-none">
+                      {isLoading ? '…' : s.value}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{s.label}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Alerts */}
+      <NotificationPanel />
     </div>
   );
 };
