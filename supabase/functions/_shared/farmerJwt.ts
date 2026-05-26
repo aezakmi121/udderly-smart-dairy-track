@@ -2,7 +2,10 @@
 import { create, verify, getNumericDate } from "https://deno.land/x/djwt@v3.0.2/mod.ts";
 
 async function getKey(): Promise<CryptoKey> {
-  const secret = Deno.env.get('FARMER_JWT_SECRET') ?? 'dev-fallback-change-me-please-32chars!!';
+  const secret = Deno.env.get('FARMER_JWT_SECRET');
+  if (!secret || secret.length < 32) {
+    throw new Error('FARMER_JWT_SECRET is not configured or is too short (min 32 chars)');
+  }
   const enc = new TextEncoder().encode(secret);
   return await crypto.subtle.importKey('raw', enc, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 }
