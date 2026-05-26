@@ -15,6 +15,8 @@ import {
   printCollectionSlip,
   getSlipPreview,
   getSavedPrinter,
+  getPrintMethod,
+  isAndroid,
   CollectionSlipData,
 } from '@/services/thermalPrinting';
 
@@ -44,8 +46,12 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
   const [isPrinting, setIsPrinting] = useState(false);
   const { toast } = useToast();
 
-  const isSupported = isWebBluetoothSupported();
+  const method = getPrintMethod();
+  const onAndroid = isAndroid();
+  const isWBSupported = isWebBluetoothSupported();
   const savedPrinter = getSavedPrinter();
+
+  const canPrint = method === 'rawbt' ? onAndroid : (isWBSupported && !!savedPrinter);
 
   if (!collection) return null;
 
@@ -65,21 +71,26 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
   const previewText = getSlipPreview(slipData);
 
   const handlePrint = async () => {
-    if (!isSupported) {
-      toast({
-        title: 'Not Supported',
-        description: 'Web Bluetooth is not supported in this browser. Use Chrome on Android or desktop.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!savedPrinter) {
-      toast({
-        title: 'No Printer Configured',
-        description: 'Please select a printer in Settings → Printer Settings.',
-        variant: 'destructive',
-      });
+    if (!canPrint) {
+      if (method === 'rawbt' && !onAndroid) {
+        toast({
+          title: 'Not Supported',
+          description: 'RawBT only works on Android. Switch print method in Settings → Printer Settings.',
+          variant: 'destructive',
+        });
+      } else if (method === 'web-bluetooth' && !isWBSupported) {
+        toast({
+          title: 'Not Supported',
+          description: 'Web Bluetooth is not supported in this browser. Use Chrome on Android or desktop.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'No Printer Configured',
+          description: 'Please select a printer in Settings → Printer Settings.',
+          variant: 'destructive',
+        });
+      }
       return;
     }
 
@@ -87,8 +98,10 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
     try {
       await printCollectionSlip(slipData);
       toast({
-        title: 'Print Successful',
-        description: 'Collection slip printed successfully!',
+        title: 'Print Sent',
+        description: method === 'rawbt'
+          ? 'Sent to RawBT. Check the printer for the slip.'
+          : 'Collection slip printed successfully!',
       });
       onOpenChange(false);
     } catch (error: any) {
@@ -114,7 +127,17 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
 
         {/* Printer Status */}
         <div className="text-sm">
-          {isSupported ? (
+          {method === 'rawbt' ? (
+            onAndroid ? (
+              <p className="text-muted-foreground">
+                Method: <span className="font-medium text-foreground">RawBT</span> (Android print service)
+              </p>
+            ) : (
+              <p className="text-destructive">
+                RawBT only works on Android. Switch to Web Bluetooth in Settings → Printer Settings.
+              </p>
+            )
+          ) : isWBSupported ? (
             savedPrinter ? (
               <p className="text-muted-foreground">
                 Printer: <span className="font-medium text-foreground">{savedPrinter.name}</span>
@@ -145,7 +168,7 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
           </Button>
           <Button
             onClick={handlePrint}
-            disabled={isPrinting || !isSupported || !savedPrinter}
+            disabled={isPrinting || !canPrint}
           >
             <Printer className={`h-4 w-4 mr-2 ${isPrinting ? 'animate-pulse' : ''}`} />
             {isPrinting ? 'Printing...' : 'Print'}
