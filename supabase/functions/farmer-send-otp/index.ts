@@ -36,7 +36,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const codeNum = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000;
+    const code = String(codeNum).padStart(6, '0');
     const enc = new TextEncoder().encode(code + ':' + phone);
     const buf = await crypto.subtle.digest('SHA-256', enc);
     const codeHash = Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
