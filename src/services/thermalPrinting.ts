@@ -21,6 +21,13 @@ export interface CollectionSlipData {
 // Storage keys
 const SAVED_PRINTER_KEY = 'thermal_printer_address';
 const SAVED_PRINTER_NAME_KEY = 'thermal_printer_name';
+const PRINT_METHOD_KEY = 'thermal_print_method';
+
+// Print transport method
+export type PrintMethod = 'rawbt' | 'web-bluetooth';
+
+// RawBT Android package identifier
+const RAWBT_PACKAGE = 'ru.a402d.rawbtprinter';
 
 // Common thermal printer service UUIDs (different printers use different UUIDs)
 const PRINTER_SERVICE_UUIDS = [
@@ -61,6 +68,27 @@ export const isSecureContext = (): boolean => {
 // Check if running on native platform (for backward compatibility)
 export const isNativePlatform = (): boolean => {
   return isWebBluetoothSupported();
+};
+
+// Detect Android — RawBT is Android-only
+export const isAndroid = (): boolean => {
+  return typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+};
+
+// RawBT is only usable inside an Android browser/PWA where the intent: scheme works
+export const isRawBTAvailable = (): boolean => {
+  return isAndroid();
+};
+
+// Currently selected print transport (user override or platform default)
+export const getPrintMethod = (): PrintMethod => {
+  const stored = localStorage.getItem(PRINT_METHOD_KEY);
+  if (stored === 'rawbt' || stored === 'web-bluetooth') return stored;
+  return isAndroid() ? 'rawbt' : 'web-bluetooth';
+};
+
+export const setPrintMethod = (method: PrintMethod): void => {
+  localStorage.setItem(PRINT_METHOD_KEY, method);
 };
 
 // Get saved printer from localStorage
@@ -345,110 +373,94 @@ const buildSlipData = (data: CollectionSlipData): Uint8Array => {
   return new Uint8Array(commands);
 };
 
-// Print collection slip
-export const printCollectionSlip = async (data: CollectionSlipData): Promise<boolean> => {
-  if (!isWebBluetoothSupported()) {
-    console.warn('Web Bluetooth is not supported in this browser');
-    return false;
-  }
-
-  try {
-    const savedPrinter = getSavedPrinter();
-    
-    if (!savedPrinter) {
-      throw new Error('No printer configured. Please select a printer in settings.');
-    }
-
-    // Ensure we're connected
-    if (!connectedDevice?.gatt?.connected) {
-      await connectToPrinter(savedPrinter.address);
-    }
-
-    const printData = buildSlipData(data);
-
-    if (printerCharacteristic) {
-      // Send data in chunks (BLE has packet size limits)
-      const chunkSize = 20;
-      for (let i = 0; i < printData.length; i += chunkSize) {
-        const chunk = printData.slice(i, i + chunkSize);
-        await printerCharacteristic.writeValue(chunk);
-        // Small delay between chunks
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-    } else {
-      console.error('Printer characteristic not available');
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error printing slip:', error);
-    throw error;
-  }
+// Build print data for the test slip
+const buildTestSlipData = (printerLabel: string): Uint8Array => {
+  const commands: number[] = [];
+  commands.push(...ESC_POS.INIT);
+  commands.push(...ESC_POS.ALIGN_CENTER);
+  commands.push(...ESC_POS.BOLD_ON);
+  commands.push(...textToBytes('================================\n'));
+  commands.push(...textToBytes('TEST PRINT\n'));
+  commands.push(...textToBytes('================================\n'));
+  commands.push(...ESC_POS.BOLD_OFF);
+  commands.push(...ESC_POS.ALIGN_LEFT);
+  commands.push(...textToBytes(`Printer: ${printerLabel}\n`));
+  commands.push(...textToBytes(`Time: ${new Date().toLocaleTimeString()}\n`));
+  commands.push(...ESC_POS.ALIGN_CENTER);
+  commands.push(...textToBytes('================================\n'));
+  commands.push(...textToBytes('Print test successful!\n'));
+  commands.push(...textToBytes('================================\n'));
+  commands.push(...ESC_POS.FEED);
+  commands.push(...ESC_POS.FEED);
+  commands.push(...ESC_POS.FEED);
+  return new Uint8Array(commands);
 };
 
-// Print a test slip
-export const printTestSlip = async (): Promise<boolean> => {
+// Send raw ESC/POS bytes via RawBT on Android. RawBT receives the intent,
+// hands the bytes to its already-paired Bluetooth printer over SPP, and the
+// user returns to the PWA. If RawBT is not installed, Chrome opens the Play
+// Store listing — the caller cannot tell printing actually succeeded.
+const printViaRawBT = (bytes: Uint8Array): boolean => {
+  if (!isAndroid()) {
+    throw new Error('RawBT only works on Android. Open this app in Chrome on Android, or switch to Web Bluetooth in Printer Settings.');
+  }
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const b64 = btoa(binary);
+  const intentUrl = `intent:rawbt:base64,${b64}#Intent;scheme=rawbt;package=${RAWBT_PACKAGE};end;`;
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = intentUrl;
+  document.body.appendChild(iframe);
+  setTimeout(() => {
+    try { document.body.removeChild(iframe); } catch { /* already removed */ }
+  }, 1500);
+  return true;
+};
+
+// Send bytes to the printer over Web Bluetooth (existing transport).
+const printViaWebBluetooth = async (bytes: Uint8Array): Promise<boolean> => {
   if (!isWebBluetoothSupported()) {
-    console.warn('Web Bluetooth is not supported in this browser');
-    return false;
+    throw new Error('Web Bluetooth is not supported in this browser. Use Chrome on Android or desktop.');
   }
-
-  try {
-    const savedPrinter = getSavedPrinter();
-    
-    if (!savedPrinter) {
-      throw new Error('No printer configured. Please select a printer in settings.');
-    }
-
-    // Ensure we're connected
-    if (!connectedDevice?.gatt?.connected) {
-      await connectToPrinter(savedPrinter.address);
-    }
-
-    const commands: number[] = [];
-    
-    // Initialize
-    commands.push(...ESC_POS.INIT);
-    
-    // Test content
-    commands.push(...ESC_POS.ALIGN_CENTER);
-    commands.push(...ESC_POS.BOLD_ON);
-    commands.push(...textToBytes('================================\n'));
-    commands.push(...textToBytes('TEST PRINT\n'));
-    commands.push(...textToBytes('================================\n'));
-    commands.push(...ESC_POS.BOLD_OFF);
-    commands.push(...ESC_POS.ALIGN_LEFT);
-    commands.push(...textToBytes(`Printer: ${savedPrinter.name}\n`));
-    commands.push(...textToBytes(`Status: Connected\n`));
-    commands.push(...textToBytes(`Time: ${new Date().toLocaleTimeString()}\n`));
-    commands.push(...ESC_POS.ALIGN_CENTER);
-    commands.push(...textToBytes('================================\n'));
-    commands.push(...textToBytes('Print test successful!\n'));
-    commands.push(...textToBytes('================================\n'));
-    commands.push(...ESC_POS.FEED);
-    commands.push(...ESC_POS.FEED);
-    commands.push(...ESC_POS.FEED);
-
-    const printData = new Uint8Array(commands);
-
-    if (printerCharacteristic) {
-      const chunkSize = 20;
-      for (let i = 0; i < printData.length; i += chunkSize) {
-        const chunk = printData.slice(i, i + chunkSize);
-        await printerCharacteristic.writeValue(chunk);
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-    } else {
-      console.error('Printer characteristic not available');
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error printing test slip:', error);
-    throw error;
+  const savedPrinter = getSavedPrinter();
+  if (!savedPrinter) {
+    throw new Error('No printer configured. Please select a printer in settings.');
   }
+  if (!connectedDevice?.gatt?.connected) {
+    await connectToPrinter(savedPrinter.address);
+  }
+  if (!printerCharacteristic) {
+    throw new Error('Printer characteristic not available');
+  }
+  const chunkSize = 20;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.slice(i, i + chunkSize);
+    await printerCharacteristic.writeValue(chunk);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return true;
+};
+
+// Print collection slip — dispatches to the configured transport (RawBT or Web Bluetooth)
+export const printCollectionSlip = async (data: CollectionSlipData): Promise<boolean> => {
+  const bytes = buildSlipData(data);
+  const method = getPrintMethod();
+  if (method === 'rawbt') return printViaRawBT(bytes);
+  return printViaWebBluetooth(bytes);
+};
+
+// Print a test slip — dispatches to the configured transport
+export const printTestSlip = async (): Promise<boolean> => {
+  const method = getPrintMethod();
+  if (method === 'rawbt') {
+    return printViaRawBT(buildTestSlipData('RawBT'));
+  }
+  const savedPrinter = getSavedPrinter();
+  if (!savedPrinter) {
+    throw new Error('No printer configured. Please select a printer in settings.');
+  }
+  return printViaWebBluetooth(buildTestSlipData(savedPrinter.name));
 };
 
 // Get preview text for slip (for UI display)
