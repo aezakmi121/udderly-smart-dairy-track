@@ -91,23 +91,34 @@ Deno.serve(async (req) => {
         })
         .eq('id', p.id);
 
-      // Mark advances recovered (FIFO)
+      // Mark advances recovered (FIFO). Idempotent: each (advance, payout)
+      // recovery is recorded in farmer_advance_recoveries with a UNIQUE
+      // constraint, so re-running finalize on the same cycle does not
+      // double-deduct from farmer_advances.recovered_amount.
       const { data: payoutRow } = await supabase.from('farmer_payouts').select('advances_deducted').eq('id', p.id).single();
-      let remaining = Number(payoutRow?.advances_deducted ?? 0);
-      if (remaining > 0) {
+      const remainingToRecover = Number(payoutRow?.advances_deducted ?? 0);
+      const { data: alreadyRecovered } = await supabase
+        .from('farmer_advance_recoveries')
+        .select('id').eq('payout_id', p.id).limit(1);
+      if (remainingToRecover > 0 && (!alreadyRecovered || alreadyRecovered.length === 0)) {
         const { data: advs } = await supabase.from('farmer_advances')
           .select('id, amount, recovered_amount').eq('farmer_id', p.farmer_id).eq('status', 'outstanding')
           .order('advance_date', { ascending: true });
+        let remaining = remainingToRecover;
         for (const a of (advs ?? [])) {
           if (remaining <= 0) break;
           const left = Number(a.amount) - Number(a.recovered_amount ?? 0);
           const take = Math.min(left, remaining);
+          if (take <= 0) continue;
           const newRec = Number(a.recovered_amount ?? 0) + take;
           await supabase.from('farmer_advances').update({
             recovered_amount: newRec,
             status: newRec >= Number(a.amount) ? 'recovered' : 'outstanding',
             recovered_in_payout_id: p.id,
           }).eq('id', a.id);
+          await supabase.from('farmer_advance_recoveries').insert({
+            advance_id: a.id, payout_id: p.id, amount: take,
+          });
           remaining -= take;
         }
       }

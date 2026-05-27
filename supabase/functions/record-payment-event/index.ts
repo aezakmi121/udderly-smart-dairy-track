@@ -8,7 +8,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   try {
     const body = await req.json();
-    const { payout_id, amount, method, reference, paid_on, note, close_partial } = body;
+    const { payout_id, amount, method, reference, paid_on, note, close_partial, idempotency_key } = body;
     if (!payout_id || amount == null || !method) {
       return new Response(JSON.stringify({ error: 'payout_id, amount, method required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -27,11 +27,27 @@ Deno.serve(async (req) => {
     const allowed = (roles ?? []).some((r) => r.role === 'admin' || r.role === 'farmer');
     if (!allowed) return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: corsHeaders });
 
+    // Idempotency: if this key was already used, return the existing state
+    // instead of re-inserting. Network retries from the client are safe.
+    if (idempotency_key) {
+      const { data: existing } = await supabase.from('farmer_payment_events')
+        .select('id').eq('idempotency_key', idempotency_key).maybeSingle();
+      if (existing) {
+        const { data: payoutNow } = await supabase.from('farmer_payouts')
+          .select('cycle_id, farmer_id, paid_amount, net_payable, unpaid_balance, status')
+          .eq('id', payout_id).single();
+        return new Response(JSON.stringify({ ok: true, payout: payoutNow, idempotent: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     if (Number(amount) > 0) {
       const { error } = await supabase.from('farmer_payment_events').insert({
         payout_id, amount: Number(amount), method, reference,
         paid_on: paid_on ?? new Date().toISOString().slice(0, 10),
         paid_by_user_id: userData.user.id, note,
+        idempotency_key: idempotency_key ?? null,
       });
       if (error) throw error;
     }

@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   try {
     const body = await req.json();
-    const { items, method, paid_on, reference, note, close_partial } = body;
+    const { items, method, paid_on, reference, note, close_partial, idempotency_key } = body;
     if (!Array.isArray(items) || items.length === 0 || !method) {
       return new Response(JSON.stringify({ error: 'items[] and method required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -22,10 +22,13 @@ Deno.serve(async (req) => {
     const { data: roleRow } = await supabase.from('user_roles').select('role').eq('user_id', userData.user.id).eq('role', 'admin').maybeSingle();
     if (!roleRow) return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: corsHeaders });
 
+    // Bulk idempotency: derive a per-event key by namespacing the request key
+    // with the payout_id. If the same request fires twice, the unique index on
+    // idempotency_key makes the second insert a no-op for each event.
     const date = paid_on ?? new Date().toISOString().slice(0, 10);
     const events = items
-      .filter((i: any) => Number(i.amount) > 0 && i.payout_id)
-      .map((i: any) => ({
+      .filter((i: { payout_id?: string; amount?: number }) => Number(i.amount) > 0 && i.payout_id)
+      .map((i: { payout_id: string; amount: number }) => ({
         payout_id: i.payout_id,
         amount: Number(i.amount),
         method,
@@ -33,6 +36,7 @@ Deno.serve(async (req) => {
         paid_on: date,
         paid_by_user_id: userData.user.id,
         note: note ?? null,
+        idempotency_key: idempotency_key ? `${idempotency_key}:${i.payout_id}` : null,
       }));
 
     if (events.length === 0) {
@@ -41,23 +45,39 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { error } = await supabase.from('farmer_payment_events').insert(events);
+    // If a key is supplied, skip events whose key already exists so the rest
+    // of the batch can still apply (network-retry safety).
+    let toInsert = events;
+    if (idempotency_key) {
+      const keys = events.map((e) => e.idempotency_key).filter((k): k is string => !!k);
+      const { data: existing } = await supabase.from('farmer_payment_events')
+        .select('idempotency_key').in('idempotency_key', keys);
+      const existingSet = new Set((existing ?? []).map((r) => r.idempotency_key));
+      toInsert = events.filter((e) => !existingSet.has(e.idempotency_key));
+      if (toInsert.length === 0) {
+        return new Response(JSON.stringify({ ok: true, recorded: 0, idempotent: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    const { error } = await supabase.from('farmer_payment_events').insert(toInsert);
     if (error) throw error;
 
     if (close_partial) {
-      const ids = events.map((e) => e.payout_id);
+      const ids = toInsert.map((e) => e.payout_id);
       await supabase.from('farmer_payouts').update({ status: 'paid' }).in('id', ids);
     }
 
-    // Audit
-    for (const e of events) {
+    // Audit — only the events we actually inserted
+    for (const e of toInsert) {
       await supabase.from('farmer_payout_audit').insert({
         payout_id: e.payout_id, action: 'bulk_payment_recorded',
         after: { amount: e.amount, method }, actor_user_id: userData.user.id,
       });
     }
 
-    return new Response(JSON.stringify({ ok: true, recorded: events.length }), {
+    return new Response(JSON.stringify({ ok: true, recorded: toInsert.length }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
