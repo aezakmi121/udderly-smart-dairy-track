@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -8,8 +8,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import type { PayoutRow } from '@/hooks/usePayouts';
+import { formatINRWhole, roundToPaise } from '@/lib/money';
 
-const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+const inr = formatINRWhole;
 const METHODS = [
   { id: 'cash', label: 'Cash' }, { id: 'upi', label: 'UPI' },
   { id: 'cheque', label: 'Cheque' }, { id: 'bank_transfer', label: 'Bank' },
@@ -27,27 +28,39 @@ export const BulkPayDialog: React.FC<Props> = ({ rows, open, onOpenChange }) => 
   const [busy, setBusy] = useState(false);
 
   const items = unpaid.filter((r) => selected.has(r.id))
-    .map((r) => ({ payout_id: r.id, amount: Number(r.net_payable) - Number(r.paid_amount) }));
+    .map((r) => ({ payout_id: r.id, amount: roundToPaise(Number(r.net_payable) - Number(r.paid_amount)) }));
   const total = items.reduce((s, i) => s + i.amount, 0);
 
+  // Idempotency key — regenerated each time the dialog opens.
+  const [idempotencyKey, setIdempotencyKey] = useState<string>(() => crypto.randomUUID());
+  useEffect(() => { if (open) setIdempotencyKey(crypto.randomUUID()); }, [open]);
+
+  // Atomic guard against double-clicks before React state propagates.
+  const submitInFlight = useRef(false);
+
   const submit = async () => {
-    if (!items.length) return;
+    if (submitInFlight.current || busy || !items.length) return;
+    submitInFlight.current = true;
     setBusy(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('bulk-record-payments', {
-        body: { items, method, paid_on: paidOn },
+        body: { items, method, paid_on: paidOn, idempotency_key: idempotencyKey },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
       });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as { error?: string } | null)?.error) throw new Error((data as { error: string }).error);
       toast({ title: 'Bulk paid', description: `${items.length} bills · ${inr(total)}` });
       qc.invalidateQueries({ queryKey: ['cycle-payouts'] });
       qc.invalidateQueries({ queryKey: ['payout-cycles'] });
       onOpenChange(false);
-    } catch (e: any) {
-      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
-    } finally { setBusy(false); }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Bulk payment failed';
+      toast({ title: 'Failed', description: msg, variant: 'destructive' });
+    } finally {
+      setBusy(false);
+      submitInFlight.current = false;
+    }
   };
 
   return (
