@@ -147,13 +147,29 @@ export const FarmersManagement = () => {
         .from('farmers')
         .delete()
         .eq('id', id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['farmers'] });
       toast({ title: "Farmer deleted successfully!" });
-    }
+    },
+    onError: (error: unknown) => {
+      // Postgres FK violation = farmer has history (milk collections / payouts).
+      // Surface a useful message instead of an opaque DB error; the UI offers
+      // deactivation (is_active = false) for these cases.
+      const code = (error as { code?: string })?.code;
+      const message = (error as { message?: string })?.message ?? '';
+      if (code === '23503' || /foreign key|violates/i.test(message)) {
+        toast({
+          title: "Cannot delete farmer",
+          description: "This farmer has milk collection or payout history. Deactivate them instead (toggle status off).",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "Failed to delete farmer", description: message || 'Unknown error', variant: "destructive" });
+    },
   });
 
   const toggleFarmerStatus = async (farmer: Farmer) => {
