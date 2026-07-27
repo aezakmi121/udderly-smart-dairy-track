@@ -2690,6 +2690,22 @@ export type Database = {
           used_snf: number
         }[]
       }
+      fn_resolve_rate: {
+        Args: {
+          p_date?: string
+          p_fat: number
+          p_snf: number
+        }
+        Returns: {
+          ambiguous: boolean
+          effective_from: string
+          rate: number
+          source: string
+          species: string
+          used_fat: number
+          used_snf: number
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
