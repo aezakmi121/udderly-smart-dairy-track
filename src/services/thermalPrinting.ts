@@ -303,6 +303,19 @@ const ESC_POS = {
   FEED: [LF],
 };
 
+// Collections store species capitalised ('Cow' / 'Buffalo'); match case-insensitively
+// so anything else still falls back to 'Mixed'.
+const formatSpecies = (species: string): string => {
+  switch (species?.trim().toLowerCase()) {
+    case 'cow':
+      return 'Cow';
+    case 'buffalo':
+      return 'Buffalo';
+    default:
+      return 'Mixed';
+  }
+};
+
 // Convert text to bytes
 const textToBytes = (text: string): number[] => {
   const bytes: number[] = [];
@@ -317,7 +330,7 @@ const buildSlipData = (data: CollectionSlipData): Uint8Array => {
   const commands: number[] = [];
   
   const sessionLabel = data.session === 'morning' ? 'AM' : 'PM';
-  const speciesLabel = data.species === 'cow' ? 'Cow' : data.species === 'buffalo' ? 'Buffalo' : 'Mixed';
+  const speciesLabel = formatSpecies(data.species);
 
   // Initialize
   commands.push(...ESC_POS.INIT);
@@ -466,8 +479,8 @@ export const printTestSlip = async (): Promise<boolean> => {
 // Get preview text for slip (for UI display)
 export const getSlipPreview = (data: CollectionSlipData): string => {
   const sessionLabel = data.session === 'morning' ? 'AM' : 'PM';
-  const speciesLabel = data.species === 'cow' ? 'Cow' : data.species === 'buffalo' ? 'Buffalo' : 'Mixed';
-  
+  const speciesLabel = formatSpecies(data.species);
+
   return `================================
      DAIRY COLLECTION SLIP
 ================================
