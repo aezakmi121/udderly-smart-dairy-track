@@ -57,14 +57,14 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   });
 
   const { farmers } = useMilkCollection();
-  const { getRateQuery } = useRateMatrix();
+  const { getResolvedRateQuery } = useRateMatrix();
   
   const quantity = watch('quantity');
   const fatPercentage = watch('fat_percentage');
   const snfPercentage = watch('snf_percentage');
   const manualAmount = watch('total_amount');
   const collectionDate = watch('collection_date');
-  const species = watch('species');
+  const collectionSession = watch('session');
   const farmerCode = watch('farmer_code');
 
   // Find farmer by code and set farmer_id
@@ -78,40 +78,16 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
     }
   }, [selectedFarmer, setValue]);
 
-  // Get species detection thresholds from settings
-  const { value: thresholds } = useAppSetting<{
-    cow_max_fat: number;
-    cow_max_snf: number;
-    buffalo_min_fat: number;
-    buffalo_min_snf: number;
-  }>('species_detection_thresholds');
-
-  const defaultThresholds = {
-    cow_max_fat: 5.0,
-    cow_max_snf: 9.0,
-    buffalo_min_fat: 5.5,
-    buffalo_min_snf: 9.5
-  };
-  
-  const currentThresholds = thresholds || defaultThresholds;
-
-  React.useEffect(() => {
-    const fat = Number(fatPercentage) || 0;
-    const snf = Number(snfPercentage) || 0;
-    if (fat > 0 && snf > 0) {
-      const detectedSpecies = (fat >= currentThresholds.buffalo_min_fat && snf >= currentThresholds.buffalo_min_snf) 
-        ? 'Buffalo' 
-        : 'Cow';
-      setValue('species', detectedSpecies);
-    }
-  }, [fatPercentage, snfPercentage, setValue, currentThresholds]);
-
-  // Rate matrix is the single source of truth (with clamp fallback in fn_get_rate)
-  const matrixRateQuery = getRateQuery(
-    species || 'Cow',
+  // The rate matrix is the single source of truth for both the rate AND the
+  // species — whichever species prices this fat/SNF pair is the species. This
+  // replaces the old configurable fat/SNF thresholds, which duplicated the
+  // band boundaries already encoded in the matrix and could drift out of sync
+  // with an uploaded rate list.
+  const matrixRateQuery = getResolvedRateQuery(
     Number(fatPercentage) || 0,
     Number(snfPercentage) || 0,
-    collectionDate
+    collectionDate,
+    collectionSession === 'evening' ? 'evening' : 'morning'
   );
 
   const rateData = matrixRateQuery.data;
@@ -119,6 +95,14 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   const rateSource = rateData?.source ?? 'none';
   const effectiveFrom = rateData?.effective_from;
   const isRateLoading = matrixRateQuery.isLoading;
+  const detectedSpecies = rateData?.species ?? null;
+  const isRejected = rateSource === 'rejected';
+
+  React.useEffect(() => {
+    if (detectedSpecies) {
+      setValue('species', detectedSpecies);
+    }
+  }, [detectedSpecies, setValue]);
 
   const { value: modeSetting } = useAppSetting<{ mode: 'auto' | 'manual' }>('milk_rate_mode');
   const isAuto = (modeSetting?.mode ?? 'auto') === 'auto';
@@ -168,6 +152,17 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
       toast({
         title: 'No rate matrix',
         description: 'Upload a rate matrix in Settings before recording collection.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // A rejected sample has no price in any species' matrix. Saving it would
+    // record an accepted collection worth Rs.0, so block it instead.
+    if (isAuto && isRejected) {
+      toast({
+        title: 'Milk rejected',
+        description: `Fat ${Number(data.fat_percentage).toFixed(1)}% / SNF ${Number(data.snf_percentage).toFixed(1)}% is outside the payable range of the current rate list. Switch to manual rate mode if you need to record it anyway.`,
         variant: 'destructive',
       });
       return;
@@ -241,8 +236,11 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
             <div>
               <Label htmlFor="species">Species</Label>
               <div className="mt-2 text-sm font-medium">
-                {watch('species')}
+                {detectedSpecies ?? '—'}
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Determined by the rate list
+              </p>
               {/* Hidden input to submit value */}
               <input type="hidden" {...register('species')} />
             </div>
@@ -312,14 +310,25 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
                     Loading rate...
                   </div>
                 ) : (
-                  <div className="text-lg font-medium text-blue-600">
-                    ₹{calculatedRate.toFixed(2)}
+                  <div className={`text-lg font-medium ${isRejected ? 'text-destructive' : 'text-blue-600'}`}>
+                    {isRejected ? 'Rejected' : `₹${calculatedRate.toFixed(2)}`}
                   </div>
                 )}
                 <div className="flex flex-wrap items-center gap-1 mt-1">
+                  {rateSource === 'rejected' && (
+                    <Badge variant="destructive" className="text-xs">
+                      Outside payable range — not priced by any species
+                    </Badge>
+                  )}
+                  {rateData?.ambiguous && (
+                    <Badge variant="outline" className="text-xs border-amber-500 text-amber-700">
+                      ⚠ Priced by more than one species — check the rate list
+                    </Badge>
+                  )}
                   {rateSource === 'matrix' && effectiveFrom && (
                     <Badge variant="secondary" className="text-xs">
-                      Matrix rate ≤ {effectiveFrom}
+                      Rate list from {effectiveFrom}
+                      {rateData?.effective_session === 'evening' ? ' (evening)' : ''}
                     </Badge>
                   )}
                   {rateSource === 'clamped_high' && (

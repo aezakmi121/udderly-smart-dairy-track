@@ -24,15 +24,32 @@ interface UploadResult {
   rows_upserted: number;
 }
 
+interface UploadCheck {
+  species: string;
+  priced_cells: number;
+  unpriced_cells: number;
+  implied_base_rate: number | null;
+  reference_fat: number;
+  payable_fat_min: number | null;
+  payable_fat_max: number | null;
+  payable_snf_min: number | null;
+  payable_snf_max: number | null;
+  outliers: Array<{ fat: number; snf: number; rate: number; expected: number }>;
+  outlier_count: number;
+}
+
 export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
   open,
   onOpenChange
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [effectiveFrom, setEffectiveFrom] = useState(new Date().toISOString().split('T')[0]);
+  const [effectiveSession, setEffectiveSession] = useState<'morning' | 'evening'>('morning');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'parsing' | 'upserting' | 'success' | 'error'>('idle');
   const [results, setResults] = useState<UploadResult[]>([]);
+  const [checks, setChecks] = useState<UploadCheck[]>([]);
+  const [overlapCount, setOverlapCount] = useState(0);
   const [error, setError] = useState<string>('');
   const [showViewer, setShowViewer] = useState(false);
   const { toast } = useToast();
@@ -66,6 +83,7 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('effective_from', effectiveFrom);
+      formData.append('effective_session', effectiveSession);
 
       setUploadStatus('parsing');
 
@@ -78,6 +96,8 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
 
       setUploadStatus('success');
       setResults(data.results);
+      setChecks(data.checks ?? []);
+      setOverlapCount(data.overlap_count ?? 0);
       
       // Invalidate rate matrix queries to force fresh data
       await queryClient.invalidateQueries({ 
@@ -110,6 +130,8 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
     setFile(null);
     setError('');
     setResults([]);
+    setChecks([]);
+    setOverlapCount(0);
     setUploadStatus('idle');
     setIsUploading(false);
   };
@@ -183,6 +205,29 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
                   value={effectiveFrom}
                   onChange={(e) => setEffectiveFrom(e.target.value)}
                 />
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={effectiveSession === 'morning' ? 'default' : 'outline'}
+                    onClick={() => setEffectiveSession('morning')}
+                  >
+                    Morning
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={effectiveSession === 'evening' ? 'default' : 'outline'}
+                    onClick={() => setEffectiveSession('evening')}
+                  >
+                    Evening
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {effectiveSession === 'morning'
+                    ? `Applies from the morning session of ${effectiveFrom}.`
+                    : `Applies from the evening session of ${effectiveFrom} — that morning still uses the previous list.`}
+                </p>
               </div>
             </div>
           )}
@@ -244,8 +289,79 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
                 </Table>
 
                 <div className="mt-4 text-xs text-green-700">
-                  Rate from version ≤ {effectiveFrom}
+                  Applies from the {effectiveSession} session of {effectiveFrom}
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Sanity checks — what the uploaded list actually says */}
+          {uploadStatus === 'success' && checks.length > 0 && (
+            <Card>
+              <CardContent className="pt-4">
+                <div className="font-medium text-sm mb-3">Rate list summary</div>
+                <div className="space-y-3">
+                  {checks.map((c) => (
+                    <div key={c.species} className="text-sm border rounded-md p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline">{c.species}</Badge>
+                        {c.outlier_count === 0 ? (
+                          <span className="text-xs text-green-700">consistent</span>
+                        ) : (
+                          <span className="text-xs text-red-700 font-medium">
+                            {c.outlier_count} cell(s) off-formula
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <div>
+                          Rate at {c.reference_fat}% fat:{' '}
+                          <span className="font-medium text-foreground">
+                            {c.implied_base_rate === null ? '—' : `₹${c.implied_base_rate.toFixed(2)}`}
+                          </span>
+                        </div>
+                        <div>
+                          Priced cells:{' '}
+                          <span className="font-medium text-foreground">{c.priced_cells}</span>{' '}
+                          ({c.unpriced_cells} unpriced)
+                        </div>
+                        <div>
+                          Payable fat:{' '}
+                          <span className="font-medium text-foreground">
+                            {c.payable_fat_min ?? '—'} – {c.payable_fat_max ?? '—'}
+                          </span>
+                        </div>
+                        <div>
+                          Payable SNF:{' '}
+                          <span className="font-medium text-foreground">
+                            {c.payable_snf_min ?? '—'} – {c.payable_snf_max ?? '—'}
+                          </span>
+                        </div>
+                      </div>
+                      {c.outliers.length > 0 && (
+                        <div className="mt-2 text-xs text-red-700">
+                          <div className="font-medium mb-1">Cells that disagree with the rate formula:</div>
+                          {c.outliers.map((o, i) => (
+                            <div key={i}>
+                              fat {o.fat} / SNF {o.snf}: sheet says ₹{o.rate.toFixed(2)}, formula gives ₹
+                              {o.expected.toFixed(2)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {overlapCount > 0 && (
+                  <div className="mt-3 flex items-start gap-2 text-xs text-red-700">
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>
+                      {overlapCount} fat/SNF combination(s) are priced by both species. Species is
+                      derived from whichever matrix prices a sample, so these will be ambiguous.
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

@@ -18,7 +18,7 @@ interface ExtractedRow {
   fat: number;
   snf: number;
   rate: number;
-  rate_source: 'matrix' | 'clamped_high' | 'clamped_low' | 'none';
+  rate_source: 'matrix' | 'clamped_high' | 'clamped_low' | 'rejected' | 'none';
   computed_amount: number;
   printed_amount: number;
   discrepancy: boolean;
@@ -222,6 +222,7 @@ export const SlipScanModal: React.FC<Props> = ({ open, onOpenChange, defaultDate
     if (s === 'matrix') return null;
     if (s === 'clamped_high') return <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-700">⚠ high</Badge>;
     if (s === 'clamped_low') return <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-700">⚠ low</Badge>;
+    if (s === 'rejected') return <Badge variant="destructive" className="text-[10px]">rejected</Badge>;
     return <Badge variant="destructive" className="text-[10px]">no rate</Badge>;
   };
 

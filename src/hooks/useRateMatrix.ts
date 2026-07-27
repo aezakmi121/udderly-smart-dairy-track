@@ -1,41 +1,99 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export type RateSource = 'matrix' | 'clamped_high' | 'clamped_low' | 'none';
+// 'rejected' means the matrix was found but this fat/SNF combination sits in an
+// unpriced cell — the dairy will not buy it. It is not a Rs.0 rate.
+export type RateSource = 'matrix' | 'clamped_high' | 'clamped_low' | 'rejected' | 'none';
+
+export type RateSession = 'morning' | 'evening';
 
 export interface RateResult {
   rate: number | null;
   effective_from: string | null;
+  // Rate lists can take effect from a session, not just a date, so a version is
+  // identified by both (e.g. new rates from 1 Aug evening).
+  effective_session: RateSession | null;
   source: RateSource;
   used_fat: number;
   used_snf: number;
 }
 
+// Species is derived from the rate matrix rather than configured thresholds:
+// whichever species prices this sample is the species it is.
+export interface ResolvedRate extends RateResult {
+  species: string | null;
+  ambiguous: boolean;
+}
+
+const today = () => new Date().toISOString().split('T')[0];
+
+const mapRate = (row: any, fat: number, snf: number): RateResult => ({
+  rate: row.rate ?? null,
+  effective_from: row.effective_from ?? null,
+  effective_session: (row.effective_session as RateSession) ?? null,
+  source: (row.source as RateSource) ?? 'none',
+  used_fat: row.used_fat ?? fat,
+  used_snf: row.used_snf ?? snf,
+});
+
+const mapResolved = (row: any, fat: number, snf: number): ResolvedRate => ({
+  ...mapRate(row, fat, snf),
+  species: row.species ?? null,
+  ambiguous: row.ambiguous ?? false,
+});
+
 export const useRateMatrix = () => {
-  const getRateQuery = (species: string, fat: number, snf: number, date?: string) => {
+  const getRateQuery = (
+    species: string,
+    fat: number,
+    snf: number,
+    date?: string,
+    session: RateSession = 'morning'
+  ) => {
     return useQuery({
-      queryKey: ['rate-matrix', species, fat, snf, date],
+      queryKey: ['rate-matrix', species, fat, snf, date, session],
       queryFn: async (): Promise<RateResult | null> => {
-        const { data, error } = await supabase.rpc('fn_get_rate', {
+        const { data, error } = await (supabase.rpc as any)('fn_get_rate', {
           p_species: species,
           p_fat: fat,
           p_snf: snf,
-          p_date: date || new Date().toISOString().split('T')[0],
+          p_date: date || today(),
+          p_session: session,
         });
 
         if (error) return null;
         if (!data || data.length === 0) return null;
 
-        const row = data[0] as any;
-        return {
-          rate: row.rate ?? null,
-          effective_from: row.effective_from ?? null,
-          source: (row.source as RateSource) ?? 'none',
-          used_fat: row.used_fat ?? fat,
-          used_snf: row.used_snf ?? snf,
-        };
+        return mapRate(data[0], fat, snf);
       },
       enabled: !!(species && fat > 0 && snf > 0),
+      staleTime: 1000 * 60 * 5,
+    });
+  };
+
+  // Species-agnostic lookup: resolves both the rate and the species from the matrix.
+  const getResolvedRateQuery = (
+    fat: number,
+    snf: number,
+    date?: string,
+    session: RateSession = 'morning'
+  ) => {
+    return useQuery({
+      queryKey: ['resolved-rate', fat, snf, date, session],
+      queryFn: async (): Promise<ResolvedRate | null> => {
+        const { data, error } = await (supabase.rpc as any)('fn_resolve_rate', {
+          p_fat: fat,
+          p_snf: snf,
+          p_date: date || today(),
+          p_session: session,
+        });
+
+        if (error) return null;
+        if (!data || data.length === 0) return null;
+
+        return mapResolved(data[0], fat, snf);
+      },
+      enabled: fat > 0 && snf > 0,
       staleTime: 1000 * 60 * 5,
     });
   };
@@ -45,24 +103,35 @@ export const useRateMatrix = () => {
     species: string,
     fat: number,
     snf: number,
-    date?: string
+    date?: string,
+    session: RateSession = 'morning'
   ): Promise<RateResult | null> => {
-    const { data, error } = await supabase.rpc('fn_get_rate', {
+    const { data, error } = await (supabase.rpc as any)('fn_get_rate', {
       p_species: species,
       p_fat: fat,
       p_snf: snf,
-      p_date: date || new Date().toISOString().split('T')[0],
+      p_date: date || today(),
+      p_session: session,
     });
     if (error || !data || data.length === 0) return null;
-    const row = data[0] as any;
-    return {
-      rate: row.rate ?? null,
-      effective_from: row.effective_from ?? null,
-      source: (row.source as RateSource) ?? 'none',
-      used_fat: row.used_fat ?? fat,
-      used_snf: row.used_snf ?? snf,
-    };
+    return mapRate(data[0], fat, snf);
   };
 
-  return { getRateQuery, fetchRate };
+  const resolveRate = async (
+    fat: number,
+    snf: number,
+    date?: string,
+    session: RateSession = 'morning'
+  ): Promise<ResolvedRate | null> => {
+    const { data, error } = await (supabase.rpc as any)('fn_resolve_rate', {
+      p_fat: fat,
+      p_snf: snf,
+      p_date: date || today(),
+      p_session: session,
+    });
+    if (error || !data || data.length === 0) return null;
+    return mapResolved(data[0], fat, snf);
+  };
+
+  return { getRateQuery, getResolvedRateQuery, fetchRate, resolveRate };
 };

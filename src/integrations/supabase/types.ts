@@ -2209,6 +2209,7 @@ export type Database = {
       rate_matrix: {
         Row: {
           effective_from: string
+          effective_session: string
           fat: number
           inserted_at: string | null
           rate: number
@@ -2217,6 +2218,7 @@ export type Database = {
         }
         Insert: {
           effective_from: string
+          effective_session?: string
           fat: number
           inserted_at?: string | null
           rate: number
@@ -2225,6 +2227,7 @@ export type Database = {
         }
         Update: {
           effective_from?: string
+          effective_session?: string
           fat?: number
           inserted_at?: string | null
           rate?: number
@@ -2679,13 +2682,33 @@ export type Database = {
         Args: {
           p_date?: string
           p_fat: number
+          p_session?: string
           p_snf: number
           p_species: string
         }
         Returns: {
           effective_from: string
+          effective_session: string
           rate: number
           source: string
+          used_fat: number
+          used_snf: number
+        }[]
+      }
+      fn_resolve_rate: {
+        Args: {
+          p_date?: string
+          p_fat: number
+          p_session?: string
+          p_snf: number
+        }
+        Returns: {
+          ambiguous: boolean
+          effective_from: string
+          effective_session: string
+          rate: number
+          source: string
+          species: string
           used_fat: number
           used_snf: number
         }[]

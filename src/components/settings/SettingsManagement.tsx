@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp, Milk, Bell, Users, Shield, Printer } from 'lucide-react';
 import { MilkRateSettings } from './MilkRateSettings';
-import { SpeciesDetectionSettings } from './SpeciesDetectionSettings';
 import { AccessControlSettings } from './AccessControlSettings';
 import { UserRoleManagement } from './UserRoleManagement';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
@@ -68,10 +67,6 @@ export const SettingsManagement = () => {
                 <div>
                   <h3 className="text-md font-semibold mb-3">Milk Rates</h3>
                   <MilkRateSettings />
-                </div>
-                <div className="border-t pt-6">
-                  <h3 className="text-md font-semibold mb-3">Species Detection</h3>
-                  <SpeciesDetectionSettings />
                 </div>
                 <div className="border-t pt-6">
                   <h3 className="text-md font-semibold mb-3">Session Controls</h3>
