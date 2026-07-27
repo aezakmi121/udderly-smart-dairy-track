@@ -44,6 +44,7 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [effectiveFrom, setEffectiveFrom] = useState(new Date().toISOString().split('T')[0]);
+  const [effectiveSession, setEffectiveSession] = useState<'morning' | 'evening'>('morning');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'parsing' | 'upserting' | 'success' | 'error'>('idle');
   const [results, setResults] = useState<UploadResult[]>([]);
@@ -82,6 +83,7 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('effective_from', effectiveFrom);
+      formData.append('effective_session', effectiveSession);
 
       setUploadStatus('parsing');
 
@@ -203,6 +205,29 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
                   value={effectiveFrom}
                   onChange={(e) => setEffectiveFrom(e.target.value)}
                 />
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={effectiveSession === 'morning' ? 'default' : 'outline'}
+                    onClick={() => setEffectiveSession('morning')}
+                  >
+                    Morning
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={effectiveSession === 'evening' ? 'default' : 'outline'}
+                    onClick={() => setEffectiveSession('evening')}
+                  >
+                    Evening
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {effectiveSession === 'morning'
+                    ? `Applies from the morning session of ${effectiveFrom}.`
+                    : `Applies from the evening session of ${effectiveFrom} — that morning still uses the previous list.`}
+                </p>
               </div>
             </div>
           )}
@@ -264,7 +289,7 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
                 </Table>
 
                 <div className="mt-4 text-xs text-green-700">
-                  Rate from version ≤ {effectiveFrom}
+                  Applies from the {effectiveSession} session of {effectiveFrom}
                 </div>
               </CardContent>
             </Card>

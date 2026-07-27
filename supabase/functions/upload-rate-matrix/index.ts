@@ -24,6 +24,10 @@ serve(async (req) => {
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const effectiveFrom = formData.get('effective_from') as string;
+    // Rate lists can take effect from a session, not just a date (e.g. new
+    // rates from 1 Aug evening). Defaults to morning = start of that day.
+    const rawSession = (formData.get('effective_session') as string) || 'morning';
+    const effectiveSession = rawSession.toLowerCase() === 'evening' ? 'evening' : 'morning';
 
     if (!file) {
       throw new Error('No file provided');
@@ -33,7 +37,7 @@ serve(async (req) => {
       throw new Error('File must be an Excel (.xlsx) file');
     }
 
-    console.log('Processing Excel file:', file.name, 'Effective date:', effectiveFrom);
+    console.log('Processing Excel file:', file.name, 'Effective from:', effectiveFrom, effectiveSession);
 
     // Read Excel file
     const arrayBuffer = await file.arrayBuffer();
@@ -92,7 +96,7 @@ serve(async (req) => {
       console.log(`${species}: Found ${fatValues.length} fat values, ${snfValues.length} SNF values`);
 
       // Process rate grid (B3 onwards)
-      const rateRows: Array<{ species: string; fat: number; snf: number; rate: number; effective_from: string }> = [];
+      const rateRows: Array<{ species: string; fat: number; snf: number; rate: number; effective_from: string; effective_session: string }> = [];
       
       for (let fatIdx = 0; fatIdx < fatValues.length; fatIdx++) {
         for (let snfIdx = 0; snfIdx < snfValues.length; snfIdx++) {
@@ -108,7 +112,8 @@ serve(async (req) => {
               fat: fatValues[fatIdx],
               snf: snfValues[snfIdx],
               rate: cell.v,
-              effective_from: effectiveFrom
+              effective_from: effectiveFrom,
+              effective_session: effectiveSession
             });
           }
         }
@@ -171,7 +176,7 @@ serve(async (req) => {
       const { error } = await supabase
         .from('rate_matrix')
         .upsert(rateRows, { 
-          onConflict: 'species,fat,snf,effective_from',
+          onConflict: 'species,fat,snf,effective_from,effective_session',
           ignoreDuplicates: false 
         });
 

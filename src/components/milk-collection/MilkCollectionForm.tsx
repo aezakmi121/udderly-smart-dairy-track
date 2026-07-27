@@ -64,6 +64,7 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   const snfPercentage = watch('snf_percentage');
   const manualAmount = watch('total_amount');
   const collectionDate = watch('collection_date');
+  const collectionSession = watch('session');
   const farmerCode = watch('farmer_code');
 
   // Find farmer by code and set farmer_id
@@ -85,7 +86,8 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
   const matrixRateQuery = getResolvedRateQuery(
     Number(fatPercentage) || 0,
     Number(snfPercentage) || 0,
-    collectionDate
+    collectionDate,
+    collectionSession === 'evening' ? 'evening' : 'morning'
   );
 
   const rateData = matrixRateQuery.data;
@@ -325,7 +327,8 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
                   )}
                   {rateSource === 'matrix' && effectiveFrom && (
                     <Badge variant="secondary" className="text-xs">
-                      Matrix rate ≤ {effectiveFrom}
+                      Rate list from {effectiveFrom}
+                      {rateData?.effective_session === 'evening' ? ' (evening)' : ''}
                     </Badge>
                   )}
                   {rateSource === 'clamped_high' && (

@@ -322,6 +322,8 @@ serve(async (req) => {
           p_fat: r.fat,
           p_snf: r.snf,
           p_date: collection_date,
+          // 'all'-shift slips predate the session split; treat them as morning.
+          p_session: session === "evening" ? "evening" : "morning",
         });
         const rateRow: any = rateRows && rateRows[0] ? rateRows[0] : null;
         const rate = rateRow?.rate ?? 0;

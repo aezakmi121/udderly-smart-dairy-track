@@ -20,7 +20,15 @@ interface RateMatrixEntry {
   snf: number;
   rate: number;
   effective_from: string;
+  effective_session: string;
 }
+
+// A version is (date, session) since a rate list can start mid-day.
+const versionKey = (d: string, sess: string) => `${d}|${sess}`;
+const versionLabel = (key: string) => {
+  const [d, sess] = key.split('|');
+  return sess === 'evening' ? `${d} (evening)` : d;
+};
 
 export const RateMatrixViewer: React.FC<RateMatrixViewerProps> = ({
   open,
@@ -29,20 +37,25 @@ export const RateMatrixViewer: React.FC<RateMatrixViewerProps> = ({
   const [selectedSpecies, setSelectedSpecies] = useState<string>('Cow');
   const [selectedDate, setSelectedDate] = useState<string>('');
 
-  // Get available effective dates
+  // Get available effective versions (date + session)
   const { data: effectiveDates } = useQuery({
     queryKey: ['rate-matrix-dates'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('rate_matrix')
-        .select('effective_from')
+        .select('effective_from, effective_session')
         .order('effective_from', { ascending: false });
       
       if (error) throw error;
       
-      // Get unique dates
-      const uniqueDates = [...new Set(data.map(item => item.effective_from))];
-      return uniqueDates;
+      const unique = [...new Set(data.map(item => versionKey(item.effective_from, item.effective_session)))];
+      // Newest first: date desc, then evening before morning within a day.
+      return unique.sort((a, b) => {
+        const [ad, as_] = a.split('|');
+        const [bd, bs] = b.split('|');
+        if (ad !== bd) return ad < bd ? 1 : -1;
+        return (bs === 'evening' ? 1 : 0) - (as_ === 'evening' ? 1 : 0);
+      });
     },
     enabled: open,
     staleTime: 0 // Always fresh data
@@ -59,10 +72,10 @@ export const RateMatrixViewer: React.FC<RateMatrixViewerProps> = ({
         .order('fat', { ascending: true })
         .order('snf', { ascending: true });
 
-      if (selectedDate) {
-        query.eq('effective_from', selectedDate);
-      } else if (effectiveDates && effectiveDates.length > 0) {
-        query.eq('effective_from', effectiveDates[0]);
+      const active = selectedDate || (effectiveDates && effectiveDates[0]);
+      if (active) {
+        const [d, sess] = active.split('|');
+        query.eq('effective_from', d).eq('effective_session', sess);
       }
 
       const { data, error } = await query;
@@ -122,17 +135,17 @@ export const RateMatrixViewer: React.FC<RateMatrixViewerProps> = ({
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Effective Date</label>
+              <label className="text-sm font-medium mb-2 block">Effective From</label>
               <Select value={selectedDate} onValueChange={setSelectedDate}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select date" />
+                  <SelectValue placeholder="Select version" />
                 </SelectTrigger>
                 <SelectContent>
-                  {effectiveDates?.map(date => (
-                    <SelectItem key={date} value={date}>
+                  {effectiveDates?.map(key => (
+                    <SelectItem key={key} value={key}>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        {new Date(date).toLocaleDateString()}
+                        {versionLabel(key)}
                       </div>
                     </SelectItem>
                   ))}
