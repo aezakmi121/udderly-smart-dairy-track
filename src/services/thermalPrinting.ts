@@ -420,7 +420,12 @@ const printViaRawBT = (bytes: Uint8Array): boolean => {
   let binary = '';
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
   const b64 = btoa(binary);
-  const intentUrl = `intent:rawbt:base64,${b64}#Intent;scheme=rawbt;package=${RAWBT_PACKAGE};end;`;
+  // The data part must NOT carry its own 'rawbt:' prefix. Android's intent:
+  // parser prepends the scheme= value to it, so 'intent:rawbt:base64,...' with
+  // scheme=rawbt resolves to 'rawbt:rawbt:base64,...' — RawBT launches and
+  // initialises the printer but cannot decode the payload, so the paper feeds
+  // and nothing prints. The payload is inserted unencoded, as RawBT expects.
+  const intentUrl = `intent:base64,${b64}#Intent;scheme=rawbt;package=${RAWBT_PACKAGE};end;`;
   const iframe = document.createElement('iframe');
   iframe.style.display = 'none';
   iframe.src = intentUrl;
