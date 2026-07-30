@@ -45,15 +45,18 @@ serve(async (req) => {
 
     const requiredTabs = ['Buffalo', 'Cow'];
     const results: Array<{ species: string; snf_count: number; fat_count: number; rows_upserted: number; }> = [];
-    // Sanity checks reported back to the uploader — advisory, never blocking,
-    // so a legitimately irregular rate list can still be loaded.
+    // Structural checks reported back to the uploader. These make no assumption
+    // about how the dairy prices milk — the sheet is the authority, and a rate
+    // is whatever its cell says. They only look for shapes that would break the
+    // app's own reading of the list, or that suggest a data-entry slip.
     const checks: Array<Record<string, unknown>> = [];
-    // Rate lists are quoted as a single rate at a reference fat percentage.
-    const REFERENCE_FAT = 6.5;
-    const RATE_TOLERANCE = 0.05;
     // Species is derived from whichever matrix prices a sample, so a cell
     // priced by two species would make that ambiguous.
     const pricedCells = new Map<string, string[]>();
+    // Sheets often mix rounded and unrounded values for the same rate (35.66
+    // beside 35.661538...), which reads as a microscopic drop. Ignore anything
+    // under a paisa: a real mistyped digit is orders of magnitude larger.
+    const RATE_EPSILON = 0.01;
 
     for (const species of requiredTabs) {
       if (!workbook.SheetNames.includes(species)) {
@@ -123,25 +126,40 @@ serve(async (req) => {
         throw new Error(`No valid rate data found in ${species} tab`);
       }
 
-      // Consistency check. These lists are generated from a single base rate
-      // quoted at a reference fat (rate = fat * base / referenceFat), so every
-      // priced cell should imply the same base. A cell that disagrees is almost
-      // certainly a typo in the sheet, and with thousands of cells it would
-      // never be caught by eye before it reached farmer payments.
       const priced = rateRows.filter((r) => r.rate > 0);
-      const implied = priced.map((r) => (r.rate * REFERENCE_FAT) / r.fat);
-      let baseRate: number | null = null;
-      const outliers: typeof rateRows = [];
 
-      if (implied.length > 0) {
-        // Median is robust to a handful of bad cells.
-        const sorted = [...implied].sort((a, b) => a - b);
-        baseRate = sorted[Math.floor(sorted.length / 2)];
-        for (let i = 0; i < priced.length; i++) {
-          const expected = (priced[i].fat * baseRate) / REFERENCE_FAT;
-          if (Math.abs(priced[i].rate - expected) > RATE_TOLERANCE) {
-            outliers.push(priced[i]);
+      // Monotonicity: a priced rate should never fall as fat or SNF rises.
+      // This assumes no pricing model — a flat floor, stepped bands and a
+      // straight-line sheet all satisfy it — but a mistyped digit (35 -> 350,
+      // or a decimal slip) shows up as a reversal. With thousands of cells that
+      // would otherwise never be caught by eye before reaching farmer payments.
+      const rateAt = new Map<string, number>();
+      for (const r of priced) rateAt.set(`${r.fat}|${r.snf}`, r.rate);
+
+      const reversals: Array<{ axis: string; fat: number; snf: number; rate: number; prevRate: number }> = [];
+      const sortedFats = [...new Set(rateRows.map((r) => r.fat))].sort((a, b) => a - b);
+      const sortedSnfs = [...new Set(rateRows.map((r) => r.snf))].sort((a, b) => a - b);
+
+      for (const snf of sortedSnfs) {
+        let prev: { fat: number; rate: number } | null = null;
+        for (const fat of sortedFats) {
+          const rate = rateAt.get(`${fat}|${snf}`);
+          if (rate === undefined) continue;
+          if (prev && prev.rate - rate > RATE_EPSILON) {
+            reversals.push({ axis: 'fat', fat, snf, rate, prevRate: prev.rate });
           }
+          prev = { fat, rate };
+        }
+      }
+      for (const fat of sortedFats) {
+        let prev: { snf: number; rate: number } | null = null;
+        for (const snf of sortedSnfs) {
+          const rate = rateAt.get(`${fat}|${snf}`);
+          if (rate === undefined) continue;
+          if (prev && prev.rate - rate > RATE_EPSILON) {
+            reversals.push({ axis: 'snf', fat, snf, rate, prevRate: prev.rate });
+          }
+          prev = { snf, rate };
         }
       }
 
@@ -153,23 +171,20 @@ serve(async (req) => {
       const pricedFats = priced.map((r) => r.fat);
       const pricedSnfs = priced.map((r) => r.snf);
 
+      const pricedRates = priced.map((r) => r.rate);
+
       checks.push({
         species,
         priced_cells: priced.length,
         unpriced_cells: rateRows.length - priced.length,
-        implied_base_rate: baseRate === null ? null : Number(baseRate.toFixed(2)),
-        reference_fat: REFERENCE_FAT,
         payable_fat_min: pricedFats.length ? Math.min(...pricedFats) : null,
         payable_fat_max: pricedFats.length ? Math.max(...pricedFats) : null,
         payable_snf_min: pricedSnfs.length ? Math.min(...pricedSnfs) : null,
         payable_snf_max: pricedSnfs.length ? Math.max(...pricedSnfs) : null,
-        outliers: outliers.slice(0, 20).map((o) => ({
-          fat: o.fat,
-          snf: o.snf,
-          rate: o.rate,
-          expected: Number(((o.fat * (baseRate ?? 0)) / REFERENCE_FAT).toFixed(2)),
-        })),
-        outlier_count: outliers.length,
+        rate_min: pricedRates.length ? Math.min(...pricedRates) : null,
+        rate_max: pricedRates.length ? Math.max(...pricedRates) : null,
+        reversals: reversals.slice(0, 20),
+        reversal_count: reversals.length,
       });
 
       // Upsert to database
