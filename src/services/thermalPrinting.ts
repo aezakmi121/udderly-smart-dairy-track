@@ -16,12 +16,16 @@ export interface CollectionSlipData {
   ratePerLiter: number;
   totalAmount: number;
   species: string;
+  // Which rate list priced this collection, when it was recorded.
+  rateEffectiveFrom?: string | null;
+  rateEffectiveSession?: string | null;
 }
 
 // Storage keys
 const SAVED_PRINTER_KEY = 'thermal_printer_address';
 const SAVED_PRINTER_NAME_KEY = 'thermal_printer_name';
 const PRINT_METHOD_KEY = 'thermal_print_method';
+const AUTO_CUT_KEY = 'thermal_auto_cut';
 
 // Print transport method
 export type PrintMethod = 'rawbt' | 'web-bluetooth';
@@ -89,6 +93,15 @@ export const getPrintMethod = (): PrintMethod => {
 
 export const setPrintMethod = (method: PrintMethod): void => {
   localStorage.setItem(PRINT_METHOD_KEY, method);
+};
+
+// Auto-cut is off by default: printers without a cutter ignore the command,
+// but leaving it opt-in means a printer that mishandles it cannot spoil slips
+// until the user has tried it once and seen the result.
+export const getAutoCut = (): boolean => localStorage.getItem(AUTO_CUT_KEY) === 'on';
+
+export const setAutoCut = (enabled: boolean): void => {
+  localStorage.setItem(AUTO_CUT_KEY, enabled ? 'on' : 'off');
 };
 
 // Get saved printer from localStorage
@@ -336,6 +349,12 @@ const formatSpecies = (species: string): string => {
   }
 };
 
+// The rate list a collection was priced on, for settling disputes.
+const formatRateVersion = (data: CollectionSlipData): string =>
+  data.rateEffectiveSession === 'evening'
+    ? `${data.rateEffectiveFrom} PM`
+    : `${data.rateEffectiveFrom}`;
+
 // Convert text to bytes
 const textToBytes = (text: string): number[] => {
   const bytes: number[] = [];
@@ -383,6 +402,9 @@ const buildSlipData = (data: CollectionSlipData): Uint8Array => {
   commands.push(...textToBytes(`Fat:          ${data.fatPercentage.toFixed(1)}%\n`));
   commands.push(...textToBytes(`SNF:          ${data.snfPercentage.toFixed(1)}%\n`));
   commands.push(...textToBytes(`Rate:         Rs.${data.ratePerLiter.toFixed(2)}/L\n`));
+  if (data.rateEffectiveFrom) {
+    commands.push(...textToBytes(`Rate list:    ${formatRateVersion(data)}\n`));
+  }
   commands.push(...ESC_POS.ALIGN_CENTER);
   commands.push(...textToBytes('--------------------------------\n'));
   
@@ -402,6 +424,11 @@ const buildSlipData = (data: CollectionSlipData): Uint8Array => {
   commands.push(...ESC_POS.FEED);
   commands.push(...ESC_POS.FEED);
   commands.push(...ESC_POS.FEED);
+
+  // Printers without a cutter ignore this; it is opt-in regardless.
+  if (getAutoCut()) {
+    commands.push(...ESC_POS.CUT);
+  }
 
   return new Uint8Array(commands);
 };
@@ -520,7 +547,8 @@ Species: ${speciesLabel}
 Quantity:     ${data.quantity.toFixed(2)} L
 Fat:          ${data.fatPercentage.toFixed(1)}%
 SNF:          ${data.snfPercentage.toFixed(1)}%
-Rate:         Rs.${data.ratePerLiter.toFixed(2)}/L
+Rate:         Rs.${data.ratePerLiter.toFixed(2)}/L${data.rateEffectiveFrom ? `
+Rate list:    ${formatRateVersion(data)}` : ''}
 --------------------------------
 TOTAL:        Rs.${data.totalAmount.toFixed(2)}
 ================================

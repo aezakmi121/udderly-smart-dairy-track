@@ -35,6 +35,8 @@ interface PrintSlipDialogProps {
     rate_per_liter: number;
     total_amount: number;
     species: string;
+    rate_effective_from?: string | null;
+    rate_effective_session?: string | null;
   } | null;
 }
 
@@ -66,6 +68,8 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
     ratePerLiter: collection.rate_per_liter,
     totalAmount: collection.total_amount,
     species: collection.species,
+    rateEffectiveFrom: collection.rate_effective_from ?? null,
+    rateEffectiveSession: collection.rate_effective_session ?? null,
   };
 
   const previewText = getSlipPreview(slipData);
