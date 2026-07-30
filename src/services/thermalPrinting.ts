@@ -174,6 +174,14 @@ export const stopScan = async (): Promise<void> => {
   // Web Bluetooth doesn't need explicit stop - the picker handles it
 };
 
+// The GATT link can drop on its own (printer sleeps, goes out of range, is
+// power-cycled). Anything discovered over that link is invalid afterwards.
+const handleDisconnected = () => {
+  console.log('Printer GATT disconnected — clearing cached handles');
+  printerCharacteristic = null;
+  gattServer = null;
+};
+
 // Connect to a specific printer (or use already selected device)
 export const connectToPrinter = async (address: string): Promise<BluetoothDevice | null> => {
   console.log('Connecting to printer:', address);
@@ -202,10 +210,22 @@ export const connectToPrinter = async (address: string): Promise<BluetoothDevice
       return null;
     }
 
+    // Drop any characteristic held from a previous GATT session before
+    // rediscovering. A characteristic object does not survive a disconnect:
+    // keeping it would both short-circuit the discovery loops below (they bail
+    // out as soon as printerCharacteristic is truthy) and leave writes going to
+    // a dead handle — the printer resets, feeds a little and prints nothing.
+    printerCharacteristic = null;
+
     // Connect to GATT server
     console.log('Connecting to GATT server...');
     gattServer = await connectedDevice.gatt?.connect();
     console.log('GATT connected:', gattServer?.connected);
+
+    // Clear the cached handles as soon as the link drops, so the next print
+    // rediscovers instead of reusing them.
+    connectedDevice.removeEventListener?.('gattserverdisconnected', handleDisconnected);
+    connectedDevice.addEventListener?.('gattserverdisconnected', handleDisconnected);
 
     if (gattServer) {
       // Try each service UUID until we find one that works
@@ -445,7 +465,9 @@ const printViaWebBluetooth = async (bytes: Uint8Array): Promise<boolean> => {
   if (!savedPrinter) {
     throw new Error('No printer configured. Please select a printer in settings.');
   }
-  if (!connectedDevice?.gatt?.connected) {
+  // Reconnect if the link is down or if the characteristic was cleared by a
+  // disconnect — either way the handle has to be rediscovered before writing.
+  if (!connectedDevice?.gatt?.connected || !printerCharacteristic) {
     await connectToPrinter(savedPrinter.address);
   }
   if (!printerCharacteristic) {
