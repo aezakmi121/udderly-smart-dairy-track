@@ -13,6 +13,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MIGRATIONS="$ROOT/supabase/migrations"
 TESTS="$ROOT/scripts/rate-logic.test.sql"
+RLS_TESTS="$ROOT/scripts/rls-guards.test.sql"
 
 if [[ -n "${DATABASE_URL:-}" ]]; then
   PSQL=(psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q)
@@ -69,6 +70,11 @@ for f in "$MIGRATIONS"/*.sql; do
   "${PSQL[@]}" -f "$f" >/dev/null 2>&1 || true
 done
 
+echo "applying auth fixtures"
+"${PSQL[@]}" -f "$ROOT/scripts/test-auth-fixtures.sql" >/dev/null
+# The guard policies need has_role(), which the auth fixtures only just created.
+"${PSQL[@]}" -f "$MIGRATIONS"/*collection_centre_collection_guards.sql >/dev/null
+
 # The rate functions are the subject under test, so their absence is fatal
 # rather than something to skip past.
 for fn in fn_get_rate fn_resolve_rate fn_rate_change_impact; do
@@ -80,3 +86,6 @@ done
 
 echo "running rate logic tests"
 "${PSQL[@]}" -f "$TESTS"
+
+echo "running collection centre guard tests"
+"${PSQL[@]}" -f "$RLS_TESTS"

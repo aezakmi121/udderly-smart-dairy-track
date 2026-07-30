@@ -42,7 +42,7 @@ export const AccessControlSettings = () => {
     switch (role) {
       case 'admin':
         return 'destructive';
-      case 'farmer':
+      case 'collection_centre':
         return 'secondary';
       case 'worker':
         return 'secondary';
@@ -55,7 +55,7 @@ export const AccessControlSettings = () => {
     switch (role) {
       case 'admin':
         return 'Admin';
-      case 'farmer':
+      case 'collection_centre':
         return 'Collection Centre';
       case 'worker':
         return 'Farm Worker';
@@ -101,7 +101,7 @@ export const AccessControlSettings = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {users?.filter(user => user.roles.includes('farmer' as any)).length || 0}
+              {users?.filter(user => user.roles.includes('collection_centre' as any)).length || 0}
             </div>
             <p className="text-xs text-muted-foreground">Collection access</p>
           </CardContent>
@@ -156,7 +156,7 @@ export const AccessControlSettings = () => {
                     <TableCell className="text-sm text-muted-foreground">
                       {user.roles.includes('admin' as any) && 'Full Access'}
                       {user.roles.includes('worker' as any) && !user.roles.includes('admin' as any) && 'Farm Operations'}
-                      {user.roles.includes('farmer' as any) && !user.roles.includes('admin' as any) && !user.roles.includes('worker' as any) && 'Collection Operations'}
+                      {user.roles.includes('collection_centre' as any) && !user.roles.includes('admin' as any) && !user.roles.includes('worker' as any) && 'Collection Operations'}
                       {user.roles.length === 0 && 'Limited Access'}
                     </TableCell>
                   </TableRow>

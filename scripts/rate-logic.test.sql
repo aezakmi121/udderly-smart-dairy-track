@@ -215,8 +215,8 @@ SELECT
 FROM _results \gset
 
 \if :failed
-  \echo '=== FAILED:' :failed 'of' :passed '+' :failed '==='
-  \quit 1
+  \echo '=== FAILED:' :failed 'of' :passed '+' :failed 'rate logic checks ==='
+  DO $$ BEGIN RAISE EXCEPTION 'rate logic checks failed'; END $$;
 \else
   \echo '=== all' :passed 'rate logic checks passed ==='
 \endif

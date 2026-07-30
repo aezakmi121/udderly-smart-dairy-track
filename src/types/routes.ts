@@ -8,6 +8,7 @@ export interface RouteConfig {
 
 export interface UserPermissions {
   cows: boolean;
+  calves: boolean;
   milkProduction: boolean;
   farmers: boolean;
   milkCollection: boolean;

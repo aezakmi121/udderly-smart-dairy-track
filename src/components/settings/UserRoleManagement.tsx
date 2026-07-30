@@ -29,11 +29,11 @@ interface UserWithRoles {
   roles: string[];
 }
 
- type AppRole = 'admin' | 'worker' | 'farmer' | 'store_manager' | 'delivery_boy';
+ type AppRole = 'admin' | 'worker' | 'collection_centre' | 'store_manager' | 'delivery_boy';
  
  export const UserRoleManagement = () => {
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<AppRole>('farmer');
+  const [inviteRole, setInviteRole] = useState<AppRole>('collection_centre');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -214,7 +214,7 @@ interface UserWithRoles {
                             key={role}
                             className="px-2 py-1 text-xs bg-secondary text-secondary-foreground rounded"
                           >
-                            {role === 'worker' ? 'Farm Worker' : role === 'farmer' ? 'Collection Centre' : 'Admin'}
+                            {role === 'worker' ? 'Farm Worker' : role === 'collection_centre' ? 'Collection Centre' : 'Admin'}
                           </span>
                         ))
                       )}
