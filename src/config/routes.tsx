@@ -63,7 +63,9 @@ export const routes: RouteConfig[] = [
     path: '/calves',
     component: CalvesManagement,
     label: 'Calves',
-    icon: Baby
+    icon: Baby,
+    // Farm-side; without this every role sees it, including the collection centre.
+    permission: 'calves'
   },
   {
     path: '/milk-production',

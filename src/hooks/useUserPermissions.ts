@@ -24,10 +24,10 @@ export const useUserPermissions = () => {
 
   const isAdmin = roles?.includes('admin') ?? false;
   const isFarmWorker = roles?.includes('worker') ?? false;
-  const isCollectionCentre = roles?.includes('farmer') ?? false;
+  const isCollectionCentre = roles?.includes('collection_centre') ?? false;
   const hasNoRole = !roles || roles.length === 0;
 
-  const primaryRole = isAdmin ? 'admin' : isFarmWorker ? 'worker' : isCollectionCentre ? 'farmer' : hasNoRole ? 'none' : 'worker';
+  const primaryRole = isAdmin ? 'admin' : isFarmWorker ? 'worker' : isCollectionCentre ? 'collection_centre' : hasNoRole ? 'none' : 'worker';
 
   return {
     userRole: primaryRole,

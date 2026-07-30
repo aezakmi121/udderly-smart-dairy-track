@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus } from 'lucide-react';
 
-type UserRole = 'admin' | 'farmer' | 'worker';
+type UserRole = 'admin' | 'collection_centre' | 'worker';
 
 const roleLabels = {
   admin: 'Admin',

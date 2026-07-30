@@ -2732,7 +2732,7 @@ export type Database = {
     Enums: {
       advance_status: "outstanding" | "recovered" | "written_off"
       ai_status: "pending" | "done" | "failed"
-      app_role: "admin" | "farmer" | "worker" | "store_manager" | "delivery_boy"
+      app_role: "admin" | "collection_centre" | "worker" | "store_manager" | "delivery_boy"
       calf_status: "alive" | "dead" | "sold" | "promoted"
       cow_status: "active" | "dry" | "pregnant" | "sick" | "sold" | "dead"
       expense_status: "pending" | "paid" | "overdue" | "cancelled"
@@ -2877,7 +2877,7 @@ export const Constants = {
     Enums: {
       advance_status: ["outstanding", "recovered", "written_off"],
       ai_status: ["pending", "done", "failed"],
-      app_role: ["admin", "farmer", "worker", "store_manager", "delivery_boy"],
+      app_role: ["admin", "collection_centre", "worker", "store_manager", "delivery_boy"],
       calf_status: ["alive", "dead", "sold", "promoted"],
       cow_status: ["active", "dry", "pregnant", "sick", "sold", "dead"],
       expense_status: ["pending", "paid", "overdue", "cancelled"],
