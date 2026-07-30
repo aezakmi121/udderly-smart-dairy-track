@@ -28,14 +28,22 @@ interface UploadCheck {
   species: string;
   priced_cells: number;
   unpriced_cells: number;
-  implied_base_rate: number | null;
-  reference_fat: number;
   payable_fat_min: number | null;
   payable_fat_max: number | null;
   payable_snf_min: number | null;
   payable_snf_max: number | null;
-  outliers: Array<{ fat: number; snf: number; rate: number; expected: number }>;
-  outlier_count: number;
+  rate_min: number | null;
+  rate_max: number | null;
+  reversals?: Array<{ axis: string; fat: number; snf: number; rate: number; prevRate: number }>;
+  reversal_count?: number;
+}
+
+interface RateChangeImpact {
+  affected_collections: number;
+  affected_amount: number;
+  first_date: string | null;
+  last_date: string | null;
+  finalized_cycles: number;
 }
 
 export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
@@ -52,8 +60,23 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
   const [overlapCount, setOverlapCount] = useState(0);
   const [error, setError] = useState<string>('');
   const [showViewer, setShowViewer] = useState(false);
+  const [impact, setImpact] = useState<RateChangeImpact | null>(null);
+  const [checkingImpact, setCheckingImpact] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // A list dated in the past does not rewrite what has already been recorded --
+  // collections keep their stored amounts, and payouts and bills read those
+  // rather than re-pricing. What it does change is anything entered or edited
+  // into that window afterwards, which would then price differently from its
+  // neighbours. Worth confirming deliberately rather than discovering later.
+  const isBackdated = (() => {
+    const today = new Date().toISOString().split('T')[0];
+    if (effectiveFrom > today) return false;
+    if (effectiveFrom < today) return true;
+    // Same day: only the evening slot is still ahead of a morning collection.
+    return effectiveSession === 'morning' || new Date().getHours() >= 12;
+  })();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -67,12 +90,53 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
     }
   };
 
+  // Step one for a backdated list: show what it would affect and wait for an
+  // explicit confirmation. Never writes anything.
+  const handleRequestUpload = async () => {
+    if (!file) {
+      setError('Please select a file');
+      return;
+    }
+    if (!isBackdated) {
+      await handleUpload();
+      return;
+    }
+
+    setCheckingImpact(true);
+    setError('');
+    try {
+      const { data, error: rpcError } = await (supabase.rpc as any)('fn_rate_change_impact', {
+        p_date: effectiveFrom,
+        p_session: effectiveSession,
+      });
+      if (rpcError) throw rpcError;
+      const row = data?.[0];
+      // Nothing in the window means there is nothing to warn about.
+      if (!row || Number(row.affected_collections) === 0) {
+        await handleUpload();
+        return;
+      }
+      setImpact({
+        affected_collections: Number(row.affected_collections),
+        affected_amount: Number(row.affected_amount),
+        first_date: row.first_date,
+        last_date: row.last_date,
+        finalized_cycles: Number(row.finalized_cycles),
+      });
+    } catch (err: any) {
+      setError(err.message || 'Could not check what this rate list would affect');
+    } finally {
+      setCheckingImpact(false);
+    }
+  };
+
   const handleUpload = async () => {
     if (!file) {
       setError('Please select a file');
       return;
     }
 
+    setImpact(null);
     setIsUploading(true);
     setError('');
     setResults([]);
@@ -132,6 +196,7 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
     setResults([]);
     setChecks([]);
     setOverlapCount(0);
+    setImpact(null);
     setUploadStatus('idle');
     setIsUploading(false);
   };
@@ -244,6 +309,53 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
             </Card>
           )}
 
+          {/* Backdated list — confirm before publishing */}
+          {impact && (
+            <Card className="border-amber-300 bg-amber-50">
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div className="text-sm space-y-2">
+                    <p className="font-medium text-amber-900">
+                      This rate list starts in the past
+                    </p>
+                    <p className="text-amber-800">
+                      There {impact.affected_collections === 1 ? 'is' : 'are'} already{' '}
+                      <span className="font-medium">{impact.affected_collections}</span> collection
+                      {impact.affected_collections === 1 ? '' : 's'} on or after the{' '}
+                      {effectiveSession} session of {effectiveFrom}
+                      {impact.first_date && impact.last_date && (
+                        <> ({impact.first_date} to {impact.last_date})</>
+                      )}
+                      , worth{' '}
+                      <span className="font-medium">₹{impact.affected_amount.toFixed(2)}</span>.
+                    </p>
+                    <p className="text-amber-800">
+                      Those amounts stay as recorded — bills and payouts use the stored figures and
+                      are not re-priced. But anything entered or edited into that window from now on
+                      will use this new list, so it may not match its neighbours.
+                    </p>
+                    {impact.finalized_cycles > 0 && (
+                      <p className="font-medium text-red-700">
+                        {impact.finalized_cycles} finalised payout cycle
+                        {impact.finalized_cycles === 1 ? '' : 's'} overlap this period. Re-entering a
+                        collection there would disagree with what was already paid.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <Button size="sm" variant="outline" onClick={() => setImpact(null)}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={handleUpload} disabled={isUploading}>
+                    Publish anyway
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Error */}
           {error && (
             <Card className="border-red-200 bg-red-50">
@@ -305,25 +417,23 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
                     <div key={c.species} className="text-sm border rounded-md p-3">
                       <div className="flex items-center gap-2 mb-2">
                         <Badge variant="outline">{c.species}</Badge>
-                        {c.outlier_count === 0 ? (
-                          <span className="text-xs text-green-700">consistent</span>
-                        ) : (
-                          <span className="text-xs text-red-700 font-medium">
-                            {c.outlier_count} cell(s) off-formula
+                        {(c.reversal_count ?? 0) > 0 && (
+                          <span className="text-xs text-amber-700 font-medium">
+                            {c.reversal_count} rate reversal(s)
                           </span>
                         )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         <div>
-                          Rate at {c.reference_fat}% fat:{' '}
-                          <span className="font-medium text-foreground">
-                            {c.implied_base_rate === null ? '—' : `₹${c.implied_base_rate.toFixed(2)}`}
-                          </span>
-                        </div>
-                        <div>
                           Priced cells:{' '}
                           <span className="font-medium text-foreground">{c.priced_cells}</span>{' '}
                           ({c.unpriced_cells} unpriced)
+                        </div>
+                        <div>
+                          Rate range:{' '}
+                          <span className="font-medium text-foreground">
+                            {c.rate_min === null || c.rate_min === undefined ? '—' : `₹${c.rate_min.toFixed(2)}`} – {c.rate_max === null || c.rate_max === undefined ? '—' : `₹${c.rate_max.toFixed(2)}`}
+                          </span>
                         </div>
                         <div>
                           Payable fat:{' '}
@@ -338,13 +448,14 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
                           </span>
                         </div>
                       </div>
-                      {c.outliers.length > 0 && (
-                        <div className="mt-2 text-xs text-red-700">
-                          <div className="font-medium mb-1">Cells that disagree with the rate formula:</div>
-                          {c.outliers.map((o, i) => (
+                      {(c.reversals?.length ?? 0) > 0 && (
+                        <div className="mt-2 text-xs text-amber-700">
+                          <div className="font-medium mb-1">
+                            Rate drops as {c.reversals?.[0]?.axis === 'fat' ? 'fat' : 'SNF'} rises — check these for a typo:
+                          </div>
+                          {c.reversals?.map((r, i) => (
                             <div key={i}>
-                              fat {o.fat} / SNF {o.snf}: sheet says ₹{o.rate.toFixed(2)}, formula gives ₹
-                              {o.expected.toFixed(2)}
+                              fat {r.fat} / SNF {r.snf}: ₹{r.rate.toFixed(2)} is below the previous ₹{r.prevRate.toFixed(2)}
                             </div>
                           ))}
                         </div>
@@ -388,14 +499,16 @@ export const RateMatrixUploadModal: React.FC<RateMatrixUploadModalProps> = ({
             <div className="flex flex-wrap gap-2">
               {uploadStatus === 'idle' && (
                 <Button 
-                  onClick={handleUpload} 
-                  disabled={!file || isUploading}
+                  onClick={handleRequestUpload} 
+                  disabled={!file || isUploading || checkingImpact}
                   size="sm"
                   className="whitespace-nowrap"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Upload Rate Matrix</span>
-                  <span className="sm:hidden">Upload</span>
+                  <span className="hidden sm:inline">
+                    {checkingImpact ? 'Checking…' : 'Upload Rate Matrix'}
+                  </span>
+                  <span className="sm:hidden">{checkingImpact ? 'Checking…' : 'Upload'}</span>
                 </Button>
               )}
 
