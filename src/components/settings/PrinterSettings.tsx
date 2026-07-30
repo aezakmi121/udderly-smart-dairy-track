@@ -20,7 +20,11 @@ import {
   setPrintMethod,
   isAndroid,
   PrintMethod,
+  getAutoCut,
+  setAutoCut,
 } from '@/services/thermalPrinting';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const RAWBT_PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter';
 
@@ -31,6 +35,7 @@ export const PrinterSettings: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const [autoCut, setAutoCutState] = useState(getAutoCut());
   const { toast } = useToast();
 
   const isSupported = isWebBluetoothSupported();
@@ -46,6 +51,11 @@ export const PrinterSettings: React.FC = () => {
     const m = next as PrintMethod;
     setMethod(m);
     setPrintMethod(m);
+  };
+
+  const handleAutoCutChange = (enabled: boolean) => {
+    setAutoCutState(enabled);
+    setAutoCut(enabled);
   };
 
   const handleScanPrinters = async () => {
@@ -109,6 +119,7 @@ export const PrinterSettings: React.FC = () => {
   };
 
   return (
+    <div className="space-y-4">
     <Tabs value={method} onValueChange={handleMethodChange} className="space-y-4">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="rawbt" disabled={!onAndroid && method !== 'rawbt'}>
@@ -269,5 +280,22 @@ export const PrinterSettings: React.FC = () => {
         )}
       </TabsContent>
     </Tabs>
+
+    {/* Applies to both transports: it changes the bytes, not the link. */}
+    <Card>
+      <CardContent className="py-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Label htmlFor="auto-cut" className="font-medium">Cut paper after each slip</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Sends a cut command at the end of every slip. Printers without a cutter ignore it
+              safely — turn this on and run a Test Print to see whether yours supports it.
+            </p>
+          </div>
+          <Switch id="auto-cut" checked={autoCut} onCheckedChange={handleAutoCutChange} />
+        </div>
+      </CardContent>
+    </Card>
+    </div>
   );
 };

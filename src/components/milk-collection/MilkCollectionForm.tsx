@@ -177,7 +177,10 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
       fat_percentage: Number(data.fat_percentage),
       snf_percentage: Number(data.snf_percentage),
       rate_per_liter: derivedRate,
-      total_amount: totalAmount
+      total_amount: totalAmount,
+      // Record which rate list priced this, so the slip can state it as fact.
+      rate_effective_from: isAuto ? (effectiveFrom ?? null) : null,
+      rate_effective_session: isAuto ? (rateData?.effective_session ?? null) : null
     };
     
     if (initialData) {
