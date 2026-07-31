@@ -43,6 +43,20 @@ export const nextSmallerChunk = (size: number): number | null =>
 // Remembered for the life of a connection; cleared when the link drops.
 let negotiatedChunkSize: number | null = null;
 
+export interface PrintStats {
+  bytes: number;
+  ms: number;
+  bytesPerSecond: number;
+  chunkSize: number;
+  noResponse: boolean;
+  compatibilityMode: boolean;
+}
+
+// What the last Web Bluetooth print achieved, so the UI can report the real
+// throughput instead of asking the user to read a console.
+let lastPrintStats: PrintStats | null = null;
+export const getLastPrintStats = (): PrintStats | null => lastPrintStats;
+
 // Print transport method
 export type PrintMethod = 'rawbt' | 'web-bluetooth';
 
@@ -567,9 +581,17 @@ const printViaWebBluetooth = async (bytes: Uint8Array): Promise<boolean> => {
   }
 
   const ms = Date.now() - started;
+  lastPrintStats = {
+    bytes: bytes.length,
+    ms,
+    bytesPerSecond: Math.round((bytes.length / Math.max(ms, 1)) * 1000),
+    chunkSize: size,
+    noResponse,
+    compatibilityMode: compat,
+  };
   console.log(
     `Printed ${bytes.length} bytes in ${ms}ms ` +
-      `(${Math.round((bytes.length / Math.max(ms, 1)) * 1000)} B/s, ` +
+      `(${lastPrintStats.bytesPerSecond} B/s, ` +
       `chunk ${size}, ${noResponse ? 'no-response' : 'acked'}${compat ? ', compatibility mode' : ''})`
   );
   return true;
