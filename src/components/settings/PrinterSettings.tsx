@@ -24,6 +24,7 @@ import {
   setAutoCut,
   getCompatibilityMode,
   setCompatibilityMode,
+  getLastPrintStats,
 } from '@/services/thermalPrinting';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -115,9 +116,17 @@ export const PrinterSettings: React.FC = () => {
     setIsTesting(true);
     try {
       await printTestSlip();
+      const stats = getLastPrintStats();
+      // Report the measured speed here rather than leaving it in the console:
+      // it is the number that decides whether a logo is practical on this
+      // printer, and it should not take DevTools to read it.
       const msg = method === 'rawbt'
         ? 'Sent to RawBT. Check the printed slip.'
-        : 'Test slip printed successfully!';
+        : stats
+          ? `Printed ${stats.bytes} bytes in ${stats.ms}ms — ` +
+            `${(stats.bytesPerSecond / 1024).toFixed(1)} KB/s, ${stats.chunkSize}-byte chunks` +
+            `${stats.compatibilityMode ? ' (slow mode)' : ''}`
+          : 'Test slip printed successfully!';
       toast({ title: 'Print Sent', description: msg });
     } catch (error: any) {
       toast({ title: 'Print Failed', description: error.message || 'Failed to print test slip.', variant: 'destructive' });
