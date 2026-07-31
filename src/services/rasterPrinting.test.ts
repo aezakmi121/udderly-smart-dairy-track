@@ -7,6 +7,10 @@ import {
   stackRasters,
   needsRaster,
   ditherFloydSteinberg,
+  invertGrey,
+  inkCoverage,
+  renderQrRaster,
+  qrModuleDotsToFit,
   PAPER_DOTS,
   type Raster,
 } from './rasterPrinting';
@@ -181,5 +185,100 @@ describe('dithering', () => {
     const white = new Uint8Array(64).fill(255);
     ditherFloydSteinberg(white, 8, 8);
     expect([...white].every((v) => v === 255)).toBe(true);
+  });
+});
+
+
+describe('inverting', () => {
+  // Screen artwork is often light lettering on a dark field. Printed as-is that
+  // burns almost the whole area; lifted onto transparency it prints nothing.
+  it('swaps black and white', () => {
+    const g = new Uint8Array([0, 255, 128, 200]);
+    invertGrey(g);
+    expect([...g]).toEqual([255, 0, 127, 55]);
+  });
+
+  it('is its own undo', () => {
+    const original = [12, 200, 77, 255, 0];
+    const g = new Uint8Array(original);
+    invertGrey(g);
+    invertGrey(g);
+    expect([...g]).toEqual(original);
+  });
+});
+
+describe('ink coverage', () => {
+  it('is nothing for blank paper', () => {
+    expect(inkCoverage(blankRaster(8, 4))).toBe(0);
+  });
+
+  it('is everything for a solid block', () => {
+    const solid = packMonochrome(new Uint8Array(64).fill(0), 8, 8);
+    expect(inkCoverage(solid)).toBe(1);
+  });
+
+  it('measures a partly filled image', () => {
+    const half = packMonochrome(grey(['####....']).data, 8, 1);
+    expect(inkCoverage(half)).toBeCloseTo(0.5, 5);
+  });
+
+  it('reports an empty raster as nothing rather than dividing by zero', () => {
+    expect(inkCoverage(blankRaster(8, 0))).toBe(0);
+  });
+});
+
+describe('QR rendering', () => {
+  // A checkerboard stands in for a real code: it exercises module placement
+  // without depending on the encoder.
+  const matrix = (size: number) => ({ size, get: (x: number, y: number) => (x + y) % 2 === 0 });
+
+  it('surrounds the code with a quiet zone, which scanners need', () => {
+    const r = renderQrRaster(matrix(21), { moduleDots: 2, quietModules: 4 });
+    expect(r.height).toBe((21 + 8) * 2);
+    // The outer margin must be blank or the code often will not read.
+    expect(r.bits[0]).toBe(0);
+  });
+
+  it('scales each module to the requested block of dots', () => {
+    const small = renderQrRaster(matrix(21), { moduleDots: 2, quietModules: 0 });
+    const large = renderQrRaster(matrix(21), { moduleDots: 6, quietModules: 0 });
+    expect(large.height).toBe(small.height * 3);
+  });
+
+  // The code itself is square; the raster's width is that rounded up to a whole
+  // byte, and the extra dots are white, so it prints as a slightly wider right
+  // margin rather than a distorted code.
+  it('is square in content, padded to a byte boundary in width', () => {
+    const side = (25 + 8) * 4;
+    const r = renderQrRaster(matrix(25), { moduleDots: 4, quietModules: 4 });
+    expect(r.height).toBe(side);
+    expect(r.width).toBe(bytesPerRow(side) * 8);
+    expect(r.width - side).toBeLessThan(8);
+  });
+
+  it('actually marks dots for set modules', () => {
+    expect(inkCoverage(renderQrRaster(matrix(21), { moduleDots: 3, quietModules: 0 }))).toBeGreaterThan(0.4);
+  });
+});
+
+describe('fitting a QR to the paper', () => {
+  it('never exceeds the paper width', () => {
+    for (const modules of [21, 25, 29, 33, 41, 57]) {
+      const scale = qrModuleDotsToFit(modules);
+      expect((modules + 8) * scale).toBeLessThanOrEqual(PAPER_DOTS);
+    }
+  });
+
+  it('uses the largest size that fits, so the code stays scannable', () => {
+    for (const modules of [21, 25, 29, 33]) {
+      const scale = qrModuleDotsToFit(modules);
+      expect((modules + 8) * (scale + 1)).toBeGreaterThan(PAPER_DOTS);
+    }
+  });
+
+  // A code one dot per module is unreadable off thermal paper, but printing
+  // something beats printing nothing.
+  it('never drops below one dot per module', () => {
+    expect(qrModuleDotsToFit(500)).toBe(1);
   });
 });

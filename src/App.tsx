@@ -17,6 +17,7 @@ import { useEnhancedToast } from "@/hooks/useEnhancedToast";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import FarmerPortal from "./pages/FarmerPortal";
+import { FarmerSlipLogin } from "./pages/FarmerSlipLogin";
 import { RecoveryRedirect } from "@/components/auth/RecoveryRedirect";
 import { StatementReviewScreen } from "@/components/expenses/StatementReviewScreen";
 
@@ -37,6 +38,8 @@ const AppContent = () => {
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/farmer" element={<FarmerPortal />} />
+                  {/* Landing page for the QR printed on a collection slip. */}
+                  <Route path="/f/:token" element={<FarmerSlipLogin />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route
                     path="/*"

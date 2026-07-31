@@ -1225,6 +1225,7 @@ export type Database = {
       }
       farmers: {
         Row: {
+          portal_token?: string | null
           address: string | null
           created_at: string | null
           farmer_code: string

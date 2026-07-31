@@ -9,10 +9,13 @@ import {
   PAPER_DOTS,
   centeredRaster,
   needsRaster,
+  qrModuleDotsToFit,
+  renderQrRaster,
   renderTextRaster,
   rasterToEscPos,
   type Raster,
 } from './rasterPrinting';
+import QRCode from 'qrcode';
 
 // Types for thermal printing
 export interface BluetoothDevice {
@@ -35,6 +38,8 @@ export interface CollectionSlipData {
   // Which rate list priced this collection, when it was recorded.
   rateEffectiveFrom?: string | null;
   rateEffectiveSession?: string | null;
+  /** Link to this farmer's own earnings, printed as a QR when enabled. */
+  portalUrl?: string | null;
 }
 
 // Storage keys
@@ -501,6 +506,24 @@ const buildSlipData = (
   commands.push(...textToBytes(`TOTAL:        Rs.${data.totalAmount.toFixed(2)}\n`));
   commands.push(...ESC_POS.BOLD_OFF);
   
+  // The farmer's own link, so a slip is enough to see their earnings without
+  // a phone number, a code to type, or anything to remember.
+  if (template.qr.enabled && data.portalUrl) {
+    try {
+      const qr = QRCode.create(data.portalUrl, { errorCorrectionLevel: 'M' });
+      const size = qr.modules.size;
+      const raster = renderQrRaster(
+        { size, get: (x, y) => qr.modules.get(y, x) === 1 },
+        { moduleDots: qrModuleDotsToFit(size) }
+      );
+      commands.push(...centeredRaster(raster));
+      emitLine(commands, template.qr.caption, { fontSizePx: 20 });
+    } catch (err) {
+      // A slip that prints without its QR is far better than one that fails.
+      console.error('Could not render the portal QR code:', err);
+    }
+  }
+
   // Footer
   commands.push(...ESC_POS.ALIGN_CENTER);
   commands.push(...textToBytes(`${'='.repeat(SLIP_COLUMNS)}\n`));
@@ -701,6 +724,10 @@ export const getSlipPreview = (
   if (data.rateEffectiveFrom) lines.push(`Rate list:    ${formatRateVersion(data)}`);
   lines.push(thinRule);
   lines.push(`TOTAL:        Rs.${data.totalAmount.toFixed(2)}`);
+  if (template.qr.enabled && data.portalUrl) {
+    lines.push(centre('[ QR ]'));
+    if (template.qr.caption.trim()) lines.push(centre(template.qr.caption));
+  }
   lines.push(rule);
   if (template.footerMessage.trim()) lines.push(centre(template.footerMessage));
   if (template.contactLine.trim()) lines.push(centre(template.contactLine));

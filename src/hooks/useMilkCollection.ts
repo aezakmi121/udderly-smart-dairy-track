@@ -29,7 +29,7 @@ export const useMilkCollection = (selectedDate?: string) => {
         .from('milk_collections')
         .select(`
           *,
-          farmers!milk_collections_farmer_id_fkey (name, farmer_code)
+          farmers!milk_collections_farmer_id_fkey (name, farmer_code, portal_token)
         `);
       
       if (selectedDate) {
