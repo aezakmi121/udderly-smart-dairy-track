@@ -4,12 +4,14 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import { AlertCircle, Upload, X } from 'lucide-react';
 import { useAppSetting } from '@/hooks/useAppSettings';
 import { useToast } from '@/hooks/use-toast';
 import {
   DEFAULT_SLIP_TEMPLATE,
   SLIP_TEMPLATE_KEY,
+  HEAVY_COVERAGE,
   brandWouldBeEmpty,
   encodeLogoBits,
   normaliseTemplate,
@@ -20,6 +22,7 @@ import {
 } from '@/services/slipTemplate';
 import {
   PAPER_DOTS,
+  inkCoverage,
   needsRaster,
   renderImageRaster,
   renderTextRaster,
@@ -48,6 +51,7 @@ const SAMPLE: CollectionSlipData = {
   species: 'Buffalo',
   rateEffectiveFrom: '2026-08-01',
   rateEffectiveSession: 'morning',
+  portalUrl: 'https://example.com/f/SAMPLETOKEN',
 };
 
 /** Draw a raster onto a canvas at 1:1, so the preview is the real thing. */
@@ -91,6 +95,9 @@ export const SlipTemplateSettings: React.FC = () => {
   const { toast } = useToast();
   const [form, setForm] = useState<SlipTemplate>(DEFAULT_SLIP_TEMPLATE);
   const [renderError, setRenderError] = useState<string | null>(null);
+  // Kept alongside the file so re-inverting does not need a re-upload.
+  const [lastImage, setLastImage] = useState<HTMLImageElement | null>(null);
+  const [invert, setInvert] = useState(false);
 
   useEffect(() => {
     setForm(normaliseTemplate(stored));
@@ -121,6 +128,24 @@ export const SlipTemplateSettings: React.FC = () => {
     }
   }, [form.footerMessage]);
 
+  // Reduce once here, so printing never does image work.
+  const prepareLogo = (img: HTMLImageElement, inverted: boolean) => {
+    const raster = renderImageRaster(img, {
+      widthDots: PAPER_DOTS,
+      maxHeightDots: 160,
+      invert: inverted,
+    });
+    const coverage = inkCoverage(raster);
+    set('logo', {
+      bits: encodeLogoBits(raster.bits),
+      widthDots: raster.width,
+      heightDots: raster.height,
+      coverage,
+      inverted,
+    });
+    return { raster, coverage };
+  };
+
   const handleLogoUpload = async (file: File) => {
     try {
       const url = URL.createObjectURL(file);
@@ -130,19 +155,22 @@ export const SlipTemplateSettings: React.FC = () => {
         img.onerror = () => rej(new Error('That file could not be read as an image'));
         img.src = url;
       });
-      // Reduce once here, so printing never does image work.
-      const raster = renderImageRaster(img, { widthDots: PAPER_DOTS, maxHeightDots: 160 });
+      setLastImage(img);
+      const { raster, coverage } = prepareLogo(img, invert);
       URL.revokeObjectURL(url);
-      set('logo', {
-        bits: encodeLogoBits(raster.bits),
-        widthDots: raster.width,
-        heightDots: raster.height,
-      });
       if (form.brandMode === 'text') set('brandMode', 'both');
-      toast({ title: 'Logo ready', description: `Converted to ${raster.width}x${raster.height} dots.` });
+      toast({
+        title: 'Logo ready',
+        description: `${raster.width}x${raster.height} dots, ${(coverage * 100).toFixed(0)}% ink.`,
+      });
     } catch (e: any) {
       toast({ title: 'Could not use that image', description: e.message, variant: 'destructive' });
     }
+  };
+
+  const handleInvertChange = (next: boolean) => {
+    setInvert(next);
+    if (lastImage) prepareLogo(lastImage, next);
   };
 
   const preview = getSlipPreview(SAMPLE, form);
@@ -158,6 +186,33 @@ export const SlipTemplateSettings: React.FC = () => {
           What the slip says around the figures. Hindi is supported everywhere here — those lines are
           printed as an image, because thermal printers have no Devanagari built in.
         </p>
+
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Label htmlFor="qr-enabled" className="font-medium">Print the farmer's QR link</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Adds a QR to every slip that opens that farmer's own earnings, with nothing to type.
+              A farmer without a phone can hand the slip to someone who has one.
+            </p>
+          </div>
+          <Switch
+            id="qr-enabled"
+            checked={form.qr.enabled}
+            onCheckedChange={(v) => set('qr', { ...form.qr, enabled: v })}
+          />
+        </div>
+
+        {form.qr.enabled && (
+          <div>
+            <Label htmlFor="qr-caption">QR caption</Label>
+            <Input
+              id="qr-caption"
+              value={form.qr.caption}
+              onChange={(e) => set('qr', { ...form.qr, caption: e.target.value })}
+              placeholder="अपना हिसाब देखें"
+            />
+          </div>
+        )}
 
         <div>
           <Label className="mb-2 block">Branding</Label>
@@ -257,6 +312,31 @@ export const SlipTemplateSettings: React.FC = () => {
             Converted to black and white at {PAPER_DOTS} dots wide when you upload it. Simple, high
             contrast artwork prints best; photographs turn muddy.
           </p>
+
+          <div className="flex items-start justify-between gap-4 mt-3">
+            <div>
+              <Label htmlFor="logo-invert" className="text-sm font-medium">
+                Invert black and white
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                For artwork that is light lettering on a dark background. Without this, a dark
+                design prints as a near-solid block, and lettering cut out on a transparent
+                background prints nothing at all.
+              </p>
+            </div>
+            <Switch id="logo-invert" checked={invert} onCheckedChange={handleInvertChange} />
+          </div>
+
+          {form.logo?.coverage !== undefined && form.logo.coverage > HEAVY_COVERAGE && (
+            <Alert variant="destructive" className="mt-3">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                This image would burn {(form.logo.coverage * 100).toFixed(0)}% of its area. It will
+                print slowly and look like a dark blot. Try inverting it, or use simple line art
+                such as just the lettering from your logo.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         {renderError && (

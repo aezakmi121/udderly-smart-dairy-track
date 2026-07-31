@@ -14,7 +14,14 @@ export interface StoredLogo {
   bits: string;
   widthDots: number;
   heightDots: number;
+  /** Fraction of dots that will burn, so the UI can warn about a heavy image. */
+  coverage?: number;
+  /** Whether black and white were swapped when this was prepared. */
+  inverted?: boolean;
 }
+
+/** Above this, an image reads as a blot and prints slowly. */
+export const HEAVY_COVERAGE = 0.4;
 
 export interface SlipTemplate {
   brandMode: BrandMode;

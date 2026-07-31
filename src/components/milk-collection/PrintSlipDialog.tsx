@@ -32,7 +32,6 @@ interface PrintSlipDialogProps {
   collection: {
     id: string;
     farmer_id: string;
-    farmers?: { name: string; farmer_code: string } | null;
     collection_date: string;
     session: 'morning' | 'evening';
     quantity: number;
@@ -43,6 +42,7 @@ interface PrintSlipDialogProps {
     species: string;
     rate_effective_from?: string | null;
     rate_effective_session?: string | null;
+    farmers?: { name: string; farmer_code: string; portal_token?: string | null } | null;
   } | null;
 }
 
@@ -78,6 +78,10 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
     species: collection.species,
     rateEffectiveFrom: collection.rate_effective_from ?? null,
     rateEffectiveSession: collection.rate_effective_session ?? null,
+    // Short path keeps the QR coarse enough to scan off thermal paper.
+    portalUrl: collection.farmers?.portal_token
+      ? `${window.location.origin}/f/${collection.farmers.portal_token}`
+      : null,
   };
 
   const previewText = getSlipPreview(slipData, template);

@@ -188,6 +188,16 @@ export interface ImageRasterOptions {
   threshold?: number;
   /** Photographs need dithering; line art and logos look better hard-thresholded. */
   dither?: boolean;
+  /**
+   * Swap black and white.
+   *
+   * Artwork designed for a screen is often light lettering on a dark field. On
+   * thermal paper dark means burn, so that prints as a near-solid block with the
+   * lettering knocked out -- slow, ugly, and hard on the head. Worse, lettering
+   * lifted onto a transparent background composites to white and prints nothing
+   * at all. Inverting turns such artwork into black marks on bare paper.
+   */
+  invert?: boolean;
 }
 
 /**
@@ -216,9 +226,72 @@ export const renderImageRaster = (
   ctx.drawImage(image, 0, 0, width, height);
 
   const grey = canvasToGrey(ctx, width, height);
+  if (opts.invert) invertGrey(grey);
   if (opts.dither) ditherFloydSteinberg(grey, width, height, opts.threshold ?? 128);
   return packMonochrome(grey, width, height, opts.threshold);
 };
+
+/** Flip light and dark in place. */
+export const invertGrey = (grey: Uint8Array): void => {
+  for (let i = 0; i < grey.length; i++) grey[i] = 255 - grey[i];
+};
+
+/**
+ * How much of a raster would actually burn.
+ *
+ * A mostly black image prints slowly and reads as a blot, so this lets the UI
+ * warn before paper is spent rather than after.
+ */
+export const inkCoverage = (raster: Raster): number => {
+  if (raster.height === 0) return 0;
+  let lit = 0;
+  for (let i = 0; i < raster.bits.length; i++) {
+    let b = raster.bits[i];
+    while (b) {
+      lit += b & 1;
+      b >>= 1;
+    }
+  }
+  return lit / (bytesPerRow(raster.width) * 8 * raster.height);
+};
+
+/**
+ * A QR code as a printable raster.
+ *
+ * Each QR module becomes a square block of dots, with a quiet zone around it --
+ * scanners need that margin, and a code printed flush to its neighbours often
+ * will not read at all.
+ */
+export const renderQrRaster = (
+  matrix: { size: number; get: (x: number, y: number) => boolean },
+  opts: { moduleDots?: number; quietModules?: number } = {}
+): Raster => {
+  const scale = opts.moduleDots ?? 4;
+  const quiet = opts.quietModules ?? 4;
+  const side = (matrix.size + quiet * 2) * scale;
+  const grey = new Uint8Array(side * side).fill(255);
+
+  for (let my = 0; my < matrix.size; my++) {
+    for (let mx = 0; mx < matrix.size; mx++) {
+      if (!matrix.get(mx, my)) continue;
+      const x0 = (mx + quiet) * scale;
+      const y0 = (my + quiet) * scale;
+      for (let dy = 0; dy < scale; dy++) {
+        const row = (y0 + dy) * side;
+        for (let dx = 0; dx < scale; dx++) grey[row + x0 + dx] = 0;
+      }
+    }
+  }
+
+  return packMonochrome(grey, side, side);
+};
+
+/** Largest module size whose finished code still fits the paper. */
+export const qrModuleDotsToFit = (
+  modules: number,
+  widthDots = PAPER_DOTS,
+  quietModules = 4
+): number => Math.max(1, Math.floor(widthDots / (modules + quietModules * 2)));
 
 /**
  * Spread each pixel's rounding error into its neighbours, so a smooth gradient

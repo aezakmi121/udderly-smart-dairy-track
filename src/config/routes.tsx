@@ -17,7 +17,8 @@ import {
   ShoppingBag,
   Droplet,
   FileText,
-  Wallet
+  Wallet,
+  Search
 } from 'lucide-react';
 import { RouteConfig } from '@/types/routes';
 import { Dashboard } from '@/components/dashboard/Dashboard';
@@ -26,6 +27,7 @@ import { CalvesManagement } from '@/components/calves/CalvesManagement';
 import { MilkProduction } from '@/components/milk/MilkProduction';
 import { MilkCollectionManagement } from '@/components/milk-collection/MilkCollectionManagement';
 import { VaccinationManagement } from '@/components/vaccination/VaccinationManagement';
+import { FarmerLookup } from '@/components/farmers/FarmerLookup';
 import { FarmersManagement } from '@/components/farmers/FarmersManagement';
 import { AITrackingManagement } from '@/components/ai-tracking/AITrackingManagement';
 import { WeightLogsManagement } from '@/components/weight/WeightLogsManagement';
@@ -101,6 +103,15 @@ export const routes: RouteConfig[] = [
     permission: 'cows',
     label: 'AI Tracking',
     icon: Heart
+  },
+  {
+    path: '/farmer-lookup',
+    component: FarmerLookup,
+    label: 'Farmer Lookup',
+    icon: Search,
+    // Visible to the collection centre as well as admin: the counter is where
+    // farmers actually ask, and more than half of them have no phone.
+    permission: 'milkCollection'
   },
   {
     path: '/farmers',
