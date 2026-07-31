@@ -1,5 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { getSlipPreview, getAutoCut, setAutoCut, type CollectionSlipData } from './thermalPrinting';
+import {
+  getSlipPreview,
+  getAutoCut,
+  setAutoCut,
+  getCompatibilityMode,
+  setCompatibilityMode,
+  nextSmallerChunk,
+  CHUNK_SIZES,
+  SAFE_CHUNK_SIZE,
+  type CollectionSlipData,
+} from './thermalPrinting';
 
 // localStorage is not present in the node test environment; the printing module
 // only uses it for simple string settings, so a minimal stand-in is enough.
@@ -91,5 +101,49 @@ describe('auto cut setting', () => {
     expect(getAutoCut()).toBe(true);
     setAutoCut(false);
     expect(getAutoCut()).toBe(false);
+  });
+});
+
+
+describe('chunk size negotiation', () => {
+  // Web Bluetooth hides the negotiated MTU, so the transport steps down until
+  // a write is accepted. Getting this wrong either wastes throughput or loops.
+  it('steps down through every candidate size', () => {
+    expect(nextSmallerChunk(180)).toBe(100);
+    expect(nextSmallerChunk(100)).toBe(60);
+    expect(nextSmallerChunk(60)).toBe(20);
+  });
+
+  it('reports no smaller size at the floor, so the error surfaces', () => {
+    expect(nextSmallerChunk(SAFE_CHUNK_SIZE)).toBeNull();
+  });
+
+  it('never suggests a size at or above the current one', () => {
+    for (const size of CHUNK_SIZES) {
+      const next = nextSmallerChunk(size);
+      if (next !== null) expect(next).toBeLessThan(size);
+    }
+  });
+
+  it('bottoms out at the size a default-MTU printer can take', () => {
+    expect(CHUNK_SIZES[CHUNK_SIZES.length - 1]).toBe(SAFE_CHUNK_SIZE);
+  });
+
+  it('is ordered largest first so the fast path is tried before fallbacks', () => {
+    const sorted = [...CHUNK_SIZES].sort((a, b) => b - a);
+    expect([...CHUNK_SIZES]).toEqual(sorted);
+  });
+});
+
+describe('compatibility mode', () => {
+  it('is off by default, so printers get the fast path first', () => {
+    expect(getCompatibilityMode()).toBe(false);
+  });
+
+  it('round-trips', () => {
+    setCompatibilityMode(true);
+    expect(getCompatibilityMode()).toBe(true);
+    setCompatibilityMode(false);
+    expect(getCompatibilityMode()).toBe(false);
   });
 });

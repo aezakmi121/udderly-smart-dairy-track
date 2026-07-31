@@ -22,6 +22,8 @@ import {
   PrintMethod,
   getAutoCut,
   setAutoCut,
+  getCompatibilityMode,
+  setCompatibilityMode,
 } from '@/services/thermalPrinting';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -36,6 +38,7 @@ export const PrinterSettings: React.FC = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [autoCut, setAutoCutState] = useState(getAutoCut());
+  const [compatMode, setCompatModeState] = useState(getCompatibilityMode());
   const { toast } = useToast();
 
   const isSupported = isWebBluetoothSupported();
@@ -56,6 +59,11 @@ export const PrinterSettings: React.FC = () => {
   const handleAutoCutChange = (enabled: boolean) => {
     setAutoCutState(enabled);
     setAutoCut(enabled);
+  };
+
+  const handleCompatModeChange = (enabled: boolean) => {
+    setCompatModeState(enabled);
+    setCompatibilityMode(enabled);
   };
 
   const handleScanPrinters = async () => {
@@ -293,6 +301,18 @@ export const PrinterSettings: React.FC = () => {
             </p>
           </div>
           <Switch id="auto-cut" checked={autoCut} onCheckedChange={handleAutoCutChange} />
+        </div>
+
+        <div className="flex items-start justify-between gap-4 mt-6 pt-6 border-t">
+          <div>
+            <Label htmlFor="compat-mode" className="font-medium">Slow printing (compatibility)</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Slips normally print in large fast bursts. If yours come out garbled or truncated,
+              turn this on to send small pieces slowly instead — much slower, but it suits older
+              printers.
+            </p>
+          </div>
+          <Switch id="compat-mode" checked={compatMode} onCheckedChange={handleCompatModeChange} />
         </div>
       </CardContent>
     </Card>

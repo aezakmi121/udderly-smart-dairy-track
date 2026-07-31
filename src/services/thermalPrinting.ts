@@ -26,6 +26,22 @@ const SAVED_PRINTER_KEY = 'thermal_printer_address';
 const SAVED_PRINTER_NAME_KEY = 'thermal_printer_name';
 const PRINT_METHOD_KEY = 'thermal_print_method';
 const AUTO_CUT_KEY = 'thermal_auto_cut';
+const COMPAT_MODE_KEY = 'thermal_compatibility_mode';
+
+// Chunk sizes tried largest-first. Web Bluetooth does not expose the
+// negotiated MTU, so the usable size is discovered by attempting a write and
+// stepping down when the stack refuses it. 20 bytes is what a printer stuck on
+// the 23-byte default MTU can take, and was the previous fixed size.
+export const CHUNK_SIZES = [180, 100, 60, 20] as const;
+export const SAFE_CHUNK_SIZE = 20;
+export const SAFE_CHUNK_DELAY_MS = 50;
+
+// Next size down, or null when already at the smallest.
+export const nextSmallerChunk = (size: number): number | null =>
+  CHUNK_SIZES.find((c) => c < size) ?? null;
+
+// Remembered for the life of a connection; cleared when the link drops.
+let negotiatedChunkSize: number | null = null;
 
 // Print transport method
 export type PrintMethod = 'rawbt' | 'web-bluetooth';
@@ -104,6 +120,15 @@ export const setAutoCut = (enabled: boolean): void => {
   localStorage.setItem(AUTO_CUT_KEY, enabled ? 'on' : 'off');
 };
 
+// Escape hatch for a printer that garbles fast writes: restores the original
+// small acknowledged chunks with a pause between them.
+export const getCompatibilityMode = (): boolean =>
+  localStorage.getItem(COMPAT_MODE_KEY) === 'on';
+
+export const setCompatibilityMode = (enabled: boolean): void => {
+  localStorage.setItem(COMPAT_MODE_KEY, enabled ? 'on' : 'off');
+};
+
 // Get saved printer from localStorage
 export const getSavedPrinter = (): BluetoothDevice | null => {
   const address = localStorage.getItem(SAVED_PRINTER_KEY);
@@ -130,6 +155,7 @@ export const clearSavedPrinter = (): void => {
   connectedDevice = null;
   printerCharacteristic = null;
   gattServer = null;
+  negotiatedChunkSize = null;
 };
 
 // Scan for Bluetooth printers using Web Bluetooth API
@@ -193,6 +219,7 @@ const handleDisconnected = () => {
   console.log('Printer GATT disconnected — clearing cached handles');
   printerCharacteristic = null;
   gattServer = null;
+  negotiatedChunkSize = null;
 };
 
 // Connect to a specific printer (or use already selected device)
@@ -229,6 +256,7 @@ export const connectToPrinter = async (address: string): Promise<BluetoothDevice
     // out as soon as printerCharacteristic is truthy) and leave writes going to
     // a dead handle — the printer resets, feeds a little and prints nothing.
     printerCharacteristic = null;
+    negotiatedChunkSize = null;
 
     // Connect to GATT server
     console.log('Connecting to GATT server...');
@@ -500,12 +528,50 @@ const printViaWebBluetooth = async (bytes: Uint8Array): Promise<boolean> => {
   if (!printerCharacteristic) {
     throw new Error('Printer characteristic not available');
   }
-  const chunkSize = 20;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.slice(i, i + chunkSize);
-    await printerCharacteristic.writeValue(chunk);
-    await new Promise((resolve) => setTimeout(resolve, 50));
+  const compat = getCompatibilityMode();
+  // writeValueWithoutResponse skips the per-write acknowledgement round trip,
+  // which is most of the cost at small chunk sizes.
+  const noResponse =
+    !compat &&
+    printerCharacteristic.properties?.writeWithoutResponse === true &&
+    typeof printerCharacteristic.writeValueWithoutResponse === 'function';
+
+  // Web Bluetooth does not expose the negotiated MTU, so the working chunk
+  // size has to be discovered: start large and shrink on the first failure,
+  // remembering what worked for the rest of this connection.
+  let size = compat ? SAFE_CHUNK_SIZE : negotiatedChunkSize ?? CHUNK_SIZES[0];
+  const started = Date.now();
+  let offset = 0;
+
+  while (offset < bytes.length) {
+    const chunk = bytes.slice(offset, offset + size);
+    try {
+      if (noResponse) {
+        await printerCharacteristic.writeValueWithoutResponse(chunk);
+      } else {
+        await printerCharacteristic.writeValue(chunk);
+      }
+      offset += chunk.length;
+      negotiatedChunkSize = size;
+    } catch (err) {
+      const smaller = nextSmallerChunk(size);
+      if (smaller === null) throw err;
+      console.log(`Printer rejected a ${size}-byte write, retrying at ${smaller}`);
+      size = smaller;
+      negotiatedChunkSize = null;
+      continue;
+    }
+    if (compat) {
+      await new Promise((resolve) => setTimeout(resolve, SAFE_CHUNK_DELAY_MS));
+    }
   }
+
+  const ms = Date.now() - started;
+  console.log(
+    `Printed ${bytes.length} bytes in ${ms}ms ` +
+      `(${Math.round((bytes.length / Math.max(ms, 1)) * 1000)} B/s, ` +
+      `chunk ${size}, ${noResponse ? 'no-response' : 'acked'}${compat ? ', compatibility mode' : ''})`
+  );
   return true;
 };
 
