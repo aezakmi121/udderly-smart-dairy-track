@@ -10,6 +10,7 @@ import {
   SAFE_CHUNK_SIZE,
   type CollectionSlipData,
 } from './thermalPrinting';
+import { DEFAULT_SLIP_TEMPLATE } from './slipTemplate';
 
 // localStorage is not present in the node test environment; the printing module
 // only uses it for simple string settings, so a minimal stand-in is enough.
@@ -145,5 +146,57 @@ describe('compatibility mode', () => {
     expect(getCompatibilityMode()).toBe(true);
     setCompatibilityMode(false);
     expect(getCompatibilityMode()).toBe(false);
+  });
+});
+
+
+describe('slip composition from the template', () => {
+  it('prints the configured business name at the top', () => {
+    const text = getSlipPreview(slip(), DEFAULT_SLIP_TEMPLATE);
+    expect(text).toContain('श्रीLalita By Maharani Farm');
+    // The old fixed header is gone.
+    expect(text).not.toContain('DAIRY COLLECTION SLIP');
+  });
+
+  it('prints the configured footer instead of the old fixed one', () => {
+    const text = getSlipPreview(slip(), DEFAULT_SLIP_TEMPLATE);
+    expect(text).toContain('धन्यवाद!');
+    expect(text).not.toContain('Thank you!');
+  });
+
+  it('omits lines left blank rather than printing empty space', () => {
+    const text = getSlipPreview(
+      slip(),
+      { ...DEFAULT_SLIP_TEMPLATE, tagline: '', footerMessage: '', contactLine: '' }
+    );
+    expect(text).not.toContain('Collection Slip');
+    expect(text).not.toContain('धन्यवाद');
+  });
+
+  it('drops the brand entirely in none mode', () => {
+    const text = getSlipPreview(slip(), { ...DEFAULT_SLIP_TEMPLATE, brandMode: 'none' });
+    expect(text).not.toContain('श्रीLalita');
+  });
+
+  it('marks where a logo will print', () => {
+    const text = getSlipPreview(slip(), {
+      ...DEFAULT_SLIP_TEMPLATE,
+      brandMode: 'logo',
+      logo: { bits: 'AA', widthDots: 384, heightDots: 40 },
+    });
+    expect(text).toContain('[ logo ]');
+  });
+
+  it('still prints the figures, whatever the branding', () => {
+    const text = getSlipPreview(slip(), { ...DEFAULT_SLIP_TEMPLATE, brandMode: 'none' });
+    expect(text).toContain('Farmer: RAMESH PATEL');
+    expect(text).toContain('TOTAL:        Rs.1054.09');
+  });
+
+  it('keeps every rule the same width', () => {
+    const lines = getSlipPreview(slip(), DEFAULT_SLIP_TEMPLATE).split('\n');
+    const rules = lines.filter((l) => /^[=-]+$/.test(l));
+    expect(rules.length).toBeGreaterThan(0);
+    expect(new Set(rules.map((r) => r.length))).toEqual(new Set([32]));
   });
 });

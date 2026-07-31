@@ -10,6 +10,7 @@ import { SessionUnlock } from './SessionUnlock';
 import { AlertSettings } from './AlertSettings';
 import { MilkingSessionSettings } from './MilkingSessionSettings';
 import { NotificationSettings } from './NotificationSettings';
+import { SlipTemplateSettings } from './SlipTemplateSettings';
 import { PrinterSettings } from './PrinterSettings';
 
 export const SettingsManagement = () => {
@@ -96,8 +97,11 @@ export const SettingsManagement = () => {
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent>
+              <CardContent className="space-y-6">
                 <PrinterSettings />
+                <div className="border-t pt-6">
+                  <SlipTemplateSettings />
+                </div>
               </CardContent>
             </CollapsibleContent>
           </Card>

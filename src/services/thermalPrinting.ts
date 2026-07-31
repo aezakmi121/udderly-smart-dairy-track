@@ -1,3 +1,19 @@
+import {
+  DEFAULT_SLIP_TEMPLATE,
+  decodeLogoBits,
+  showsBrandText,
+  showsLogo,
+  type SlipTemplate,
+} from './slipTemplate';
+import {
+  PAPER_DOTS,
+  centeredRaster,
+  needsRaster,
+  renderTextRaster,
+  rasterToEscPos,
+  type Raster,
+} from './rasterPrinting';
+
 // Types for thermal printing
 export interface BluetoothDevice {
   name: string;
@@ -32,6 +48,9 @@ const COMPAT_MODE_KEY = 'thermal_compatibility_mode';
 // negotiated MTU, so the usable size is discovered by attempting a write and
 // stepping down when the stack refuses it. 20 bytes is what a printer stuck on
 // the 23-byte default MTU can take, and was the previous fixed size.
+// 58mm paper at the printer's default font.
+export const SLIP_COLUMNS = 32;
+
 export const CHUNK_SIZES = [180, 100, 60, 20] as const;
 export const SAFE_CHUNK_SIZE = 20;
 export const SAFE_CHUNK_DELAY_MS = 50;
@@ -406,29 +425,55 @@ const textToBytes = (text: string): number[] => {
   return bytes;
 };
 
+// A line the printer has no glyphs for has to be drawn instead. ASCII takes
+// the text path, which is faster and sharper.
+const emitLine = (commands: number[], text: string, opts: { bold?: boolean; fontSizePx?: number }) => {
+  if (!text.trim()) return;
+  if (needsRaster(text)) {
+    commands.push(...centeredRaster(renderTextRaster(text, opts)));
+  } else {
+    commands.push(...ESC_POS.ALIGN_CENTER);
+    if (opts.bold) commands.push(...ESC_POS.BOLD_ON);
+    commands.push(...textToBytes(`${text}\n`));
+    if (opts.bold) commands.push(...ESC_POS.BOLD_OFF);
+  }
+};
+
 // Build print data for collection slip
-const buildSlipData = (data: CollectionSlipData): Uint8Array => {
+const buildSlipData = (
+  data: CollectionSlipData,
+  template: SlipTemplate = DEFAULT_SLIP_TEMPLATE
+): Uint8Array => {
   const commands: number[] = [];
-  
+
   const sessionLabel = data.session === 'morning' ? 'AM' : 'PM';
   const speciesLabel = formatSpecies(data.species);
 
   // Initialize
   commands.push(...ESC_POS.INIT);
-  
-  // Header
+
+  // Brand block
   commands.push(...ESC_POS.ALIGN_CENTER);
-  commands.push(...ESC_POS.BOLD_ON);
-  commands.push(...textToBytes('================================\n'));
-  commands.push(...textToBytes('DAIRY COLLECTION SLIP\n'));
-  commands.push(...textToBytes('================================\n'));
-  commands.push(...ESC_POS.BOLD_OFF);
+  if (showsLogo(template) && template.logo) {
+    const logo: Raster = {
+      width: template.logo.widthDots,
+      height: template.logo.heightDots,
+      bits: decodeLogoBits(template.logo.bits),
+    };
+    commands.push(...rasterToEscPos(logo));
+  }
+  if (showsBrandText(template)) {
+    emitLine(commands, template.businessName, { bold: true, fontSizePx: 30 });
+  }
+  emitLine(commands, template.tagline, { fontSizePx: 22 });
+  commands.push(...ESC_POS.ALIGN_CENTER);
+  commands.push(...textToBytes(`${'='.repeat(SLIP_COLUMNS)}\n`));
   
   // Date and Session
   commands.push(...ESC_POS.ALIGN_LEFT);
   commands.push(...textToBytes(`Date: ${data.date}  Session: ${sessionLabel}\n`));
   commands.push(...ESC_POS.ALIGN_CENTER);
-  commands.push(...textToBytes('--------------------------------\n'));
+  commands.push(...textToBytes(`${'-'.repeat(SLIP_COLUMNS)}\n`));
   
   // Farmer info
   commands.push(...ESC_POS.ALIGN_LEFT);
@@ -436,7 +481,7 @@ const buildSlipData = (data: CollectionSlipData): Uint8Array => {
   commands.push(...textToBytes(`Code: ${data.farmerCode}\n`));
   commands.push(...textToBytes(`Species: ${speciesLabel}\n`));
   commands.push(...ESC_POS.ALIGN_CENTER);
-  commands.push(...textToBytes('--------------------------------\n'));
+  commands.push(...textToBytes(`${'-'.repeat(SLIP_COLUMNS)}\n`));
   
   // Milk details
   commands.push(...ESC_POS.ALIGN_LEFT);
@@ -448,7 +493,7 @@ const buildSlipData = (data: CollectionSlipData): Uint8Array => {
     commands.push(...textToBytes(`Rate list:    ${formatRateVersion(data)}\n`));
   }
   commands.push(...ESC_POS.ALIGN_CENTER);
-  commands.push(...textToBytes('--------------------------------\n'));
+  commands.push(...textToBytes(`${'-'.repeat(SLIP_COLUMNS)}\n`));
   
   // Total
   commands.push(...ESC_POS.ALIGN_LEFT);
@@ -458,9 +503,11 @@ const buildSlipData = (data: CollectionSlipData): Uint8Array => {
   
   // Footer
   commands.push(...ESC_POS.ALIGN_CENTER);
-  commands.push(...textToBytes('================================\n'));
-  commands.push(...textToBytes('Thank you!\n'));
-  commands.push(...textToBytes('================================\n'));
+  commands.push(...textToBytes(`${'='.repeat(SLIP_COLUMNS)}\n`));
+  emitLine(commands, template.footerMessage, { fontSizePx: 24 });
+  emitLine(commands, template.contactLine, { fontSizePx: 20 });
+  commands.push(...ESC_POS.ALIGN_CENTER);
+  commands.push(...textToBytes(`${'='.repeat(SLIP_COLUMNS)}\n`));
   
   // Feed paper
   commands.push(...ESC_POS.FEED);
@@ -481,17 +528,17 @@ const buildTestSlipData = (printerLabel: string): Uint8Array => {
   commands.push(...ESC_POS.INIT);
   commands.push(...ESC_POS.ALIGN_CENTER);
   commands.push(...ESC_POS.BOLD_ON);
-  commands.push(...textToBytes('================================\n'));
+  commands.push(...textToBytes(`${'='.repeat(SLIP_COLUMNS)}\n`));
   commands.push(...textToBytes('TEST PRINT\n'));
-  commands.push(...textToBytes('================================\n'));
+  commands.push(...textToBytes(`${'='.repeat(SLIP_COLUMNS)}\n`));
   commands.push(...ESC_POS.BOLD_OFF);
   commands.push(...ESC_POS.ALIGN_LEFT);
   commands.push(...textToBytes(`Printer: ${printerLabel}\n`));
   commands.push(...textToBytes(`Time: ${new Date().toLocaleTimeString()}\n`));
   commands.push(...ESC_POS.ALIGN_CENTER);
-  commands.push(...textToBytes('================================\n'));
+  commands.push(...textToBytes(`${'='.repeat(SLIP_COLUMNS)}\n`));
   commands.push(...textToBytes('Print test successful!\n'));
-  commands.push(...textToBytes('================================\n'));
+  commands.push(...textToBytes(`${'='.repeat(SLIP_COLUMNS)}\n`));
   commands.push(...ESC_POS.FEED);
   commands.push(...ESC_POS.FEED);
   commands.push(...ESC_POS.FEED);
@@ -598,8 +645,11 @@ const printViaWebBluetooth = async (bytes: Uint8Array): Promise<boolean> => {
 };
 
 // Print collection slip — dispatches to the configured transport (RawBT or Web Bluetooth)
-export const printCollectionSlip = async (data: CollectionSlipData): Promise<boolean> => {
-  const bytes = buildSlipData(data);
+export const printCollectionSlip = async (
+  data: CollectionSlipData,
+  template?: SlipTemplate
+): Promise<boolean> => {
+  const bytes = buildSlipData(data, template);
   const method = getPrintMethod();
   if (method === 'rawbt') return printViaRawBT(bytes);
   return printViaWebBluetooth(bytes);
@@ -619,27 +669,42 @@ export const printTestSlip = async (): Promise<boolean> => {
 };
 
 // Get preview text for slip (for UI display)
-export const getSlipPreview = (data: CollectionSlipData): string => {
+export const getSlipPreview = (
+  data: CollectionSlipData,
+  template: SlipTemplate = DEFAULT_SLIP_TEMPLATE
+): string => {
   const sessionLabel = data.session === 'morning' ? 'AM' : 'PM';
   const speciesLabel = formatSpecies(data.species);
+  const rule = '='.repeat(SLIP_COLUMNS);
+  const thinRule = '-'.repeat(SLIP_COLUMNS);
+  const centre = (text: string) => {
+    const pad = Math.max(0, Math.floor((SLIP_COLUMNS - text.length) / 2));
+    return ' '.repeat(pad) + text;
+  };
 
-  return `================================
-     DAIRY COLLECTION SLIP
-================================
-Date: ${data.date}  Session: ${sessionLabel}
---------------------------------
-Farmer: ${data.farmerName}
-Code: ${data.farmerCode}
-Species: ${speciesLabel}
---------------------------------
-Quantity:     ${data.quantity.toFixed(2)} L
-Fat:          ${data.fatPercentage.toFixed(1)}%
-SNF:          ${data.snfPercentage.toFixed(1)}%
-Rate:         Rs.${data.ratePerLiter.toFixed(2)}/L${data.rateEffectiveFrom ? `
-Rate list:    ${formatRateVersion(data)}` : ''}
---------------------------------
-TOTAL:        Rs.${data.totalAmount.toFixed(2)}
-================================
-         Thank you!
-================================`;
+  const lines: string[] = [];
+  // A logo is a picture, so the text preview can only say that it is there.
+  if (showsLogo(template)) lines.push(centre('[ logo ]'));
+  if (showsBrandText(template)) lines.push(centre(template.businessName));
+  if (template.tagline.trim()) lines.push(centre(template.tagline));
+  lines.push(rule);
+  lines.push(`Date: ${data.date}  Session: ${sessionLabel}`);
+  lines.push(thinRule);
+  lines.push(`Farmer: ${data.farmerName}`);
+  lines.push(`Code: ${data.farmerCode}`);
+  lines.push(`Species: ${speciesLabel}`);
+  lines.push(thinRule);
+  lines.push(`Quantity:     ${data.quantity.toFixed(2)} L`);
+  lines.push(`Fat:          ${data.fatPercentage.toFixed(1)}%`);
+  lines.push(`SNF:          ${data.snfPercentage.toFixed(1)}%`);
+  lines.push(`Rate:         Rs.${data.ratePerLiter.toFixed(2)}/L`);
+  if (data.rateEffectiveFrom) lines.push(`Rate list:    ${formatRateVersion(data)}`);
+  lines.push(thinRule);
+  lines.push(`TOTAL:        Rs.${data.totalAmount.toFixed(2)}`);
+  lines.push(rule);
+  if (template.footerMessage.trim()) lines.push(centre(template.footerMessage));
+  if (template.contactLine.trim()) lines.push(centre(template.contactLine));
+  lines.push(rule);
+
+  return lines.join('\n');
 };
