@@ -10,6 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Printer, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAppSetting } from '@/hooks/useAppSettings';
+import {
+  SLIP_TEMPLATE_KEY,
+  normaliseTemplate,
+  type SlipTemplate,
+} from '@/services/slipTemplate';
 import {
   isWebBluetoothSupported,
   printCollectionSlip,
@@ -47,6 +53,8 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
   const { toast } = useToast();
+  const { value: storedTemplate } = useAppSetting<SlipTemplate>(SLIP_TEMPLATE_KEY);
+  const template = normaliseTemplate(storedTemplate);
 
   const method = getPrintMethod();
   const onAndroid = isAndroid();
@@ -72,7 +80,7 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
     rateEffectiveSession: collection.rate_effective_session ?? null,
   };
 
-  const previewText = getSlipPreview(slipData);
+  const previewText = getSlipPreview(slipData, template);
 
   const handlePrint = async () => {
     if (!canPrint) {
@@ -100,7 +108,7 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
 
     setIsPrinting(true);
     try {
-      await printCollectionSlip(slipData);
+      await printCollectionSlip(slipData, template);
       toast({
         title: 'Print Sent',
         description: method === 'rawbt'
