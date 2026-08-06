@@ -1,12 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Search, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { DayHero, DaySessions, DayList } from '@/components/farmer-view';
+import { groupByDay, pickLatestDay, type FarmerCollection } from '@/lib/farmerDays';
+import { formatDateDMY, formatLitresShort, formatRupees } from '@/lib/farmerFormat';
 
 // Presets rather than a calendar: quicker to hit on a phone at a counter, and
 // they match how farmers actually ask -- this cycle, last cycle, this month.
@@ -19,14 +22,14 @@ const RANGES: Array<{ key: RangeKey; label: string; hindi: string; days: number 
   { key: 'last30', label: 'Last 60 days', hindi: 'पिछले 60 दिन', days: 60 },
 ];
 
-const inr = (n: number) => `₹${n.toFixed(2)}`;
-
 /**
  * Read-only earnings lookup for the collection centre.
  *
  * More than half the farmers have no usable phone number, so somebody has to be
- * able to answer "how much have I made" at the counter. This shows exactly what
- * the farmer's own portal would, and nothing that can be edited.
+ * able to answer "how much have I made" at the counter. Below the search this
+ * shows the farmer's own screen, colours and all -- when the operator turns the
+ * phone around, the two of them are pointing at the same card rather than
+ * arguing over two differently shaped numbers.
  */
 export const FarmerLookup: React.FC = () => {
   const [search, setSearch] = useState('');
@@ -70,22 +73,29 @@ export const FarmerLookup: React.FC = () => {
 
       const { data, error } = await supabase
         .from('milk_collections')
-        .select('collection_date, session, quantity, fat_percentage, snf_percentage, rate_per_liter, total_amount, species')
+        .select('id, collection_date, session, quantity, fat_percentage, snf_percentage, rate_per_liter, total_amount, species, is_accepted, remarks, created_at')
         .eq('farmer_id', selectedId)
         .gte('collection_date', fromDate)
-        .order('collection_date', { ascending: false })
-        .order('session', { ascending: false });
+        .order('collection_date', { ascending: false });
       if (error) throw error;
 
-      const rows = data ?? [];
+      const grouped = groupByDay((data ?? []) as unknown as FarmerCollection[]);
       return {
-        rows,
-        litres: rows.reduce((s: number, r: any) => s + Number(r.quantity || 0), 0),
-        amount: rows.reduce((s: number, r: any) => s + Number(r.total_amount || 0), 0),
+        grouped,
+        litres: grouped.reduce((s, d) => s + d.litres, 0),
+        amount: grouped.reduce((s, d) => s + d.amount, 0),
+        deliveries: grouped.reduce((s, d) => s + d.acceptedCount, 0),
         from: fromDate,
       };
     },
   });
+
+  const latest = summary ? pickLatestDay(summary.grouped) : null;
+  const older = summary
+    ? latest
+      ? summary.grouped.filter((d) => d.date !== latest.date)
+      : summary.grouped
+    : [];
 
   return (
     <div className="space-y-4">
@@ -97,11 +107,11 @@ export const FarmerLookup: React.FC = () => {
       </div>
 
       <Card>
-        <CardContent className="pt-4 space-y-3">
+        <CardContent className="space-y-3 pt-4">
           <div>
             <Label htmlFor="farmer-search">Farmer code or name</Label>
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="farmer-search"
                 className="pl-8"
@@ -128,7 +138,7 @@ export const FarmerLookup: React.FC = () => {
                     setSelectedId(f.id);
                     setSearch(`${f.farmer_code} — ${f.name}`);
                   }}
-                  className="w-full text-left px-3 py-2 rounded-md hover:bg-muted flex items-center gap-3"
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-muted"
                 >
                   <Badge variant="outline">{f.farmer_code}</Badge>
                   <span>{f.name}</span>
@@ -145,7 +155,7 @@ export const FarmerLookup: React.FC = () => {
 
       {selectedId && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             {RANGES.map((r) => (
               <Button
                 key={r.key}
@@ -153,7 +163,7 @@ export const FarmerLookup: React.FC = () => {
                 size="sm"
                 variant={range === r.key ? 'default' : 'outline'}
                 onClick={() => setRange(r.key)}
-                className="flex-col h-auto py-2"
+                className="h-auto flex-col py-2"
               >
                 <span>{r.hindi}</span>
                 <span className="text-[10px] opacity-70">{r.label}</span>
@@ -161,74 +171,42 @@ export const FarmerLookup: React.FC = () => {
             ))}
           </div>
 
-          <Card className="bg-primary text-primary-foreground">
-            <CardContent className="p-4">
-              <div className="text-sm opacity-90">
-                {selected?.name} · {selected?.farmer_code}
-              </div>
-              {isLoading ? (
-                <Loader2 className="h-6 w-6 animate-spin mt-2" />
-              ) : (
-                <>
-                  <div className="text-3xl font-bold mt-1">{inr(summary?.amount ?? 0)}</div>
-                  <div className="text-xs opacity-80 mt-1">
-                    {(summary?.litres ?? 0).toFixed(1)} लीटर · {summary?.rows.length ?? 0} बार · from{' '}
-                    {summary?.from}
+          {isLoading ? (
+            <div className="flex justify-center p-10">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <>
+              {/* The operator's own total for the chosen range, in the office
+                  palette. Everything below it belongs to the farmer. */}
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-sm text-muted-foreground">
+                    {selected?.name} · {selected?.farmer_code} — since {formatDateDMY(summary?.from)}
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                  <div className="mt-1 text-3xl font-bold tabular-nums">
+                    {formatRupees(summary?.amount ?? 0)}
+                  </div>
+                  <div className="mt-1 text-sm text-muted-foreground tabular-nums">
+                    {formatLitresShort(summary?.litres ?? 0)} लीटर · {summary?.deliveries ?? 0} बार
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Every collection</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : summary && summary.rows.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-muted-foreground border-b">
-                        <th className="py-2 pr-3">Date</th>
-                        <th className="py-2 pr-3">Qty</th>
-                        {/* The numbers farmers repeat to each other. */}
-                        <th className="py-2 pr-3">Fat</th>
-                        <th className="py-2 pr-3">SNF</th>
-                        <th className="py-2 pr-3">Rate</th>
-                        <th className="py-2 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {summary.rows.map((r: any, i: number) => (
-                        <tr key={i} className="border-b last:border-0">
-                          <td className="py-2 pr-3 whitespace-nowrap">
-                            {r.collection_date}
-                            <span className="text-muted-foreground ml-1">
-                              {r.session === 'morning' ? 'AM' : 'PM'}
-                            </span>
-                          </td>
-                          <td className="py-2 pr-3">{Number(r.quantity).toFixed(2)}</td>
-                          <td className="py-2 pr-3">{Number(r.fat_percentage).toFixed(1)}</td>
-                          <td className="py-2 pr-3">{Number(r.snf_percentage).toFixed(1)}</td>
-                          <td className="py-2 pr-3">{Number(r.rate_per_liter).toFixed(2)}</td>
-                          <td className="py-2 text-right font-medium">
-                            {inr(Number(r.total_amount))}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No collections for this farmer in that period.
+              <div className="farmer-theme space-y-4 rounded-2xl bg-background p-3 text-foreground">
+                <p className="px-1 text-xs text-muted-foreground">
+                  किसान को यही दिखता है · exactly what the farmer sees
                 </p>
-              )}
-            </CardContent>
-          </Card>
+                <DayHero
+                  day={latest}
+                  farmerName={selected?.name}
+                  farmerCode={selected?.farmer_code}
+                />
+                {latest && <DaySessions day={latest} />}
+                <DayList days={older} emptyMessage="इस अवधि में और कोई हिसाब नहीं" />
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
