@@ -49,12 +49,15 @@ Deno.serve(async (req) => {
       .select('id, advance_date, amount, recovered_amount, status, notes')
       .eq('farmer_id', farmerId).order('advance_date', { ascending: false });
 
-    // Recent daily collections (last 30 days)
-    const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    // Recent collections. The portal groups these into days itself, so it needs
+    // the whole row a slip was printed from: which animal, when it was weighed,
+    // and why a sample was turned away. Sixty days is roughly four payout
+    // cycles, which is as far back as anyone asks at the counter.
+    const since = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
     const { data: daily } = await supabase.from('milk_collections')
-      .select('collection_date, session, quantity, fat_percentage, snf_percentage, rate_per_liter, total_amount, is_accepted')
+      .select('id, collection_date, session, quantity, fat_percentage, snf_percentage, rate_per_liter, total_amount, is_accepted, species, remarks, created_at')
       .eq('farmer_id', farmerId).gte('collection_date', since)
-      .order('collection_date', { ascending: false }).limit(120);
+      .order('collection_date', { ascending: false }).limit(250);
 
     return new Response(JSON.stringify({
       farmer, cycle, liveTotal, bills: bills ?? [], advances: advances ?? [], daily: daily ?? [],

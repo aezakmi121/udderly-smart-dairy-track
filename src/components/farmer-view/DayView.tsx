@@ -39,7 +39,11 @@ export const DayHero: React.FC<DayHeroProps> = ({
   farmerCode,
   now = new Date(),
 }) => {
-  const heading = dayHeadline(day?.date ?? todayISO(now), now);
+  const today = todayISO(now);
+  const heading = dayHeadline(day?.date ?? today, now);
+  // The portal falls back to the last day with milk. Say so, or a farmer
+  // reading yesterday's total will think today's has gone missing.
+  const showingOlderDay = !!day && day.date !== today;
 
   return (
     <div className="rounded-2xl bg-primary p-4 text-primary-foreground shadow-md">
@@ -60,6 +64,11 @@ export const DayHero: React.FC<DayHeroProps> = ({
           <div className="mt-1 text-sm opacity-85 tabular-nums">
             {formatLitresShort(day.litres)} लीटर · {day.acceptedCount} बार
           </div>
+          {showingOlderDay && (
+            <div className="mt-2 rounded-lg bg-primary-foreground/15 px-2 py-1 text-xs">
+              आज की तौल अभी दर्ज नहीं हुई
+            </div>
+          )}
         </>
       ) : (
         <div className="mt-3 text-base opacity-90">आज का दूध अभी दर्ज नहीं हुआ</div>
