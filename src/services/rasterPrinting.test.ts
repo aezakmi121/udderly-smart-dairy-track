@@ -11,7 +11,12 @@ import {
   inkCoverage,
   renderQrRaster,
   qrModuleDotsToFit,
+  sliceRaster,
+  rasterToEscPosBanded,
+  centeredRaster,
   PAPER_DOTS,
+  QR_MAX_MODULE_DOTS,
+  RASTER_BAND_DOTS,
   type Raster,
 } from './rasterPrinting';
 
@@ -269,10 +274,27 @@ describe('fitting a QR to the paper', () => {
     }
   });
 
-  it('uses the largest size that fits, so the code stays scannable', () => {
+  // Capped rather than maximised: a full-width code is ~16KB, which overruns
+  // the printer's buffer, and buys nothing -- five dots is already a 0.6mm
+  // module at 203dpi.
+  it('stops growing at the cap even when the paper has room', () => {
     for (const modules of [21, 25, 29, 33]) {
-      const scale = qrModuleDotsToFit(modules);
-      expect((modules + 8) * (scale + 1)).toBeGreaterThan(PAPER_DOTS);
+      expect(qrModuleDotsToFit(modules)).toBe(QR_MAX_MODULE_DOTS);
+    }
+  });
+
+  it('shrinks below the cap once the code stops fitting', () => {
+    const scale = qrModuleDotsToFit(150);
+    expect(scale).toBeLessThan(QR_MAX_MODULE_DOTS);
+    expect((150 + 8) * (scale + 1)).toBeGreaterThan(PAPER_DOTS);
+  });
+
+  // The trap this replaced: a shorter URL means fewer modules, so uncapped it
+  // produced a physically bigger code and a bigger payload, not a smaller one.
+  it('keeps the payload bounded no matter how short the link is', () => {
+    for (const modules of [21, 25, 29, 33, 37]) {
+      const side = (modules + 8) * qrModuleDotsToFit(modules);
+      expect(bytesPerRow(side) * side).toBeLessThan(8000);
     }
   });
 
@@ -280,5 +302,99 @@ describe('fitting a QR to the paper', () => {
   // something beats printing nothing.
   it('never drops below one dot per module', () => {
     expect(qrModuleDotsToFit(500)).toBe(1);
+  });
+});
+
+describe('slicing', () => {
+  const striped = packMonochrome(
+    grey(['########', '........', '########', '........']).data,
+    8,
+    4
+  );
+
+  it('takes the rows asked for and no others', () => {
+    const s = sliceRaster(striped, 1, 2);
+    expect(s.height).toBe(2);
+    expect([...s.bits]).toEqual([0x00, 0xff]);
+  });
+
+  it('keeps the width, so bands still line up under each other', () => {
+    expect(sliceRaster(striped, 0, 1).width).toBe(striped.width);
+  });
+
+  it('clips rather than running off the end of the image', () => {
+    expect(sliceRaster(striped, 3, 10).height).toBe(1);
+    expect(sliceRaster(striped, 9, 4).height).toBe(0);
+  });
+});
+
+describe('banding a tall image', () => {
+  // The bug this exists for: one GS v 0 carrying a whole QR code is ~16KB,
+  // which overruns a cheap printer's buffer. It prints half the image and
+  // silently drops the footer and the cut with the rest.
+  it('splits into one command per band', () => {
+    const bytes = rasterToEscPosBanded(blankRaster(8, 96), 24);
+    const headers = bytes.filter(
+      (_, i) => bytes[i] === 0x1d && bytes[i + 1] === 0x76 && bytes[i + 2] === 0x30
+    );
+    expect(headers).toHaveLength(4);
+  });
+
+  it('gives every band the height it actually carries', () => {
+    const bytes = rasterToEscPosBanded(blankRaster(8, 50), 24);
+    // 24 + 24 + 2: the last band is short, and must say so or the printer
+    // reads pixel data as the next command.
+    expect([bytes[6], bytes[8 + 24 + 6], bytes[(8 + 24) * 2 + 6]]).toEqual([24, 24, 2]);
+  });
+
+  it('carries exactly the same pixels as one big command would', () => {
+    const raster = packMonochrome(
+      grey(['#.##...#', '.#..###.', '########', '........']).data,
+      8,
+      4
+    );
+    const banded = rasterToEscPosBanded(raster, 2);
+    const pixels = banded.filter((_, i) => i % 10 >= 8);
+    expect(pixels).toEqual([...raster.bits]);
+  });
+
+  it('sends one command when the image already fits a band', () => {
+    expect(rasterToEscPosBanded(blankRaster(8, 10), 24)).toHaveLength(8 + 10);
+  });
+
+  it('emits nothing for an empty image', () => {
+    expect(rasterToEscPosBanded(blankRaster(8, 0))).toEqual([]);
+  });
+
+  it('rejects a mismatched raster up front, not half way through printing', () => {
+    const broken: Raster = { width: 8, height: 4, bits: new Uint8Array(3) };
+    expect(() => rasterToEscPosBanded(broken)).toThrow(/expected 4/);
+  });
+
+  it('refuses a band height that would never finish', () => {
+    expect(() => rasterToEscPosBanded(blankRaster(8, 4), 0)).toThrow(/at least one dot/);
+  });
+
+  it('keeps a real QR comfortably under the buffer, per command', () => {
+    const matrix = { size: 37, get: (x: number, y: number) => (x + y) % 2 === 0 };
+    const qr = renderQrRaster(matrix, { moduleDots: qrModuleDotsToFit(37) });
+    const perBand = bytesPerRow(qr.width) * RASTER_BAND_DOTS + 8;
+    expect(perBand).toBeLessThan(2048);
+  });
+});
+
+describe('centring an image', () => {
+  it('sets centre alignment, then puts it back', () => {
+    const bytes = centeredRaster(blankRaster(8, 4));
+    expect(bytes.slice(0, 3)).toEqual([0x1b, 0x61, 0x01]);
+    expect(bytes.slice(-3)).toEqual([0x1b, 0x61, 0x00]);
+  });
+
+  it('bands what it wraps, so a tall image is safe to centre', () => {
+    const bytes = centeredRaster(blankRaster(8, 96));
+    const headers = bytes.filter(
+      (_, i) => bytes[i] === 0x1d && bytes[i + 1] === 0x76 && bytes[i + 2] === 0x30
+    );
+    expect(headers.length).toBeGreaterThan(1);
   });
 });

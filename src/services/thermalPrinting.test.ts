@@ -8,6 +8,10 @@ import {
   nextSmallerChunk,
   CHUNK_SIZES,
   SAFE_CHUNK_SIZE,
+  createPacer,
+  pacerDelay,
+  PRINTER_BURST_BYTES,
+  PRINTER_BYTES_PER_SEC,
   type CollectionSlipData,
 } from './thermalPrinting';
 import { DEFAULT_SLIP_TEMPLATE } from './slipTemplate';
@@ -198,5 +202,77 @@ describe('slip composition from the template', () => {
     const rules = lines.filter((l) => /^[=-]+$/.test(l));
     expect(rules.length).toBeGreaterThan(0);
     expect(new Set(rules.map((r) => r.length))).toEqual(new Set([32]));
+  });
+});
+
+describe('pacing writes to the printer', () => {
+  // Bluetooth gives no backpressure -- writeValueWithoutResponse resolves when
+  // the chunk reaches the radio, not when the printer has burned it. Without
+  // this the QR overruns the buffer and the slip stops halfway.
+  const send = (bytes: number[], rate = PRINTER_BYTES_PER_SEC, burst = PRINTER_BURST_BYTES) => {
+    const pacer = createPacer(0, burst, rate);
+    let clock = 0;
+    let waited = 0;
+    for (const n of bytes) {
+      const wait = pacerDelay(pacer, n, clock);
+      waited += wait;
+      clock += wait; // a caller that actually sleeps advances the clock
+    }
+    return waited;
+  };
+
+  it('lets an opening burst through untouched, because the buffer starts empty', () => {
+    expect(send(Array(5).fill(180))).toBe(0);
+  });
+
+  // A text-only slip is a few hundred bytes. The speed work must not regress.
+  it('never delays a slip small enough to fit the burst', () => {
+    expect(send([180, 180, 180, 60])).toBe(0);
+  });
+
+  it('starts holding back once the burst is spent', () => {
+    expect(send(Array(12).fill(180))).toBeGreaterThan(0);
+  });
+
+  it('settles at the printer speed, not the radio speed', () => {
+    const total = 8000;
+    const waited = send(Array(total / 100).fill(100));
+    // Everything past the free burst has to be paid for at the drain rate.
+    const expected = ((total - PRINTER_BURST_BYTES) / PRINTER_BYTES_PER_SEC) * 1000;
+    expect(waited).toBeGreaterThan(expected * 0.9);
+    expect(waited).toBeLessThan(expected * 1.1);
+  });
+
+  it('refills while the caller is busy, so a slow link is not throttled twice', () => {
+    const pacer = createPacer(0, 1024, 8000);
+    pacerDelay(pacer, 1024, 0); // spend it all
+    // 500ms of a slow radio is 4000 bytes of headroom; the bucket caps at 1024.
+    expect(pacerDelay(pacer, 500, 500)).toBe(0);
+  });
+
+  it('does not bank more credit than the buffer can hold', () => {
+    const pacer = createPacer(0, 1024, 8000);
+    pacerDelay(pacer, 1024, 0);
+    pacerDelay(pacer, 0, 10_000); // idle a long time
+    expect(pacerDelay(pacer, 1024, 10_000)).toBe(0);
+    expect(pacerDelay(pacer, 1024, 10_000)).toBeGreaterThan(0);
+  });
+
+  it('waits long enough to cover a chunk bigger than the whole bucket', () => {
+    const pacer = createPacer(0, 100, 1000);
+    pacerDelay(pacer, 100, 0);
+    expect(pacerDelay(pacer, 500, 0)).toBe(500);
+  });
+
+  it('keeps a real QR under a second of pacing', () => {
+    const qrBytes = 6600;
+    const waited = send(Array(Math.ceil(qrBytes / 180)).fill(180));
+    expect(waited).toBeLessThan(1000);
+  });
+
+  it('never runs the clock backwards when time goes wrong', () => {
+    const pacer = createPacer(1000, 1024, 8000);
+    expect(pacerDelay(pacer, 180, 0)).toBe(0);
+    expect(pacer.credit).toBeLessThanOrEqual(1024);
   });
 });

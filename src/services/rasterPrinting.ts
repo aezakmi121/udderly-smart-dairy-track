@@ -95,6 +95,58 @@ export const rasterToEscPos = (raster: Raster): number[] => {
   ];
 };
 
+/**
+ * How many dot rows go into one raster command.
+ *
+ * A cheap 58mm printer holds a couple of kilobytes at most, and Web Bluetooth
+ * gives no signal that the printer has actually consumed what was sent. A whole
+ * QR code in a single command is ~16KB, which overruns that buffer long before
+ * the head has burned it: the image stops halfway and everything after it --
+ * footer, cut -- is lost with it. Twenty-four rows is the classic band height
+ * (it matches the print head), and at full paper width it is ~1.2KB a command.
+ */
+export const RASTER_BAND_DOTS = 24;
+
+/** A horizontal slice of a raster. Rows outside the image are clipped. */
+export const sliceRaster = (raster: Raster, startRow: number, rows: number): Raster => {
+  const rowBytes = bytesPerRow(raster.width);
+  const from = Math.max(0, Math.min(startRow, raster.height));
+  const to = Math.max(from, Math.min(startRow + rows, raster.height));
+  return {
+    width: raster.width,
+    height: to - from,
+    bits: raster.bits.slice(from * rowBytes, to * rowBytes),
+  };
+};
+
+/**
+ * Frame a raster as a run of band-sized commands rather than one large one.
+ *
+ * Prints identically -- GS v 0 advances the paper by exactly the image height,
+ * so consecutive bands butt up against each other with no seam -- but gives the
+ * printer a place to catch up every band instead of none at all.
+ */
+export const rasterToEscPosBanded = (
+  raster: Raster,
+  bandDots = RASTER_BAND_DOTS
+): number[] => {
+  if (bandDots < 1) throw new Error('rasterToEscPosBanded: band height must be at least one dot');
+  // Validate the whole image up front, so a malformed raster fails before it
+  // has half printed.
+  const rowBytes = bytesPerRow(raster.width);
+  if (raster.bits.length !== rowBytes * raster.height) {
+    throw new Error(
+      `rasterToEscPosBanded: ${raster.bits.length} bytes for a ${raster.width}x${raster.height} raster, expected ${rowBytes * raster.height}`
+    );
+  }
+
+  const out: number[] = [];
+  for (let row = 0; row < raster.height; row += bandDots) {
+    out.push(...rasterToEscPos(sliceRaster(raster, row, bandDots)));
+  }
+  return out;
+};
+
 /** Blank raster of a given height -- used for spacing above and below images. */
 export const blankRaster = (widthDots: number, heightDots: number): Raster => ({
   width: bytesPerRow(widthDots) * 8,
@@ -286,12 +338,32 @@ export const renderQrRaster = (
   return packMonochrome(grey, side, side);
 };
 
-/** Largest module size whose finished code still fits the paper. */
+/**
+ * Biggest a QR module is allowed to get, in dots.
+ *
+ * At 203dpi a dot is an eighth of a millimetre, so five dots is a 0.6mm module
+ * -- comfortably above what a phone camera needs off thermal paper. Filling the
+ * full paper width instead, as this used to, quadruples the image to ~16KB for
+ * no gain in scannability: the code is read at arm's length either way.
+ */
+export const QR_MAX_MODULE_DOTS = 5;
+
+/**
+ * Largest module size whose finished code still fits the paper, capped.
+ *
+ * Note the cap is what usually applies -- a short link produces *fewer* modules
+ * and so, uncapped, a physically larger code. Shrinking the URL is not a way to
+ * shrink the payload.
+ */
 export const qrModuleDotsToFit = (
   modules: number,
   widthDots = PAPER_DOTS,
   quietModules = 4
-): number => Math.max(1, Math.floor(widthDots / (modules + quietModules * 2)));
+): number =>
+  Math.max(
+    1,
+    Math.min(QR_MAX_MODULE_DOTS, Math.floor(widthDots / (modules + quietModules * 2)))
+  );
 
 /**
  * Spread each pixel's rounding error into its neighbours, so a smooth gradient
@@ -324,12 +396,17 @@ export const ditherFloydSteinberg = (
   }
 };
 
-/** Centre-align, then reset, around a raster block. */
+/**
+ * Centre-align, then reset, around a raster block.
+ *
+ * Banded: every band carries the same width, so they all centre identically and
+ * the alignment set once here applies to the lot.
+ */
 export const centeredRaster = (raster: Raster): number[] => [
   ESC,
   0x61,
   0x01,
-  ...rasterToEscPos(raster),
+  ...rasterToEscPosBanded(raster),
   ESC,
   0x61,
   0x00,

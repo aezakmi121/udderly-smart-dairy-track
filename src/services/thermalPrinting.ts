@@ -12,7 +12,7 @@ import {
   qrModuleDotsToFit,
   renderQrRaster,
   renderTextRaster,
-  rasterToEscPos,
+  rasterToEscPosBanded,
   type Raster,
 } from './rasterPrinting';
 import QRCode from 'qrcode';
@@ -64,6 +64,52 @@ export const SAFE_CHUNK_DELAY_MS = 50;
 export const nextSmallerChunk = (size: number): number | null =>
   CHUNK_SIZES.find((c) => c < size) ?? null;
 
+/**
+ * Flow control, which Bluetooth does not give us.
+ *
+ * `writeValueWithoutResponse` resolves when the chunk reaches the host radio,
+ * not when the printer has consumed it, so nothing stops us pushing bytes at a
+ * printer that is still burning the last ones. Text slips are small enough that
+ * this never showed; a QR code is ~27 times the size of the rest of the slip and
+ * overruns the buffer every time, stopping the image halfway and losing the
+ * footer and cut with it.
+ *
+ * A token bucket fits the hardware: the buffer starts empty, so an opening
+ * burst is free, and after that we may only send as fast as the head prints.
+ */
+export const PRINTER_BURST_BYTES = 1024;
+export const PRINTER_BYTES_PER_SEC = 8000;
+
+export interface Pacer {
+  credit: number;
+  lastMs: number;
+  burst: number;
+  rate: number;
+}
+
+export const createPacer = (
+  nowMs: number,
+  burst = PRINTER_BURST_BYTES,
+  rate = PRINTER_BYTES_PER_SEC
+): Pacer => ({ credit: burst, lastMs: nowMs, burst, rate });
+
+/**
+ * Take `bytes` from the bucket, returning how long to wait first. Refills for
+ * the time that has passed, so a slow link is never throttled twice.
+ */
+export const pacerDelay = (pacer: Pacer, bytes: number, nowMs: number): number => {
+  const elapsed = Math.max(0, nowMs - pacer.lastMs);
+  pacer.lastMs = nowMs;
+  pacer.credit = Math.min(pacer.burst, pacer.credit + (elapsed * pacer.rate) / 1000);
+
+  const shortfall = bytes - pacer.credit;
+  const wait = shortfall > 0 ? Math.ceil((shortfall / pacer.rate) * 1000) : 0;
+  // Whatever we waited for is spent the moment it arrives.
+  pacer.credit = Math.max(0, pacer.credit + (wait * pacer.rate) / 1000 - bytes);
+  pacer.lastMs = nowMs + wait;
+  return wait;
+};
+
 // Remembered for the life of a connection; cleared when the link drops.
 let negotiatedChunkSize: number | null = null;
 
@@ -74,6 +120,8 @@ export interface PrintStats {
   chunkSize: number;
   noResponse: boolean;
   compatibilityMode: boolean;
+  /** Time deliberately spent waiting for the printer to catch up. */
+  pausedMs: number;
 }
 
 // What the last Web Bluetooth print achieved, so the UI can report the real
@@ -465,7 +513,9 @@ const buildSlipData = (
       height: template.logo.heightDots,
       bits: decodeLogoBits(template.logo.bits),
     };
-    commands.push(...rasterToEscPos(logo));
+    // Banded like every other image: a full-width logo is several kilobytes,
+    // which is more than the printer will hold in one command.
+    commands.push(...rasterToEscPosBanded(logo));
   }
   if (showsBrandText(template)) {
     emitLine(commands, template.businessName, { bold: true, fontSizePx: 30 });
@@ -626,9 +676,19 @@ const printViaWebBluetooth = async (bytes: Uint8Array): Promise<boolean> => {
   let size = compat ? SAFE_CHUNK_SIZE : negotiatedChunkSize ?? CHUNK_SIZES[0];
   const started = Date.now();
   let offset = 0;
+  let paused = 0;
+  // Compatibility mode already crawls at a fixed 20 bytes every 50ms.
+  const pacer = compat ? null : createPacer(started);
 
   while (offset < bytes.length) {
     const chunk = bytes.slice(offset, offset + size);
+    if (pacer) {
+      const wait = pacerDelay(pacer, chunk.length, Date.now());
+      if (wait > 0) {
+        paused += wait;
+        await new Promise((resolve) => setTimeout(resolve, wait));
+      }
+    }
     try {
       if (noResponse) {
         await printerCharacteristic.writeValueWithoutResponse(chunk);
@@ -658,11 +718,13 @@ const printViaWebBluetooth = async (bytes: Uint8Array): Promise<boolean> => {
     chunkSize: size,
     noResponse,
     compatibilityMode: compat,
+    pausedMs: paused,
   };
   console.log(
     `Printed ${bytes.length} bytes in ${ms}ms ` +
       `(${lastPrintStats.bytesPerSecond} B/s, ` +
-      `chunk ${size}, ${noResponse ? 'no-response' : 'acked'}${compat ? ', compatibility mode' : ''})`
+      `chunk ${size}, ${noResponse ? 'no-response' : 'acked'}` +
+      `${paused > 0 ? `, paced ${paused}ms` : ''}${compat ? ', compatibility mode' : ''})`
   );
   return true;
 };
