@@ -2,10 +2,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogOut, Phone, Receipt, Wallet, CalendarDays, Download } from 'lucide-react';
+import { Loader2, LogOut, QrCode, Receipt, Wallet, CalendarDays, Download, Store } from 'lucide-react';
 import { DayHero, DaySessions, DayList } from '@/components/farmer-view';
 import { groupByDay, pickLatestDay } from '@/lib/farmerDays';
 import { formatDateDMY, formatLitresShort, formatRupees, formatRupeesRounded } from '@/lib/farmerFormat';
@@ -48,81 +47,47 @@ export const FarmerPortal: React.FC = () => {
         )}
       </header>
       <main className="mx-auto max-w-md space-y-4 p-3">
-        {!token
-          ? <LoginCard onToken={(t) => { localStorage.setItem(TOKEN_KEY, t); setToken(t); }} />
-          : <PortalHome token={token} onUnauthorized={logout} />}
+        {!token ? <SignedOutCard /> : <PortalHome token={token} onUnauthorized={logout} />}
       </main>
     </div>
   );
 };
 
-const LoginCard: React.FC<{ onToken: (t: string) => void }> = ({ onToken }) => {
-  const [phone, setPhone] = useState('');
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
-  const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [channel, setChannel] = useState('');
-  const { toast } = useToast();
+/**
+ * What a farmer sees before they are signed in.
+ *
+ * There used to be a phone + OTP form here. It could never succeed: the code is
+ * stored only as a hash, WhatsApp delivery is not configured, and the fallback
+ * told the farmer to ask the office -- where no screen has ever shown the code.
+ * Sending someone down a route that cannot work is worse than offering nothing,
+ * so until PINs land the only way in is the QR, which does work.
+ */
+const SignedOutCard: React.FC = () => (
+  <Card>
+    <CardContent className="space-y-4 p-5 text-center">
+      <h1 className="text-xl font-bold">अपना दूध हिसाब देखें</h1>
 
-  const sendOtp = async () => {
-    const p = phone.replace(/\D/g, '').slice(-10);
-    if (p.length !== 10) { toast({ title: 'सही नंबर डालें', variant: 'destructive' }); return; }
-    setBusy(true);
-    try {
-      const r = await callFn('farmer-send-otp', { phone_number: p });
-      setChannel(r.channel ?? '');
-      setStep('otp');
-      toast({ title: r.channel === 'whatsapp' ? 'OTP WhatsApp पर भेजा गया' : 'OTP जल्द मिलेगा', description: r.channel === 'staff' ? 'दफ़्तर वाले से OTP पूछें' : '' });
-    } catch (e: any) {
-      toast({ title: 'भेज नहीं सका', description: e.message, variant: 'destructive' });
-    } finally { setBusy(false); }
-  };
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+        <QrCode className="h-8 w-8" />
+      </div>
 
-  const verify = async () => {
-    if (!/^\d{6}$/.test(code)) { toast({ title: '6 अंक डालें', variant: 'destructive' }); return; }
-    setBusy(true);
-    try {
-      const r = await callFn('farmer-verify-otp', { phone_number: phone, code });
-      onToken(r.token);
-    } catch (e: any) {
-      toast({ title: 'गलत OTP', description: e.message, variant: 'destructive' });
-    } finally { setBusy(false); }
-  };
+      <p className="text-base">
+        अपनी पर्ची पर बना QR कोड फ़ोन के कैमरे से स्कैन करें।
+      </p>
+      <p className="text-sm text-muted-foreground">
+        हर पर्ची पर वही QR होता है — पुरानी पर्ची से भी चलेगा।
+      </p>
 
-  return (
-    <Card>
-      <CardContent className="space-y-4 p-4">
-        <h1 className="text-center text-xl font-bold">अपना दूध हिसाब देखें</h1>
-        {step === 'phone' && (
-          <>
-            <div>
-              <label className="mb-1 block text-sm font-medium">मोबाइल नंबर</label>
-              <div className="flex gap-2">
-                <span className="flex h-12 items-center rounded bg-muted px-3 text-base">+91</span>
-                <Input className="h-12 text-base" inputMode="numeric" maxLength={10} placeholder="98xxxxxxxx" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} />
-              </div>
-            </div>
-            <Button className="h-12 w-full text-base" onClick={sendOtp} disabled={busy}>
-              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Phone className="mr-1 h-4 w-4" />} OTP भेजें
-            </Button>
-          </>
-        )}
-        {step === 'otp' && (
-          <>
-            <div className="text-center text-sm text-muted-foreground">
-              {channel === 'whatsapp' ? 'WhatsApp पर 6 अंकों का OTP आया है' : 'दफ़्तर वाले से OTP पूछें'}
-            </div>
-            <Input className="h-14 text-center text-2xl tracking-[0.5em]" inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} />
-            <Button className="h-12 w-full text-base" onClick={verify} disabled={busy}>
-              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} पुष्टि करें
-            </Button>
-            <Button variant="ghost" className="w-full text-xs" onClick={() => setStep('phone')}>नंबर बदलें</Button>
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
+      <div className="flex items-start gap-2 rounded-xl bg-muted p-3 text-left text-sm">
+        <Store className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+        <span>
+          QR न चले या पर्ची न हो, तो कलेक्शन सेंटर पर पूछें — वहाँ आपका पूरा हिसाब
+          देखा जा सकता है।
+        </span>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const PortalHome: React.FC<{ token: string; onUnauthorized: () => void }> = ({ token, onUnauthorized }) => {
   const [data, setData] = useState<any>(null);

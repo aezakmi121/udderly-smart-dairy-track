@@ -34,7 +34,9 @@ export const FarmerSlipLogin: React.FC = () => {
         });
         if (cancelled) return;
         if (fnError || !data?.token) {
-          setError('यह पर्ची अब मान्य नहीं है। दफ़्तर से नई पर्ची लें।');
+          // Most often a half-printed or smudged QR read as the wrong text
+          // rather than a genuinely dead token, so lead with trying again.
+          setError('यह QR कोड पढ़ा नहीं जा सका।');
           return;
         }
         localStorage.setItem(TOKEN_KEY, data.token);
@@ -51,16 +53,23 @@ export const FarmerSlipLogin: React.FC = () => {
   }, [token, navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-background flex items-center justify-center p-4">
+    <div className="farmer-theme flex min-h-screen items-center justify-center bg-background p-4 text-foreground">
       <Card className="w-full max-w-sm">
-        <CardContent className="p-6 text-center space-y-4">
+        <CardContent className="space-y-4 p-6 text-center">
           {error ? (
             <>
-              <AlertCircle className="h-10 w-10 text-destructive mx-auto" />
-              <p className="text-sm">{error}</p>
-              <Button className="w-full" onClick={() => navigate('/farmer', { replace: true })}>
-                मोबाइल नंबर से देखें
+              <AlertCircle className="mx-auto h-10 w-10 text-destructive" />
+              <p className="text-base">{error}</p>
+              <p className="text-sm text-muted-foreground">
+                पर्ची को सीधा रखकर दोबारा स्कैन करें।
+              </p>
+              {/* The old button offered a phone login that could never succeed. */}
+              <Button className="h-12 w-full text-base" onClick={() => window.location.reload()}>
+                दोबारा कोशिश करें
               </Button>
+              <p className="text-sm text-muted-foreground">
+                फिर भी न चले तो कलेक्शन सेंटर पर पूछें — वहाँ आपका हिसाब देखा जा सकता है।
+              </p>
             </>
           ) : (
             <>
