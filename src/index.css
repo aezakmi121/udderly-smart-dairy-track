@@ -128,3 +128,47 @@ All colors MUST be HSL.
     }
   }
 }
+/*
+ * Farmer-facing palette.
+ *
+ * Scoped to `.farmer-theme` rather than applied globally: the office app keeps
+ * its neutral slate look, while anything a farmer sees picks up the dairy's own
+ * colours — deep blue and green off the logo, on warm paper-white. The near
+ * black-and-white default reads as a spreadsheet, and the farmers are being
+ * asked to choose this over a competitor's app.
+ */
+@layer base {
+  .farmer-theme {
+    --background: 45 38% 97%;
+    --foreground: 213 32% 16%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 213 32% 16%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 32% 16%;
+
+    --primary: 212 68% 26%;
+    --primary-foreground: 45 38% 98%;
+
+    --secondary: 150 34% 94%;
+    --secondary-foreground: 158 52% 20%;
+
+    --muted: 210 24% 95%;
+    --muted-foreground: 214 14% 42%;
+
+    --accent: 152 50% 34%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 68% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 213 20% 88%;
+    --input: 213 20% 88%;
+    --ring: 212 68% 36%;
+
+    /* Rounder than the office app: softer shapes read as friendlier, and the
+       touch targets here are large on purpose. */
+    --radius: 0.9rem;
+  }
+}
