@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { DayHero, DaySessions, DayList } from '@/components/farmer-view';
+import { FarmerPinControl } from './FarmerPinControl';
 import { groupByDay, pickLatestDay, type FarmerCollection } from '@/lib/farmerDays';
 import { formatDateDMY, formatLitresShort, formatRupees } from '@/lib/farmerFormat';
 
@@ -189,6 +190,9 @@ export const FarmerLookup: React.FC = () => {
                   </div>
                   <div className="mt-1 text-sm text-muted-foreground tabular-nums">
                     {formatLitresShort(summary?.litres ?? 0)} लीटर · {summary?.deliveries ?? 0} बार
+                  </div>
+                  <div className="mt-3 border-t pt-3">
+                    <FarmerPinControl farmerId={selectedId} farmerName={selected?.name} />
                   </div>
                 </CardContent>
               </Card>

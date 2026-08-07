@@ -70,12 +70,22 @@ VALUES
   ('22222222-0000-0000-0000-000000000002', 'ffffffff-0000-0000-0000-00000000000f',
    '2026-07-10', 'morning', 10, 4.0, 8.5, 37.54, 375.40, 'Cow');   -- open
 
+-- A PIN to try and read. Seeded before the role switch, because the point of
+-- the checks below is that RLS hides it, not that the row is missing.
+INSERT INTO public.farmer_pins(farmer_id, pin_hash, pin_salt)
+VALUES ('ffffffff-0000-0000-0000-00000000000f', 'GUARD_HASH', 'GUARD_SALT')
+ON CONFLICT (farmer_id) DO UPDATE SET pin_hash = 'GUARD_HASH';
+
 -- Run the checks as a role that RLS applies to.
 CREATE ROLE _tester;
 GRANT USAGE ON SCHEMA public, auth TO _tester;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.milk_collections TO _tester;
 GRANT SELECT ON public.user_roles, public.farmer_payout_cycles, public.farmers TO _tester;
 GRANT INSERT ON _rls_results TO _tester;
+-- Supabase grants these to anon and authenticated on every table in public, so
+-- the tester gets them too. Without this the PIN checks below would pass for
+-- the wrong reason -- a missing GRANT rather than the RLS that actually ships.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.farmer_pins TO _tester;
 SET ROLE _tester;
 
 ------------------------------------------------------------------------------
@@ -166,6 +176,41 @@ SELECT _try('a user with no role cannot record milk',
      VALUES ('ffffffff-0000-0000-0000-00000000000f','2026-07-12','morning',5,4.0,8.5,37.54,187.70,'Cow')$q$,
   false);
 
+------------------------------------------------------------------------------
+-- PIN hashes are unreachable from the client, whoever is asking
+--
+-- The whole PIN design rests on this. A four digit PIN offers little once its
+-- hash is in hand, so the table carries no policies at all and is reached only
+-- by the edge functions through the service role.
+------------------------------------------------------------------------------
+SELECT _try_rows('an admin cannot read PIN hashes',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  $q$SELECT 1 FROM public.farmer_pins$q$,
+  0);
+
+SELECT _try_rows('the collection centre cannot read PIN hashes',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT 1 FROM public.farmer_pins$q$,
+  0);
+
+-- Setting a PIN for somebody is signing in as them. Clearing is the only
+-- staff-side action, and it goes through fn_clear_farmer_pin.
+SELECT _try('the collection centre cannot set a PIN directly',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$INSERT INTO public.farmer_pins(farmer_id, pin_hash, pin_salt)
+     VALUES ('ffffffff-0000-0000-0000-00000000000f', 'x', 'y')$q$,
+  false);
+
+SELECT _try_rows('nobody can delete a PIN behind the audited function',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  $q$DELETE FROM public.farmer_pins$q$,
+  0);
+
+SELECT _try_rows('a user with no role cannot read PIN hashes',
+  '00000000-0000-0000-0000-0000000000ff',
+  $q$SELECT 1 FROM public.farmer_pins$q$,
+  0);
+
 RESET ROLE;
 \o
 
@@ -178,8 +223,8 @@ SELECT
 FROM _rls_results \gset
 
 \if :failed
-  \echo '=== FAILED:' :failed 'of' :passed '+' :failed 'collection centre guard checks ==='
-  DO $$ BEGIN RAISE EXCEPTION 'collection centre guard checks failed'; END $$;
+  \echo '=== FAILED:' :failed 'of' :passed '+' :failed 'access guard checks ==='
+  DO $$ BEGIN RAISE EXCEPTION 'access guard checks failed'; END $$;
 \else
-  \echo '=== all' :passed 'collection centre guard checks passed ==='
+  \echo '=== all' :passed 'access guard checks passed ==='
 \endif

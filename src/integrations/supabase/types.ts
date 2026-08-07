@@ -1223,9 +1223,81 @@ export type Database = {
           },
         ]
       }
+      farmer_pin_events: {
+        Row: {
+          actor: string | null
+          created_at: string
+          event: string
+          farmer_id: string
+          id: string
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string
+          event: string
+          farmer_id: string
+          id?: string
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string
+          event?: string
+          farmer_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farmer_pin_events_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "farmers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      farmer_pins: {
+        Row: {
+          failed_attempts: number
+          farmer_id: string
+          iterations: number
+          locked_until: string | null
+          pin_hash: string
+          pin_salt: string
+          set_at: string
+          updated_at: string
+        }
+        Insert: {
+          failed_attempts?: number
+          farmer_id: string
+          iterations?: number
+          locked_until?: string | null
+          pin_hash: string
+          pin_salt: string
+          set_at?: string
+          updated_at?: string
+        }
+        Update: {
+          failed_attempts?: number
+          farmer_id?: string
+          iterations?: number
+          locked_until?: string | null
+          pin_hash?: string
+          pin_salt?: string
+          set_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farmer_pins_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: true
+            referencedRelation: "farmers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farmers: {
         Row: {
-          portal_token?: string | null
           address: string | null
           created_at: string | null
           farmer_code: string
@@ -1233,6 +1305,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           phone_number: string
+          portal_token: string | null
           preferred_language: string | null
         }
         Insert: {
@@ -1243,6 +1316,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           phone_number: string
+          portal_token?: string | null
           preferred_language?: string | null
         }
         Update: {
@@ -1253,6 +1327,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           phone_number?: string
+          portal_token?: string | null
           preferred_language?: string | null
         }
         Relationships: []
@@ -1650,6 +1725,8 @@ export type Database = {
           id: string
           is_accepted: boolean | null
           quantity: number
+          rate_effective_from: string | null
+          rate_effective_session: string | null
           rate_per_liter: number
           remarks: string | null
           session: Database["public"]["Enums"]["session_type"]
@@ -1665,6 +1742,8 @@ export type Database = {
           id?: string
           is_accepted?: boolean | null
           quantity: number
+          rate_effective_from?: string | null
+          rate_effective_session?: string | null
           rate_per_liter: number
           remarks?: string | null
           session: Database["public"]["Enums"]["session_type"]
@@ -1680,6 +1759,8 @@ export type Database = {
           id?: string
           is_accepted?: boolean | null
           quantity?: number
+          rate_effective_from?: string | null
+          rate_effective_session?: string | null
           rate_per_liter?: number
           remarks?: string | null
           session?: Database["public"]["Enums"]["session_type"]
@@ -2679,6 +2760,18 @@ export type Database = {
         Args: { target_date?: string }
         Returns: number
       }
+      fn_clear_farmer_pin: { Args: { p_farmer_id: string }; Returns: boolean }
+      fn_date_is_settled: { Args: { p_date: string }; Returns: boolean }
+      fn_farmer_pin_status: {
+        Args: { p_farmer_id: string }
+        Returns: {
+          failed_attempts: number
+          is_locked: boolean
+          is_set: boolean
+          locked_until: string
+        }[]
+      }
+      fn_generate_portal_token: { Args: never; Returns: string }
       fn_get_rate: {
         Args: {
           p_date?: string
@@ -2694,6 +2787,16 @@ export type Database = {
           source: string
           used_fat: number
           used_snf: number
+        }[]
+      }
+      fn_rate_change_impact: {
+        Args: { p_date: string; p_session?: string }
+        Returns: {
+          affected_amount: number
+          affected_collections: number
+          finalized_cycles: number
+          first_date: string
+          last_date: string
         }[]
       }
       fn_resolve_rate: {
@@ -2733,7 +2836,12 @@ export type Database = {
     Enums: {
       advance_status: "outstanding" | "recovered" | "written_off"
       ai_status: "pending" | "done" | "failed"
-      app_role: "admin" | "collection_centre" | "worker" | "store_manager" | "delivery_boy"
+      app_role:
+        | "admin"
+        | "collection_centre"
+        | "worker"
+        | "store_manager"
+        | "delivery_boy"
       calf_status: "alive" | "dead" | "sold" | "promoted"
       cow_status: "active" | "dry" | "pregnant" | "sick" | "sold" | "dead"
       expense_status: "pending" | "paid" | "overdue" | "cancelled"
@@ -2878,7 +2986,13 @@ export const Constants = {
     Enums: {
       advance_status: ["outstanding", "recovered", "written_off"],
       ai_status: ["pending", "done", "failed"],
-      app_role: ["admin", "collection_centre", "worker", "store_manager", "delivery_boy"],
+      app_role: [
+        "admin",
+        "collection_centre",
+        "worker",
+        "store_manager",
+        "delivery_boy",
+      ],
       calf_status: ["alive", "dead", "sold", "promoted"],
       cow_status: ["active", "dry", "pregnant", "sick", "sold", "dead"],
       expense_status: ["pending", "paid", "overdue", "cancelled"],
