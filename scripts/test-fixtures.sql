@@ -10,7 +10,10 @@
 CREATE TABLE IF NOT EXISTS public.farmers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
-  farmer_code text
+  farmer_code text,
+  -- The phone is a login identifier now, so its uniqueness is under test.
+  phone_number text,
+  is_active boolean DEFAULT true
 );
 
 CREATE TABLE IF NOT EXISTS public.milk_collections (

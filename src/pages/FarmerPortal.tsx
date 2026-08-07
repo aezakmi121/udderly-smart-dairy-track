@@ -8,6 +8,7 @@ import { Loader2, LogOut, Receipt, Wallet, CalendarDays, Download, KeyRound } fr
 import { DayHero, DaySessions, DayList } from '@/components/farmer-view';
 import { PinLoginCard } from '@/components/farmer-view/PinLoginCard';
 import { PinSetupCard } from '@/components/farmer-view/PinSetupCard';
+import { PhoneCaptureCard } from '@/components/farmer-view/PhoneCaptureCard';
 import { groupByDay, pickLatestDay } from '@/lib/farmerDays';
 import { formatDateDMY, formatLitresShort, formatRupees, formatRupeesRounded } from '@/lib/farmerFormat';
 
@@ -73,6 +74,8 @@ const PortalHome: React.FC<{ token: string; onUnauthorized: () => void }> = ({ t
   const [err, setErr] = useState<string | null>(null);
   const [pinPanel, setPinPanel] = useState<'hidden' | 'open'>('hidden');
   const [pinDismissed, setPinDismissed] = useState(false);
+  const [phoneAdded, setPhoneAdded] = useState(false);
+  const [phoneDismissed, setPhoneDismissed] = useState(false);
 
   useEffect(() => {
     callFn('farmer-portal-data', undefined, token)
@@ -98,7 +101,9 @@ const PortalHome: React.FC<{ token: string; onUnauthorized: () => void }> = ({ t
   const { farmer, cycle, liveTotal, bills, advances, pin } = data;
   // Only worth offering to farmers with a number on file -- the PIN is useless
   // without one to pair it with, and 32 of 61 have none.
-  const offerPin = pin?.canSet && !pin?.isSet && !pinDismissed;
+  const offerPin = (pin?.canSet || phoneAdded) && !pin?.isSet && !pinDismissed;
+  // Without a number a PIN has nothing to pair with, so ask for that first.
+  const offerPhone = !pin?.canSet && !phoneAdded && !phoneDismissed;
   const lastPaid = bills?.find((b: any) => b.status === 'paid');
   const advanceDue = (advances ?? []).filter((a: any) => a.status === 'outstanding')
     .reduce((s: number, a: any) => s + (Number(a.amount) - Number(a.recovered_amount ?? 0)), 0);
@@ -159,6 +164,13 @@ const PortalHome: React.FC<{ token: string; onUnauthorized: () => void }> = ({ t
 
       {/* Offered under the figures, not over them: the farmer opened this to
           see what he earned, not to be asked to set something up. */}
+      {offerPhone && (
+        <PhoneCaptureCard
+          callFn={(path, body) => callFn(path, body, token)}
+          onSaved={() => setPhoneAdded(true)}
+          onDismiss={() => setPhoneDismissed(true)}
+        />
+      )}
       {(offerPin || pinPanel === 'open') && (
         <PinSetupCard
           callFn={(path, body) => callFn(path, body, token)}

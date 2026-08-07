@@ -211,10 +211,11 @@ SELECT name, detail FROM _results WHERE NOT ok;
 
 SELECT
   count(*) FILTER (WHERE ok) AS passed,
-  count(*) FILTER (WHERE NOT ok) AS failed
+  count(*) FILTER (WHERE NOT ok) AS failed,
+  (count(*) FILTER (WHERE NOT ok) > 0) AS any_failed
 FROM _results \gset
 
-\if :failed
+\if :any_failed
   \echo '=== FAILED:' :failed 'of' :passed '+' :failed 'rate logic checks ==='
   DO $$ BEGIN RAISE EXCEPTION 'rate logic checks failed'; END $$;
 \else

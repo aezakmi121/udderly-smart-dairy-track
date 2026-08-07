@@ -18,7 +18,12 @@ BEGIN
   PERFORM set_config('test.uid', p_uid::text, true);
   BEGIN
     EXECUTE p_sql;
-  EXCEPTION WHEN insufficient_privilege OR check_violation THEN
+  -- A refusal can arrive as a policy denial, a constraint, or a RAISE from
+  -- inside a definer function -- all three mean "not allowed". Deliberately
+  -- not WHEN OTHERS: a typo'd table or a function that failed to install
+  -- should crash the run, not quietly read as a correct refusal.
+  EXCEPTION WHEN insufficient_privilege OR check_violation
+                 OR raise_exception OR unique_violation THEN
     allowed := false; msg := SQLERRM;
   END;
   INSERT INTO _rls_results VALUES (
@@ -54,6 +59,10 @@ INSERT INTO public.user_roles(user_id, role) VALUES
 
 INSERT INTO public.farmers(id, name, farmer_code)
 VALUES ('ffffffff-0000-0000-0000-00000000000f', 'Test Farmer', 'T001')
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.farmers(id, name, farmer_code)
+VALUES ('ffffffff-0000-0000-0000-00000000000e', 'Second Farmer', 'T002')
 ON CONFLICT DO NOTHING;
 
 -- One settled period and one still open.
@@ -103,6 +112,12 @@ GRANT USAGE ON SCHEMA public, auth TO _tester;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.milk_collections TO _tester;
 GRANT SELECT ON public.user_roles, public.farmer_payout_cycles, public.farmers TO _tester;
 GRANT INSERT ON _rls_results TO _tester;
+-- Production grants these definer functions to `authenticated`; the tester
+-- needs the same or the checks below fail on a missing GRANT rather than on
+-- the role check inside the function, which is what they are actually for.
+GRANT EXECUTE ON FUNCTION public.fn_set_farmer_phone(uuid, text) TO _tester;
+GRANT EXECUTE ON FUNCTION public.fn_clear_farmer_pin(uuid) TO _tester;
+GRANT EXECUTE ON FUNCTION public.fn_farmer_pin_status(uuid) TO _tester;
 -- Supabase grants these to anon and authenticated on every table in public, so
 -- the tester gets them too. Without this the PIN checks below would pass for
 -- the wrong reason -- a missing GRANT rather than the RLS that actually ships.
@@ -234,6 +249,46 @@ SELECT _try_rows('CC cannot undo a row that predates the owner column',
   0);
 
 ------------------------------------------------------------------------------
+-- Mobile numbers
+--
+-- The number is a login identifier now, not a contact detail, so it has to
+-- point at exactly one farmer. The collection centre can read farmers but not
+-- write them, so capture goes through a definer function that touches the
+-- number and nothing else.
+------------------------------------------------------------------------------
+SELECT _try('CC cannot edit a farmer directly',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$UPDATE public.farmers SET name = 'Renamed' WHERE id = 'ffffffff-0000-0000-0000-00000000000f'$q$,
+  false);
+
+SELECT _try('CC can take a mobile number through the function',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT public.fn_set_farmer_phone('ffffffff-0000-0000-0000-00000000000f', '98765 43210')$q$,
+  true);
+
+-- Two farmers on one number cannot be told apart at login, and guessing would
+-- show one of them the other's earnings.
+SELECT _try('a number already in use is refused',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT public.fn_set_farmer_phone('ffffffff-0000-0000-0000-00000000000e', '+91 98765 43210')$q$,
+  false);
+
+SELECT _try('a number too short to be one is refused',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT public.fn_set_farmer_phone('ffffffff-0000-0000-0000-00000000000e', '98765')$q$,
+  false);
+
+SELECT _try('a wrong number can be cleared',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT public.fn_set_farmer_phone('ffffffff-0000-0000-0000-00000000000f', '')$q$,
+  true);
+
+SELECT _try('a user with no role cannot set a number',
+  '00000000-0000-0000-0000-0000000000ff',
+  $q$SELECT public.fn_set_farmer_phone('ffffffff-0000-0000-0000-00000000000f', '9000000000')$q$,
+  false);
+
+------------------------------------------------------------------------------
 -- PIN hashes are unreachable from the client, whoever is asking
 --
 -- The whole PIN design rests on this. A four digit PIN offers little once its
@@ -276,10 +331,11 @@ SELECT name, detail FROM _rls_results WHERE NOT ok;
 
 SELECT
   count(*) FILTER (WHERE ok) AS passed,
-  count(*) FILTER (WHERE NOT ok) AS failed
+  count(*) FILTER (WHERE NOT ok) AS failed,
+  (count(*) FILTER (WHERE NOT ok) > 0) AS any_failed
 FROM _rls_results \gset
 
-\if :failed
+\if :any_failed
   \echo '=== FAILED:' :failed 'of' :passed '+' :failed 'access guard checks ==='
   DO $$ BEGIN RAISE EXCEPTION 'access guard checks failed'; END $$;
 \else

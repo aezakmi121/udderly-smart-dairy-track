@@ -1223,6 +1223,41 @@ export type Database = {
           },
         ]
       }
+      farmer_phone_events: {
+        Row: {
+          actor: string | null
+          created_at: string
+          farmer_id: string
+          id: string
+          phone_number: string | null
+          source: string
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string
+          farmer_id: string
+          id?: string
+          phone_number?: string | null
+          source: string
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string
+          farmer_id?: string
+          id?: string
+          phone_number?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farmer_phone_events_farmer_id_fkey"
+            columns: ["farmer_id"]
+            isOneToOne: false
+            referencedRelation: "farmers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farmer_pin_events: {
         Row: {
           actor: string | null
@@ -1720,6 +1755,7 @@ export type Database = {
         Row: {
           collection_date: string
           created_at: string | null
+          created_by: string | null
           farmer_id: string | null
           fat_percentage: number
           id: string
@@ -1737,6 +1773,7 @@ export type Database = {
         Insert: {
           collection_date?: string
           created_at?: string | null
+          created_by?: string | null
           farmer_id?: string | null
           fat_percentage: number
           id?: string
@@ -1754,6 +1791,7 @@ export type Database = {
         Update: {
           collection_date?: string
           created_at?: string | null
+          created_by?: string | null
           farmer_id?: string | null
           fat_percentage?: number
           id?: string
@@ -2761,6 +2799,7 @@ export type Database = {
         Returns: number
       }
       fn_clear_farmer_pin: { Args: { p_farmer_id: string }; Returns: boolean }
+      fn_collection_undo_window: { Args: never; Returns: string }
       fn_date_is_settled: { Args: { p_date: string }; Returns: boolean }
       fn_farmer_pin_status: {
         Args: { p_farmer_id: string }
@@ -2816,6 +2855,10 @@ export type Database = {
           used_fat: number
           used_snf: number
         }[]
+      }
+      fn_set_farmer_phone: {
+        Args: { p_farmer_id: string; p_phone: string }
+        Returns: string
       }
       get_user_role: {
         Args: { _user_id: string }
