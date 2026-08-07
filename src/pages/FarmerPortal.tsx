@@ -9,6 +9,7 @@ import { DayHero, DaySessions, DayList } from '@/components/farmer-view';
 import { PinLoginCard } from '@/components/farmer-view/PinLoginCard';
 import { PinSetupCard } from '@/components/farmer-view/PinSetupCard';
 import { PhoneCaptureCard } from '@/components/farmer-view/PhoneCaptureCard';
+import { FarmerInstallPrompt } from '@/components/farmer-view/FarmerInstallPrompt';
 import { groupByDay, pickLatestDay } from '@/lib/farmerDays';
 import { formatDateDMY, formatLitresShort, formatRupees, formatRupeesRounded } from '@/lib/farmerFormat';
 
@@ -39,6 +40,20 @@ async function callFn(path: string, body?: any, token?: string) {
 export const FarmerPortal: React.FC = () => {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const logout = () => { localStorage.removeItem(TOKEN_KEY); setToken(null); };
+
+  // A page carries one manifest, and the office one starts at the dashboard --
+  // which a farmer can neither open nor use. Swap it while this page is
+  // mounted so an install from here lands on their own screen, and put it back
+  // on the way out so staff installing from the office app still get theirs.
+  useEffect(() => {
+    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (!link) return;
+    const original = link.getAttribute('href');
+    link.setAttribute('href', '/farmer-manifest.json');
+    return () => {
+      if (original) link.setAttribute('href', original);
+    };
+  }, []);
 
   return (
     // `farmer-theme` swaps the office app's slate palette for the dairy's own.
@@ -179,6 +194,8 @@ const PortalHome: React.FC<{ token: string; onUnauthorized: () => void }> = ({ t
           onDismiss={() => { setPinPanel('hidden'); setPinDismissed(true); }}
         />
       )}
+
+      <FarmerInstallPrompt />
 
       {pin?.isSet && pinPanel === 'hidden' && (
         <Button

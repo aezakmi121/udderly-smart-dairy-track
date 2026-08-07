@@ -1,3 +1,7 @@
+-- Portal tokens are built from gen_random_bytes, so the extension has to be
+-- present before the migration that defines fn_generate_portal_token runs.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Minimal stand-ins for base tables that predate this repo's migration history.
 --
 -- milk_collections and farmers were created outside the tracked migrations, so

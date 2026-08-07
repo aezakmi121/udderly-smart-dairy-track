@@ -98,7 +98,13 @@ INSERT INTO public.milk_collections
    'cccccccc-0000-0000-0000-000000000003', now() - interval '2 minutes'),
   ('77777777-0000-0000-0000-000000000007', 'ffffffff-0000-0000-0000-00000000000f',
    '2026-07-10', 'morning', 5, 4.0, 8.5, 37.54, 187.70, 'Cow',
-   NULL, now() - interval '2 minutes');
+   NULL, now() - interval '2 minutes'),
+  ('88888888-0000-0000-0000-000000000008', 'ffffffff-0000-0000-0000-00000000000f',
+   '2026-07-10', 'morning', 6, 4.0, 8.5, 37.54, 225.24, 'Cow',
+   'cccccccc-0000-0000-0000-000000000003', now() - interval '1 minute');
+
+UPDATE public.milk_collections SET slip_printed_at = now()
+WHERE id = '88888888-0000-0000-0000-000000000008';
 
 -- A PIN to try and read. Seeded before the role switch, because the point of
 -- the checks below is that RLS hides it, not that the row is missing.
@@ -116,6 +122,8 @@ GRANT INSERT ON _rls_results TO _tester;
 -- needs the same or the checks below fail on a missing GRANT rather than on
 -- the role check inside the function, which is what they are actually for.
 GRANT EXECUTE ON FUNCTION public.fn_set_farmer_phone(uuid, text) TO _tester;
+GRANT EXECUTE ON FUNCTION public.fn_mark_slip_printed(uuid) TO _tester;
+GRANT EXECUTE ON FUNCTION public.fn_regenerate_portal_token(uuid) TO _tester;
 GRANT EXECUTE ON FUNCTION public.fn_clear_farmer_pin(uuid) TO _tester;
 GRANT EXECUTE ON FUNCTION public.fn_farmer_pin_status(uuid) TO _tester;
 -- Supabase grants these to anon and authenticated on every table in public, so
@@ -247,6 +255,53 @@ SELECT _try_rows('CC cannot undo a row that predates the owner column',
   'cccccccc-0000-0000-0000-000000000003',
   $q$DELETE FROM public.milk_collections WHERE id = '77777777-0000-0000-0000-000000000007'$q$,
   0);
+
+------------------------------------------------------------------------------
+-- Once a slip is printed
+--
+-- The paper is the farmer's copy of the deal. Editing the row behind it leaves
+-- two versions of one collection with nothing to say which is right.
+------------------------------------------------------------------------------
+SELECT _try_rows('CC can still correct a collection that has not been printed',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$UPDATE public.milk_collections SET quantity = 11
+     WHERE id = '22222222-0000-0000-0000-000000000002'$q$,
+  1);
+
+SELECT _try('CC can mark a slip printed',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT public.fn_mark_slip_printed('22222222-0000-0000-0000-000000000002')$q$,
+  true);
+
+SELECT _try_rows('CC cannot edit once the slip is printed',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$UPDATE public.milk_collections SET quantity = 12
+     WHERE id = '22222222-0000-0000-0000-000000000002'$q$,
+  0);
+
+SELECT _try_rows('an admin can still correct a printed collection',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  $q$UPDATE public.milk_collections SET quantity = 13
+     WHERE id = '22222222-0000-0000-0000-000000000002'$q$,
+  1);
+
+-- Undo has to outlive printing: a wrong member code is noticed *because* the
+-- slip came out with the wrong name on it.
+SELECT _try_rows('CC can still undo its own printed entry inside the window',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$DELETE FROM public.milk_collections WHERE id = '88888888-0000-0000-0000-000000000008'$q$,
+  1);
+
+-- Voiding every slip a farmer holds is not a counter decision.
+SELECT _try('CC cannot reset a portal QR',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT public.fn_regenerate_portal_token('ffffffff-0000-0000-0000-00000000000f')$q$,
+  false);
+
+SELECT _try('an admin can reset a portal QR',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  $q$SELECT public.fn_regenerate_portal_token('ffffffff-0000-0000-0000-00000000000f')$q$,
+  true);
 
 ------------------------------------------------------------------------------
 -- Mobile numbers

@@ -77,10 +77,12 @@ echo "applying auth fixtures"
 "${PSQL[@]}" -f "$MIGRATIONS"/*farmer_pins.sql >/dev/null
 "${PSQL[@]}" -f "$MIGRATIONS"/*collection_undo_window.sql >/dev/null
 "${PSQL[@]}" -f "$MIGRATIONS"/*farmer_phone_capture.sql >/dev/null
+"${PSQL[@]}" -f "$MIGRATIONS"/*farmer_portal_tokens.sql >/dev/null
+"${PSQL[@]}" -f "$MIGRATIONS"/*slip_printed_lock.sql >/dev/null
 
 # The rate functions are the subject under test, so their absence is fatal
 # rather than something to skip past.
-for fn in fn_get_rate fn_resolve_rate fn_rate_change_impact fn_clear_farmer_pin fn_farmer_pin_status fn_set_farmer_phone; do
+for fn in fn_get_rate fn_resolve_rate fn_rate_change_impact fn_clear_farmer_pin fn_farmer_pin_status fn_set_farmer_phone fn_mark_slip_printed fn_regenerate_portal_token; do
   "${PSQL[@]}" -tc "select 1 from pg_proc where proname = '$fn'" | grep -q 1 || {
     echo "FATAL: $fn was not created by the migrations" >&2
     exit 1

@@ -1766,6 +1766,7 @@ export type Database = {
           rate_per_liter: number
           remarks: string | null
           session: Database["public"]["Enums"]["session_type"]
+          slip_printed_at: string | null
           snf_percentage: number
           species: string
           total_amount: number
@@ -1784,6 +1785,7 @@ export type Database = {
           rate_per_liter: number
           remarks?: string | null
           session: Database["public"]["Enums"]["session_type"]
+          slip_printed_at?: string | null
           snf_percentage: number
           species?: string
           total_amount: number
@@ -1802,6 +1804,7 @@ export type Database = {
           rate_per_liter?: number
           remarks?: string | null
           session?: Database["public"]["Enums"]["session_type"]
+          slip_printed_at?: string | null
           snf_percentage?: number
           species?: string
           total_amount?: number
@@ -2828,6 +2831,10 @@ export type Database = {
           used_snf: number
         }[]
       }
+      fn_mark_slip_printed: {
+        Args: { p_collection_id: string }
+        Returns: string
+      }
       fn_rate_change_impact: {
         Args: { p_date: string; p_session?: string }
         Returns: {
@@ -2837,6 +2844,10 @@ export type Database = {
           first_date: string
           last_date: string
         }[]
+      }
+      fn_regenerate_portal_token: {
+        Args: { p_farmer_id: string }
+        Returns: string
       }
       fn_resolve_rate: {
         Args: {

@@ -11,6 +11,8 @@ import { Card } from '@/components/ui/card';
 import { Printer, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAppSetting } from '@/hooks/useAppSettings';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   SLIP_TEMPLATE_KEY,
   normaliseTemplate,
@@ -53,6 +55,7 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
 }) => {
   const [isPrinting, setIsPrinting] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { value: storedTemplate } = useAppSetting<SlipTemplate>(SLIP_TEMPLATE_KEY);
   const template = normaliseTemplate(storedTemplate);
 
@@ -113,6 +116,14 @@ export const PrintSlipDialog: React.FC<PrintSlipDialogProps> = ({
     setIsPrinting(true);
     try {
       await printCollectionSlip(slipData, template);
+      // Record that the farmer now holds paper with these figures on it. Only
+      // the first print counts, so a reprint does not extend how long the row
+      // stays editable.
+      const { error: stampError } = await supabase.rpc('fn_mark_slip_printed', {
+        p_collection_id: collection.id,
+      });
+      if (stampError) console.error('could not record the print', stampError.message);
+      else queryClient.invalidateQueries({ queryKey: ['milk-collections'] });
       toast({
         title: 'Print Sent',
         description: method === 'rawbt'

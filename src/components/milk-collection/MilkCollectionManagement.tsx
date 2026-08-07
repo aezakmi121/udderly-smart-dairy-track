@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Edit, ScanLine } from "lucide-react";
+import { Plus, Trash2, Edit, ScanLine, Search } from "lucide-react";
 
 import { MilkCollectionModal } from "./MilkCollectionModal";
 import { MilkCollectionTable } from "./MilkCollectionTable";
@@ -52,13 +52,28 @@ export const MilkCollectionManagement: React.FC = () => {
     return isAdmin || selectedDate === todayStr;
   }, [isAdmin, selectedDate]);
 
+  const [search, setSearch] = React.useState("");
+
   const filteredCollections = React.useMemo(() => {
     if (!collections || isLoading) return [];
+    const q = search.trim().toLowerCase();
+    // Searching by farmer looks past the selected date and session. Reprinting
+    // a slip from three weeks ago otherwise means knowing the exact date it
+    // was recorded, which nobody does.
+    if (q) {
+      return collections
+        .filter(
+          (c: any) =>
+            String(c.farmers?.farmer_code ?? "").toLowerCase().includes(q) ||
+            String(c.farmers?.name ?? "").toLowerCase().includes(q)
+        )
+        .slice(0, 100);
+    }
     return collections.filter(
       (c: any) =>
         c.collection_date === selectedDate && c.session === selectedSession
     );
-  }, [collections, isLoading, selectedDate, selectedSession]);
+  }, [collections, isLoading, selectedDate, selectedSession, search]);
 
   React.useEffect(() => {
     if (
@@ -111,6 +126,18 @@ export const MilkCollectionManagement: React.FC = () => {
   };
 
   const handleEditCollection = (row: any) => {
+    // The farmer is holding paper with these figures on it. Changing them now
+    // leaves two versions of the same collection and nothing to say which is
+    // right -- exactly the argument the portal exists to prevent.
+    if (row?.slip_printed_at && !isAdmin) {
+      toast({
+        title: "Slip already printed",
+        description:
+          "The farmer has a printed copy of these figures. Undo the entry within 15 minutes, or ask an admin to correct it.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!canModify) {
       toast({
         title: "Editing locked",
@@ -283,12 +310,29 @@ export const MilkCollectionManagement: React.FC = () => {
 
       <UndoLastEntry />
 
+      <div className="relative mb-3">
+        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          className="h-9 pl-8"
+          placeholder="Find a farmer to reprint a slip (code or name)"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+      {search.trim() && (
+        <p className="mb-2 text-xs text-muted-foreground">
+          Showing every session for this farmer, newest first — not just{" "}
+          {selectedDate} {selectedSession}.
+        </p>
+      )}
+
       {/* Records Table (filtered by date + session) */}
       <MilkCollectionTable
         collections={filteredCollections}
         isLoading={isLoading}
         canEdit={canModify}
         canDelete={canModify}
+        isAdmin={isAdmin}
         onEdit={handleEditCollection}
         onDelete={handleDeleteCollection}
         selectedIds={selectedIds}
