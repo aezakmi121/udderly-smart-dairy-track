@@ -492,20 +492,19 @@ const emitLine = (commands: number[], text: string, opts: { bold?: boolean; font
   }
 };
 
-// Build print data for collection slip
-const buildSlipData = (
-  data: CollectionSlipData,
-  template: SlipTemplate = DEFAULT_SLIP_TEMPLATE
-): Uint8Array => {
-  const commands: number[] = [];
+/** `2026-08-05` becomes `05/08/2026`. Plain ASCII, so it stays on the fast path. */
+const slipDate = (value?: string | null): string => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value ?? ''));
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : String(value ?? '');
+};
 
-  const sessionLabel = data.session === 'morning' ? 'AM' : 'PM';
-  const speciesLabel = formatSpecies(data.species);
+const rule = (char: '=' | '-') => textToBytes(`${char.repeat(SLIP_COLUMNS)}\n`);
 
-  // Initialize
-  commands.push(...ESC_POS.INIT);
-
-  // Brand block
+/**
+ * Everything above the figures. Shared so the collection slip and the bill
+ * carry the same name, logo and branding without being kept in step by hand.
+ */
+const emitBrandBlock = (commands: number[], template: SlipTemplate, subtitle: string): void => {
   commands.push(...ESC_POS.ALIGN_CENTER);
   if (showsLogo(template) && template.logo) {
     const logo: Raster = {
@@ -520,13 +519,58 @@ const buildSlipData = (
   if (showsBrandText(template)) {
     emitLine(commands, template.businessName, { bold: true, fontSizePx: 30 });
   }
-  emitLine(commands, template.tagline, { fontSizePx: 22 });
+  emitLine(commands, subtitle, { fontSizePx: 22 });
   commands.push(...ESC_POS.ALIGN_CENTER);
-  commands.push(...textToBytes(`${'='.repeat(SLIP_COLUMNS)}\n`));
-  
+  commands.push(...rule('='));
+};
+
+/** The farmer's own link, so paper alone is enough to reach their account. */
+const emitQrBlock = (commands: number[], template: SlipTemplate, url?: string | null): void => {
+  if (!template.qr.enabled || !url) return;
+  try {
+    const qr = QRCode.create(url, { errorCorrectionLevel: 'M' });
+    const size = qr.modules.size;
+    const raster = renderQrRaster(
+      { size, get: (x, y) => qr.modules.get(y, x) === 1 },
+      { moduleDots: qrModuleDotsToFit(size) }
+    );
+    commands.push(...centeredRaster(raster));
+    emitLine(commands, template.qr.caption, { fontSizePx: 20 });
+  } catch (err) {
+    // Paper without its QR is far better than paper that fails to print.
+    console.error('Could not render the portal QR code:', err);
+  }
+};
+
+const emitFooterBlock = (commands: number[], template: SlipTemplate): void => {
+  commands.push(...ESC_POS.ALIGN_CENTER);
+  commands.push(...rule('='));
+  emitLine(commands, template.footerMessage, { fontSizePx: 24 });
+  emitLine(commands, template.contactLine, { fontSizePx: 20 });
+  commands.push(...ESC_POS.ALIGN_CENTER);
+  commands.push(...rule('='));
+  commands.push(...ESC_POS.FEED, ...ESC_POS.FEED, ...ESC_POS.FEED);
+  // Printers without a cutter ignore this; it is opt-in regardless.
+  if (getAutoCut()) commands.push(...ESC_POS.CUT);
+};
+
+// Build print data for collection slip
+const buildSlipData = (
+  data: CollectionSlipData,
+  template: SlipTemplate = DEFAULT_SLIP_TEMPLATE
+): Uint8Array => {
+  const commands: number[] = [];
+
+  const sessionLabel = data.session === 'morning' ? 'AM' : 'PM';
+  const speciesLabel = formatSpecies(data.species);
+
+  // Initialize
+  commands.push(...ESC_POS.INIT);
+  emitBrandBlock(commands, template, template.tagline);
+
   // Date and Session
   commands.push(...ESC_POS.ALIGN_LEFT);
-  commands.push(...textToBytes(`Date: ${data.date}  Session: ${sessionLabel}\n`));
+  commands.push(...textToBytes(`Date: ${slipDate(data.date)}  Session: ${sessionLabel}\n`));
   commands.push(...ESC_POS.ALIGN_CENTER);
   commands.push(...textToBytes(`${'-'.repeat(SLIP_COLUMNS)}\n`));
   
@@ -556,41 +600,106 @@ const buildSlipData = (
   commands.push(...textToBytes(`TOTAL:        Rs.${data.totalAmount.toFixed(2)}\n`));
   commands.push(...ESC_POS.BOLD_OFF);
   
-  // The farmer's own link, so a slip is enough to see their earnings without
-  // a phone number, a code to type, or anything to remember.
-  if (template.qr.enabled && data.portalUrl) {
-    try {
-      const qr = QRCode.create(data.portalUrl, { errorCorrectionLevel: 'M' });
-      const size = qr.modules.size;
-      const raster = renderQrRaster(
-        { size, get: (x, y) => qr.modules.get(y, x) === 1 },
-        { moduleDots: qrModuleDotsToFit(size) }
-      );
-      commands.push(...centeredRaster(raster));
-      emitLine(commands, template.qr.caption, { fontSizePx: 20 });
-    } catch (err) {
-      // A slip that prints without its QR is far better than one that fails.
-      console.error('Could not render the portal QR code:', err);
-    }
+  emitQrBlock(commands, template, data.portalUrl);
+  emitFooterBlock(commands, template);
+
+  return new Uint8Array(commands);
+};
+
+/** A fortnight's bill, on the same 58mm roll as the daily slips. */
+export interface BillSlipData {
+  farmerName: string;
+  farmerCode: string;
+  billNumber?: string | null;
+  cycleStart: string;
+  cycleEnd: string;
+  totalQuantity: number;
+  sessionsCount: number;
+  avgFat?: number | null;
+  avgSnf?: number | null;
+  totalAmount: number;
+  advancesDeducted: number;
+  carryForwardIn: number;
+  otherDeductions: number;
+  netPayable: number;
+  paidAmount?: number;
+  portalUrl?: string | null;
+}
+
+/** `Label:        value`, right-aligned into the 32 column roll. */
+const amountLine = (label: string, value: string): number[] => {
+  const gap = Math.max(1, SLIP_COLUMNS - label.length - value.length);
+  return textToBytes(`${label}${' '.repeat(gap)}${value}\n`);
+};
+
+const rs = (n: number) => `Rs.${Number(n ?? 0).toFixed(2)}`;
+
+/**
+ * Build a payout bill for the thermal printer.
+ *
+ * The PDF only ever reached farmers with a phone, which is fewer than half of
+ * them. Payout day is exactly when the rest want to see the arithmetic, so the
+ * same figures go on paper -- and carry the QR, which is the one moment a
+ * farmer is most likely to scan it.
+ */
+const buildBillSlipData = (
+  data: BillSlipData,
+  template: SlipTemplate = DEFAULT_SLIP_TEMPLATE
+): Uint8Array => {
+  const commands: number[] = [];
+
+  commands.push(...ESC_POS.INIT);
+  emitBrandBlock(commands, template, 'Milk Bill');
+
+  commands.push(...ESC_POS.ALIGN_LEFT);
+  if (data.billNumber) commands.push(...textToBytes(`Bill: ${data.billNumber}\n`));
+  commands.push(...textToBytes(`Period: ${slipDate(data.cycleStart)} to\n`));
+  commands.push(...textToBytes(`        ${slipDate(data.cycleEnd)}\n`));
+  commands.push(...ESC_POS.ALIGN_CENTER);
+  commands.push(...rule('-'));
+
+  commands.push(...ESC_POS.ALIGN_LEFT);
+  commands.push(...textToBytes(`Farmer: ${data.farmerName}\n`));
+  commands.push(...textToBytes(`Code: ${data.farmerCode}\n`));
+  commands.push(...ESC_POS.ALIGN_CENTER);
+  commands.push(...rule('-'));
+
+  commands.push(...ESC_POS.ALIGN_LEFT);
+  commands.push(...amountLine('Milk', `${Number(data.totalQuantity ?? 0).toFixed(2)} L`));
+  commands.push(...amountLine('Sessions', String(data.sessionsCount ?? 0)));
+  if (data.avgFat != null) commands.push(...amountLine('Avg Fat', Number(data.avgFat).toFixed(1)));
+  if (data.avgSnf != null) commands.push(...amountLine('Avg SNF', Number(data.avgSnf).toFixed(1)));
+  commands.push(...amountLine('Milk amount', rs(data.totalAmount)));
+
+  // Only the deductions that actually apply. A run of "Rs.0.00" lines invites
+  // the question of what was taken off, which is the opposite of the point.
+  if (Number(data.carryForwardIn) > 0) {
+    commands.push(...amountLine('+ Previous due', rs(data.carryForwardIn)));
+  }
+  if (Number(data.advancesDeducted) > 0) {
+    commands.push(...amountLine('- Advance', rs(data.advancesDeducted)));
+  }
+  if (Number(data.otherDeductions) > 0) {
+    commands.push(...amountLine('- Other', rs(data.otherDeductions)));
   }
 
-  // Footer
   commands.push(...ESC_POS.ALIGN_CENTER);
-  commands.push(...textToBytes(`${'='.repeat(SLIP_COLUMNS)}\n`));
-  emitLine(commands, template.footerMessage, { fontSizePx: 24 });
-  emitLine(commands, template.contactLine, { fontSizePx: 20 });
-  commands.push(...ESC_POS.ALIGN_CENTER);
-  commands.push(...textToBytes(`${'='.repeat(SLIP_COLUMNS)}\n`));
-  
-  // Feed paper
-  commands.push(...ESC_POS.FEED);
-  commands.push(...ESC_POS.FEED);
-  commands.push(...ESC_POS.FEED);
+  commands.push(...rule('-'));
+  commands.push(...ESC_POS.ALIGN_LEFT);
+  commands.push(...ESC_POS.BOLD_ON);
+  commands.push(...amountLine('NET PAYABLE', rs(data.netPayable)));
+  commands.push(...ESC_POS.BOLD_OFF);
 
-  // Printers without a cutter ignore this; it is opt-in regardless.
-  if (getAutoCut()) {
-    commands.push(...ESC_POS.CUT);
+  if (Number(data.paidAmount ?? 0) > 0) {
+    commands.push(...amountLine('Paid', rs(data.paidAmount ?? 0)));
+    const due = Number(data.netPayable ?? 0) - Number(data.paidAmount ?? 0);
+    if (due > 0) commands.push(...amountLine('Balance', rs(due)));
   }
+  commands.push(...ESC_POS.ALIGN_CENTER);
+  commands.push(...rule('-'));
+
+  emitQrBlock(commands, template, data.portalUrl);
+  emitFooterBlock(commands, template);
 
   return new Uint8Array(commands);
 };
@@ -740,6 +849,17 @@ export const printCollectionSlip = async (
   return printViaWebBluetooth(bytes);
 };
 
+// Print a payout bill — same transports as the daily slip.
+export const printBillSlip = async (
+  data: BillSlipData,
+  template?: SlipTemplate
+): Promise<boolean> => {
+  const bytes = buildBillSlipData(data, template);
+  const method = getPrintMethod();
+  if (method === 'rawbt') return printViaRawBT(bytes);
+  return printViaWebBluetooth(bytes);
+};
+
 // Print a test slip — dispatches to the configured transport
 export const printTestSlip = async (): Promise<boolean> => {
   const method = getPrintMethod();
@@ -773,7 +893,7 @@ export const getSlipPreview = (
   if (showsBrandText(template)) lines.push(centre(template.businessName));
   if (template.tagline.trim()) lines.push(centre(template.tagline));
   lines.push(rule);
-  lines.push(`Date: ${data.date}  Session: ${sessionLabel}`);
+  lines.push(`Date: ${slipDate(data.date)}  Session: ${sessionLabel}`);
   lines.push(thinRule);
   lines.push(`Farmer: ${data.farmerName}`);
   lines.push(`Code: ${data.farmerCode}`);
@@ -794,6 +914,61 @@ export const getSlipPreview = (
   if (template.footerMessage.trim()) lines.push(centre(template.footerMessage));
   if (template.contactLine.trim()) lines.push(centre(template.contactLine));
   lines.push(rule);
+
+  return lines.join('\n');
+};
+
+/** Text preview of a bill, so it can be checked before any paper is used. */
+export const getBillSlipPreview = (
+  data: BillSlipData,
+  template: SlipTemplate = DEFAULT_SLIP_TEMPLATE
+): string => {
+  const heavy = '='.repeat(SLIP_COLUMNS);
+  const thin = '-'.repeat(SLIP_COLUMNS);
+  const centre = (text: string) => {
+    const pad = Math.max(0, Math.floor((SLIP_COLUMNS - text.length) / 2));
+    return ' '.repeat(pad) + text;
+  };
+  const row = (label: string, value: string) =>
+    `${label}${' '.repeat(Math.max(1, SLIP_COLUMNS - label.length - value.length))}${value}`;
+  const money = (n: number) => `Rs.${Number(n ?? 0).toFixed(2)}`;
+
+  const lines: string[] = [];
+  if (showsLogo(template)) lines.push(centre('[ logo ]'));
+  if (showsBrandText(template)) lines.push(centre(template.businessName));
+  lines.push(centre('Milk Bill'));
+  lines.push(heavy);
+  if (data.billNumber) lines.push(`Bill: ${data.billNumber}`);
+  lines.push(`Period: ${slipDate(data.cycleStart)} to`);
+  lines.push(`        ${slipDate(data.cycleEnd)}`);
+  lines.push(thin);
+  lines.push(`Farmer: ${data.farmerName}`);
+  lines.push(`Code: ${data.farmerCode}`);
+  lines.push(thin);
+  lines.push(row('Milk', `${Number(data.totalQuantity ?? 0).toFixed(2)} L`));
+  lines.push(row('Sessions', String(data.sessionsCount ?? 0)));
+  if (data.avgFat != null) lines.push(row('Avg Fat', Number(data.avgFat).toFixed(1)));
+  if (data.avgSnf != null) lines.push(row('Avg SNF', Number(data.avgSnf).toFixed(1)));
+  lines.push(row('Milk amount', money(data.totalAmount)));
+  if (Number(data.carryForwardIn) > 0) lines.push(row('+ Previous due', money(data.carryForwardIn)));
+  if (Number(data.advancesDeducted) > 0) lines.push(row('- Advance', money(data.advancesDeducted)));
+  if (Number(data.otherDeductions) > 0) lines.push(row('- Other', money(data.otherDeductions)));
+  lines.push(thin);
+  lines.push(row('NET PAYABLE', money(data.netPayable)));
+  if (Number(data.paidAmount ?? 0) > 0) {
+    lines.push(row('Paid', money(data.paidAmount ?? 0)));
+    const due = Number(data.netPayable ?? 0) - Number(data.paidAmount ?? 0);
+    if (due > 0) lines.push(row('Balance', money(due)));
+  }
+  lines.push(thin);
+  if (template.qr.enabled && data.portalUrl) {
+    lines.push(centre('[ QR ]'));
+    if (template.qr.caption.trim()) lines.push(centre(template.qr.caption));
+  }
+  lines.push(heavy);
+  if (template.footerMessage.trim()) lines.push(centre(template.footerMessage));
+  if (template.contactLine.trim()) lines.push(centre(template.contactLine));
+  lines.push(heavy);
 
   return lines.join('\n');
 };

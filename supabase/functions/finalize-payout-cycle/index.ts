@@ -30,11 +30,12 @@ Deno.serve(async (req) => {
 
     const farmerIds = (payouts ?? []).map((p) => p.farmer_id);
     const { data: farmers } = await supabase
-      .from('farmers').select('id, name, farmer_code, phone_number').in('id', farmerIds);
+      .from('farmers').select('id, name, farmer_code, phone_number, portal_token').in('id', farmerIds);
     const fmap = new Map((farmers ?? []).map((f) => [f.id, f]));
 
     // Org name from app_settings
     const { data: orgSetting } = await supabase.from('app_settings').select('value').eq('key', 'organization_settings').maybeSingle();
+    const portalBase = (Deno.env.get('PORTAL_BASE_URL') ?? '').replace(/\/+$/, '');
     const orgName = (orgSetting?.value as any)?.organization_name ?? "Dairy";
 
     let pdfsCreated = 0;
@@ -59,6 +60,9 @@ Deno.serve(async (req) => {
           cycle_end: cycle.cycle_end,
           farmer: { name: f?.name ?? '', farmer_code: f?.farmer_code ?? '', phone_number: f?.phone_number ?? null },
           org_name: orgName,
+          // Same code the collection slips carry. Without a configured portal
+          // address the bill simply prints without it.
+          portal_url: portalBase && f?.portal_token ? `${portalBase}/f/${f.portal_token}` : null,
           payout: {
             total_quantity: Number(p.total_quantity ?? 0),
             total_amount: Number(p.total_amount ?? 0),

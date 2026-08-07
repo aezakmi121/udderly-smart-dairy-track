@@ -33,7 +33,7 @@ export interface PayoutRow {
   last_payment_method: string | null;
   finalized_at: string | null;
   pdf_storage_path: string | null;
-  farmers?: { name: string; farmer_code: string; phone_number: string };
+  farmers?: { name: string; farmer_code: string; phone_number: string; portal_token?: string | null };
 }
 
 export const usePayoutCycles = () => useQuery({
@@ -63,7 +63,7 @@ export const useCyclePayouts = (cycleId: string | null) => useQuery({
     const ids = Array.from(new Set(rows.map((r) => r.farmer_id)));
     if (ids.length === 0) return [] as PayoutRow[];
     const { data: farmers } = await supabase.from('farmers')
-      .select('id, name, farmer_code, phone_number').in('id', ids);
+      .select('id, name, farmer_code, phone_number, portal_token').in('id', ids);
     const fmap = new Map((farmers ?? []).map((f) => [f.id, f]));
     return rows.map((r) => ({ ...r, farmers: fmap.get(r.farmer_id) })) as PayoutRow[];
   },

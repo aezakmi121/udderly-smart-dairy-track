@@ -12,6 +12,9 @@ import {
   pacerDelay,
   PRINTER_BURST_BYTES,
   PRINTER_BYTES_PER_SEC,
+  getBillSlipPreview,
+  SLIP_COLUMNS,
+  type BillSlipData,
   type CollectionSlipData,
 } from './thermalPrinting';
 import { DEFAULT_SLIP_TEMPLATE } from './slipTemplate';
@@ -274,5 +277,119 @@ describe('pacing writes to the printer', () => {
     const pacer = createPacer(1000, 1024, 8000);
     expect(pacerDelay(pacer, 180, 0)).toBe(0);
     expect(pacer.credit).toBeLessThanOrEqual(1024);
+  });
+});
+
+describe('the payout bill', () => {
+  const bill = (over: Partial<BillSlipData> = {}): BillSlipData => ({
+    farmerName: 'RAMESH PATEL',
+    farmerCode: '1234',
+    billNumber: 'LB-2026-07-2-0012',
+    cycleStart: '2026-07-16',
+    cycleEnd: '2026-07-31',
+    totalQuantity: 187.5,
+    sessionsCount: 28,
+    avgFat: 4.2,
+    avgSnf: 8.4,
+    totalAmount: 15842.3,
+    advancesDeducted: 0,
+    carryForwardIn: 0,
+    otherDeductions: 0,
+    netPayable: 15842.3,
+    ...over,
+  });
+
+  it('carries the figures a farmer would check against their slips', () => {
+    const text = getBillSlipPreview(bill(), DEFAULT_SLIP_TEMPLATE);
+    expect(text).toContain('Farmer: RAMESH PATEL');
+    expect(text).toContain('187.50 L');
+    expect(text).toContain('Rs.15842.30');
+    expect(text).toContain('LB-2026-07-2-0012');
+  });
+
+  // Indians write 31/07/2026. The slip used to print the raw column value.
+  it('writes dates day first', () => {
+    const text = getBillSlipPreview(bill(), DEFAULT_SLIP_TEMPLATE);
+    expect(text).toContain('16/07/2026');
+    expect(text).toContain('31/07/2026');
+    expect(text).not.toContain('2026-07-16');
+  });
+
+  it('writes the collection slip date day first too', () => {
+    expect(getSlipPreview(slip({ date: '2026-08-05' }))).toContain('Date: 05/08/2026');
+  });
+
+  it('leaves a bad date alone rather than printing a dash', () => {
+    expect(getBillSlipPreview(bill({ cycleStart: '' }), DEFAULT_SLIP_TEMPLATE)).toContain('Period:');
+  });
+
+  // A column of "Rs.0.00" invites the question of what was taken off.
+  it('omits deductions that did not happen', () => {
+    const text = getBillSlipPreview(bill(), DEFAULT_SLIP_TEMPLATE);
+    expect(text).not.toContain('Advance');
+    expect(text).not.toContain('Previous due');
+    expect(text).not.toContain('Other');
+  });
+
+  it('shows each deduction that did', () => {
+    const text = getBillSlipPreview(
+      bill({ advancesDeducted: 2000, carryForwardIn: 142, otherDeductions: 50, netPayable: 13934.3 }),
+      DEFAULT_SLIP_TEMPLATE
+    );
+    expect(text).toContain('- Advance');
+    expect(text).toContain('Rs.2000.00');
+    expect(text).toContain('+ Previous due');
+    expect(text).toContain('Rs.142.00');
+    expect(text).toContain('- Other');
+  });
+
+  it('states what is left when a bill is part paid', () => {
+    const text = getBillSlipPreview(bill({ paidAmount: 10000 }), DEFAULT_SLIP_TEMPLATE);
+    expect(text).toContain('Paid');
+    expect(text).toContain('Rs.5842.30');
+  });
+
+  it('says nothing about payment when none has been made', () => {
+    expect(getBillSlipPreview(bill(), DEFAULT_SLIP_TEMPLATE)).not.toContain('Paid');
+  });
+
+  it('keeps the net payable on one 32 column line', () => {
+    const line = getBillSlipPreview(bill({ netPayable: 105430.55 }), DEFAULT_SLIP_TEMPLATE)
+      .split('\n')
+      .find((l) => l.startsWith('NET PAYABLE'))!;
+    expect(line).toHaveLength(SLIP_COLUMNS);
+    expect(line).toContain('Rs.105430.55');
+  });
+
+  it('keeps every rule the same width as the collection slip', () => {
+    const rules = getBillSlipPreview(bill(), DEFAULT_SLIP_TEMPLATE)
+      .split('\n')
+      .filter((l) => /^[=-]+$/.test(l));
+    expect(new Set(rules.map((r) => r.length))).toEqual(new Set([SLIP_COLUMNS]));
+  });
+
+  it('carries the same branding as the daily slip', () => {
+    const text = getBillSlipPreview(bill(), DEFAULT_SLIP_TEMPLATE);
+    expect(text).toContain('श्रीLalita By Maharani Farm');
+    expect(text).toContain('धन्यवाद!');
+    expect(text).toContain('Milk Bill');
+  });
+
+  it('marks the QR only when there is a link and it is switched on', () => {
+    const on = { ...DEFAULT_SLIP_TEMPLATE, qr: { enabled: true, caption: 'अपना हिसाब देखें' } };
+    expect(getBillSlipPreview(bill({ portalUrl: 'https://x.test/f/abc' }), on)).toContain('[ QR ]');
+    expect(getBillSlipPreview(bill(), on)).not.toContain('[ QR ]');
+    expect(
+      getBillSlipPreview(bill({ portalUrl: 'https://x.test/f/abc' }), DEFAULT_SLIP_TEMPLATE)
+    ).not.toContain('[ QR ]');
+  });
+
+  it('does not fall over on a bill with nothing in it', () => {
+    const text = getBillSlipPreview(
+      bill({ totalQuantity: 0, sessionsCount: 0, avgFat: null, avgSnf: null, totalAmount: 0, netPayable: 0 }),
+      DEFAULT_SLIP_TEMPLATE
+    );
+    expect(text).toContain('Rs.0.00');
+    expect(text).not.toContain('Avg Fat');
   });
 });
