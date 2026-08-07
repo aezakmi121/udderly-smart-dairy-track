@@ -7,6 +7,7 @@ import { Plus, Trash2, Edit, ScanLine } from "lucide-react";
 
 import { MilkCollectionModal } from "./MilkCollectionModal";
 import { MilkCollectionTable } from "./MilkCollectionTable";
+import { UndoLastEntry, rememberEntry } from "./UndoLastEntry";
 import { TodaysCollectionSummary } from "./TodaysCollectionSummary";
 import { BulkEditCollectionModal } from "./BulkEditCollectionModal";
 import { SlipScanModal } from "./SlipScanModal";
@@ -33,6 +34,7 @@ export const MilkCollectionManagement: React.FC = () => {
 
   const {
     collections,
+    farmers,
     dailyStats,
     isLoading,
     addCollectionMutation,
@@ -87,7 +89,24 @@ export const MilkCollectionManagement: React.FC = () => {
     if (editingCollection) {
       updateCollectionMutation.mutate(data);
     } else {
-      addCollectionMutation.mutate(data);
+      addCollectionMutation.mutate(data, {
+        onSuccess: (saved: any) => {
+          // Offer the entry back for as long as the database will accept the
+          // delete. A wrong member code is spotted within seconds, while the
+          // farmer is still at the counter.
+          const farmer = farmers?.find((f: any) => f.id === data.farmer_id);
+          if (saved?.id && saved?.created_at) {
+            rememberEntry({
+              id: saved.id,
+              createdAt: saved.created_at,
+              farmerName: farmer?.name ?? 'Unknown',
+              farmerCode: farmer?.farmer_code ?? '—',
+              quantity: Number(data.quantity ?? 0),
+            });
+            window.dispatchEvent(new Event('milk-collection-saved'));
+          }
+        },
+      });
     }
   };
 
@@ -261,6 +280,8 @@ export const MilkCollectionManagement: React.FC = () => {
           </CardContent>
         </Card>
       )}
+
+      <UndoLastEntry />
 
       {/* Records Table (filtered by date + session) */}
       <MilkCollectionTable

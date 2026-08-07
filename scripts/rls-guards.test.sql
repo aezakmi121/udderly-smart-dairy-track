@@ -70,6 +70,27 @@ VALUES
   ('22222222-0000-0000-0000-000000000002', 'ffffffff-0000-0000-0000-00000000000f',
    '2026-07-10', 'morning', 10, 4.0, 8.5, 37.54, 375.40, 'Cow');   -- open
 
+-- Entries for the undo checks. created_by and created_at are set explicitly so
+-- each case is unambiguous rather than depending on when the suite runs.
+INSERT INTO public.milk_collections
+  (id, farmer_id, collection_date, session, quantity, fat_percentage, snf_percentage,
+   rate_per_liter, total_amount, species, created_by, created_at) VALUES
+  ('33333333-0000-0000-0000-000000000003', 'ffffffff-0000-0000-0000-00000000000f',
+   '2026-07-10', 'morning', 6, 4.0, 8.5, 37.54, 225.24, 'Cow',
+   'cccccccc-0000-0000-0000-000000000003', now() - interval '2 minutes'),
+  ('44444444-0000-0000-0000-000000000004', 'ffffffff-0000-0000-0000-00000000000f',
+   '2026-07-10', 'morning', 7, 4.0, 8.5, 37.54, 262.78, 'Cow',
+   'aaaaaaaa-0000-0000-0000-000000000001', now() - interval '2 minutes'),
+  ('55555555-0000-0000-0000-000000000005', 'ffffffff-0000-0000-0000-00000000000f',
+   '2026-07-10', 'morning', 8, 4.0, 8.5, 37.54, 300.32, 'Cow',
+   'cccccccc-0000-0000-0000-000000000003', now() - interval '2 hours'),
+  ('66666666-0000-0000-0000-000000000006', 'ffffffff-0000-0000-0000-00000000000f',
+   '2026-06-10', 'morning', 9, 4.0, 8.5, 37.54, 337.86, 'Cow',
+   'cccccccc-0000-0000-0000-000000000003', now() - interval '2 minutes'),
+  ('77777777-0000-0000-0000-000000000007', 'ffffffff-0000-0000-0000-00000000000f',
+   '2026-07-10', 'morning', 5, 4.0, 8.5, 37.54, 187.70, 'Cow',
+   NULL, now() - interval '2 minutes');
+
 -- A PIN to try and read. Seeded before the role switch, because the point of
 -- the checks below is that RLS hides it, not that the row is missing.
 INSERT INTO public.farmer_pins(farmer_id, pin_hash, pin_salt)
@@ -175,6 +196,42 @@ SELECT _try('a user with no role cannot record milk',
        (farmer_id, collection_date, session, quantity, fat_percentage, snf_percentage, rate_per_liter, total_amount, species)
      VALUES ('ffffffff-0000-0000-0000-00000000000f','2026-07-12','morning',5,4.0,8.5,37.54,187.70,'Cow')$q$,
   false);
+
+------------------------------------------------------------------------------
+-- The undo window
+--
+-- The collection centre holds no DELETE, which left a wrong member code with
+-- no remedy short of finding an admin. This opens exactly one door: your own
+-- entry, made minutes ago, in a period nobody has settled.
+------------------------------------------------------------------------------
+SELECT _try_rows('CC can undo the entry it just made',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$DELETE FROM public.milk_collections WHERE id = '33333333-0000-0000-0000-000000000003'$q$,
+  1);
+
+-- Somebody else's mistake is not yours to erase.
+SELECT _try_rows('CC cannot undo another operator entry',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$DELETE FROM public.milk_collections WHERE id = '44444444-0000-0000-0000-000000000004'$q$,
+  0);
+
+SELECT _try_rows('CC cannot undo its own entry once the window has passed',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$DELETE FROM public.milk_collections WHERE id = '55555555-0000-0000-0000-000000000005'$q$,
+  0);
+
+-- Undo must never reach into money that has already been paid out.
+SELECT _try_rows('CC cannot undo a fresh entry in a settled period',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$DELETE FROM public.milk_collections WHERE id = '66666666-0000-0000-0000-000000000006'$q$,
+  0);
+
+-- 18,570 rows predate created_by. If a null owner matched, every one of them
+-- would be deletable by anyone at the counter.
+SELECT _try_rows('CC cannot undo a row that predates the owner column',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$DELETE FROM public.milk_collections WHERE id = '77777777-0000-0000-0000-000000000007'$q$,
+  0);
 
 ------------------------------------------------------------------------------
 -- PIN hashes are unreachable from the client, whoever is asking

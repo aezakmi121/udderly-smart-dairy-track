@@ -15,6 +15,9 @@ import { Badge } from '@/components/ui/badge';
 import { useServerValidation } from '@/hooks/useServerValidation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
+import { useFarmerContext } from '@/hooks/useFarmerContext';
+import { FarmerConfirmCard } from './FarmerConfirmCard';
+import { findTrueDuplicate } from '@/lib/collectionGuards';
 
 interface MilkCollectionFormProps {
   onSubmit: (data: any) => void;
@@ -27,6 +30,9 @@ interface MilkCollectionFormProps {
 export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit, isLoading, initialData, selectedDate, selectedSession }) => {
   const { validateData, isValidating, validationErrors } = useServerValidation({ onlyValidateCriticalFields: true });
   const { toast } = useToast();
+  // Cleared whenever the figures change, so acknowledging one duplicate never
+  // waves through the next.
+  const [duplicateAcknowledged, setDuplicateAcknowledged] = React.useState(false);
   
   const { register, handleSubmit, setValue, watch, reset } = useForm({
     defaultValues: initialData ? {
@@ -104,6 +110,24 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
     }
   }, [detectedSpecies, setValue]);
 
+  // Everything needed to notice a wrong member code before it is saved.
+  const { data: farmerContext } = useFarmerContext(
+    selectedFarmer?.id,
+    collectionDate,
+    collectionSession
+  );
+
+  const candidate = React.useMemo(
+    () => ({
+      quantity: Number(quantity) || 0,
+      fat_percentage: Number(fatPercentage) || 0,
+      snf_percentage: Number(snfPercentage) || 0,
+    }),
+    [quantity, fatPercentage, snfPercentage]
+  );
+
+  React.useEffect(() => setDuplicateAcknowledged(false), [quantity, fatPercentage, snfPercentage, farmerCode]);
+
   const { value: modeSetting } = useAppSetting<{ mode: 'auto' | 'manual' }>('milk_rate_mode');
   const isAuto = (modeSetting?.mode ?? 'auto') === 'auto';
   const totalAmount = isAuto 
@@ -168,6 +192,25 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
       return;
     }
 
+    // A true duplicate -- same quantity to the millilitre, same fat, same SNF --
+    // is the same bucket entered twice. Two genuinely different buckets differ
+    // in at least one of those, so this asks rather than blocks.
+    const duplicate = Number(data.quantity) > 0
+      ? findTrueDuplicate(
+          (farmerContext?.sameSession ?? []).filter((r) => r.id !== initialData?.id),
+          candidate
+        )
+      : null;
+    if (duplicate && !duplicateAcknowledged) {
+      setDuplicateAcknowledged(true);
+      toast({
+        title: 'Same entry already recorded',
+        description: `${Number(duplicate.quantity).toFixed(2)} L at Fat ${Number(duplicate.fat_percentage).toFixed(1)} is already saved for this farmer in this session. Press Save again if they really delivered twice.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Exclude farmer_code since it's not a database column - only farmer_id is stored
     const { farmer_code, ...dbData } = data;
     
@@ -221,11 +264,6 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
               {...register('farmer_code', { required: true })}
               placeholder="Enter farmer code"
             />
-            {selectedFarmer && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {selectedFarmer.name}
-              </p>
-            )}
             {farmerCode && !selectedFarmer && (
               <p className="text-sm text-destructive mt-1">
                 Farmer code not found
@@ -234,6 +272,20 @@ export const MilkCollectionForm: React.FC<MilkCollectionFormProps> = ({ onSubmit
             {/* Hidden input to submit farmer_id */}
             <input type="hidden" {...register('farmer_id')} />
           </div>
+
+          {selectedFarmer && (
+            <div className="md:col-span-2">
+              <FarmerConfirmCard
+                farmerName={selectedFarmer.name}
+                farmerCode={selectedFarmer.farmer_code}
+                habit={farmerContext?.habit ?? { deliveries: 0, medianQuantity: 0 }}
+                lastDelivery={farmerContext?.lastDelivery ?? null}
+                sameSession={farmerContext?.sameSession ?? []}
+                candidate={Number(quantity) > 0 ? candidate : null}
+                editingId={initialData?.id ?? null}
+              />
+            </div>
+          )}
 
           {isAuto && (
             <div>

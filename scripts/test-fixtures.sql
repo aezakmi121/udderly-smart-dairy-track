@@ -25,5 +25,8 @@ CREATE TABLE IF NOT EXISTS public.milk_collections (
   total_amount numeric,
   species text,
   is_accepted boolean DEFAULT true,
-  remarks text
+  remarks text,
+  -- The undo window is judged on how long ago the row was written, so the
+  -- fixture needs this even though the rate logic never looks at it.
+  created_at timestamptz DEFAULT now()
 );

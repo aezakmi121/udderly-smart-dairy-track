@@ -75,6 +75,7 @@ echo "applying auth fixtures"
 # The guard policies need has_role(), which the auth fixtures only just created.
 "${PSQL[@]}" -f "$MIGRATIONS"/*collection_centre_collection_guards.sql >/dev/null
 "${PSQL[@]}" -f "$MIGRATIONS"/*farmer_pins.sql >/dev/null
+"${PSQL[@]}" -f "$MIGRATIONS"/*collection_undo_window.sql >/dev/null
 
 # The rate functions are the subject under test, so their absence is fatal
 # rather than something to skip past.
