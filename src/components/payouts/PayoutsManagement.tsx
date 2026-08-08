@@ -12,7 +12,8 @@ import { usePayoutCycles, useCyclePayouts, useCurrentCycleLive, type PayoutCycle
 import { PaymentDialog } from './PaymentDialog';
 import { AdvancesTab } from './AdvancesTab';
 import { BulkPayDialog, downloadPaymentRegisterCsv } from './BulkPayDialog';
-import { Wallet, FileText, CheckCircle2, Loader2, Hourglass, Search, Receipt, Download, Users } from 'lucide-react';
+import { PrintBillDialog } from './PrintBillDialog';
+import { Wallet, FileText, CheckCircle2, Loader2, Hourglass, Search, Receipt, Download, Users, Printer } from 'lucide-react';
 
 const inrFmt = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
 const inr = (n: number) => `₹${inrFmt.format(Math.round(n))}`;
@@ -226,6 +227,7 @@ const PaymentsCard: React.FC<{ cycle: PayoutCycle }> = ({ cycle }) => {
   const [filter, setFilter] = useState('');
   const [showPaid, setShowPaid] = useState(false);
   const [payRow, setPayRow] = useState<PayoutRow | null>(null);
+  const [printRow, setPrintRow] = useState<PayoutRow | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
 
   const filtered = useMemo(() => {
@@ -266,16 +268,32 @@ const PaymentsCard: React.FC<{ cycle: PayoutCycle }> = ({ cycle }) => {
         <div className="text-xs text-muted-foreground">{filtered.length} bills · Outstanding {inr(unpaidTotal)}</div>
         {isLoading && <div className="flex justify-center p-4"><Loader2 className="animate-spin" /></div>}
         <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-          {filtered.map((p) => (<PayRow key={p.id} p={p} onPay={() => setPayRow(p)} />))}
+          {filtered.map((p) => (
+            <PayRow key={p.id} p={p} onPay={() => setPayRow(p)} onPrint={() => setPrintRow(p)} />
+          ))}
         </div>
       </CardContent>
       {payRow && <PaymentDialog payout={payRow} open={!!payRow} onOpenChange={(o) => !o && setPayRow(null)} />}
       {bulkOpen && <BulkPayDialog rows={filtered} open={bulkOpen} onOpenChange={setBulkOpen} />}
+      <PrintBillDialog
+        open={!!printRow}
+        onOpenChange={(o) => !o && setPrintRow(null)}
+        payout={
+          printRow
+            ? {
+                ...printRow,
+                cycle_start: cycle.cycle_start,
+                cycle_end: cycle.cycle_end,
+                portal_token: printRow.farmers?.portal_token ?? null,
+              }
+            : null
+        }
+      />
     </Card>
   );
 };
 
-const PayRow: React.FC<{ p: PayoutRow; onPay: () => void }> = ({ p, onPay }) => {
+const PayRow: React.FC<{ p: PayoutRow; onPay: () => void; onPrint: () => void }> = ({ p, onPay, onPrint }) => {
   const remaining = Math.max(Number(p.net_payable) - Number(p.paid_amount), 0);
   const fullyPaid = remaining === 0 && Number(p.paid_amount) > 0;
   return (
@@ -294,6 +312,11 @@ const PayRow: React.FC<{ p: PayoutRow; onPay: () => void }> = ({ p, onPay }) => 
           <div className="font-bold">{inr(remaining)}</div>
           {Number(p.paid_amount) > 0 && <div className="text-[10px] text-muted-foreground">paid {inr(Number(p.paid_amount))} / {inr(Number(p.net_payable))}</div>}
         </div>
+        {/* Printing is not tied to payment: a farmer wants the arithmetic
+            whether or not the cash has changed hands yet. */}
+        <Button size="sm" variant="outline" onClick={onPrint} title="Print bill">
+          <Printer className="h-4 w-4" />
+        </Button>
         {fullyPaid ? (
           <Badge className="bg-green-100 text-green-700"><CheckCircle2 className="h-3 w-3 mr-1" /> Paid</Badge>
         ) : (

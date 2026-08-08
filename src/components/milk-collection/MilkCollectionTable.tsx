@@ -13,6 +13,8 @@ interface MilkCollectionTableProps {
   collections: any[];
   isLoading: boolean;
   canEdit?: boolean;
+  /** Admin may still edit a collection whose slip has been printed. */
+  isAdmin?: boolean;
   canDelete?: boolean;
   onEdit?: (collection: any) => void;
   onDelete?: (id: string) => void;
@@ -24,6 +26,7 @@ export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({
   collections, 
   isLoading, 
   canEdit = false,
+  isAdmin = false,
   canDelete = false,
   onEdit,
   onDelete,
@@ -135,7 +138,7 @@ export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({
                       >
                         <Printer className="h-3 w-3" />
                       </Button>
-                      {canEdit && (
+                      {canEdit && (!collection.slip_printed_at || isAdmin) && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -283,7 +286,7 @@ export const MilkCollectionTable: React.FC<MilkCollectionTableProps> = ({
                       >
                         <Printer className="h-4 w-4" />
                       </Button>
-                      {canEdit && (
+                      {canEdit && (!collection.slip_printed_at || isAdmin) && (
                         <Button
                           variant="outline"
                           size="sm"

@@ -1,6 +1,7 @@
 // Hindi A5 farmer bill PDF builder, runs in Deno via jsPDF.
 // Returns Uint8Array of the PDF bytes.
 import { jsPDF } from "https://esm.sh/jspdf@2.5.2";
+import QRCode from "https://esm.sh/qrcode@1.5.4";
 import { NOTO_DEVA_REGULAR_B64, NOTO_DEVA_BOLD_B64 } from "./notoDevaB64.ts";
 
 interface BillRow {
@@ -19,6 +20,8 @@ export interface BillData {
   cycle_end: string;
   farmer: { name: string; farmer_code: string; phone_number?: string | null };
   org_name: string;
+  /** Link to this farmer's own account, drawn as a QR. */
+  portal_url?: string | null;
   payout: {
     total_quantity: number;
     total_amount: number;
@@ -34,9 +37,33 @@ export interface BillData {
 }
 
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+
+// DD/MM/YYYY, built from the parts rather than through Date, which reads a
+// plain date column as midnight UTC and prints the day before west of London.
 const fmt = (s: string) => {
-  try { return new Date(s).toLocaleDateString("hi-IN", { day: "2-digit", month: "short", year: "2-digit" }); } catch { return s; }
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s ?? ""));
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : String(s ?? "");
 };
+
+/**
+ * Draw a QR as filled squares rather than an embedded image.
+ *
+ * jsPDF would need a rasterised PNG, and there is no canvas in Deno. Rectangles
+ * stay vector, so the code is crisp at any zoom and prints cleanly.
+ */
+function drawQr(doc: jsPDF, text: string, x: number, y: number, sizeMm: number): void {
+  const qr = QRCode.create(text, { errorCorrectionLevel: "M" });
+  const n = qr.modules.size;
+  const quiet = 4;
+  const module = sizeMm / (n + quiet * 2);
+  doc.setFillColor(0, 0, 0);
+  for (let row = 0; row < n; row++) {
+    for (let col = 0; col < n; col++) {
+      if (!qr.modules.get(row, col)) continue;
+      doc.rect(x + (col + quiet) * module, y + (row + quiet) * module, module, module, "F");
+    }
+  }
+}
 
 export function buildFarmerBillPdf(d: BillData): Uint8Array {
   const doc = new jsPDF({ unit: "mm", format: "a5", orientation: "portrait" });
@@ -137,6 +164,24 @@ export function buildFarmerBillPdf(d: BillData): Uint8Array {
 
   if (y > 195) { doc.addPage(); y = 10; }
   y += 4;
+
+  // Payout day is when a farmer most wants to look at their account, so the
+  // bill carries the same code the collection slips do.
+  if (d.portal_url) {
+    const size = 26;
+    try {
+      drawQr(doc, d.portal_url, (W - size) / 2, y, size);
+      doc.setFont("NotoDeva", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(80);
+      doc.text("अपना हिसाब देखें", W / 2, y + size + 3, { align: "center" });
+      doc.setTextColor(0);
+    } catch (e) {
+      // A bill without its QR beats a cycle that fails to finalize.
+      console.error("bill qr", (e as Error).message);
+    }
+  }
+
   doc.setFontSize(7);
   doc.setTextColor(100);
   doc.text("किसी समस्या के लिए डेयरी कार्यालय से संपर्क करें।", W / 2, 205, { align: "center" });

@@ -1,3 +1,7 @@
+-- Portal tokens are built from gen_random_bytes, so the extension has to be
+-- present before the migration that defines fn_generate_portal_token runs.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Minimal stand-ins for base tables that predate this repo's migration history.
 --
 -- milk_collections and farmers were created outside the tracked migrations, so
@@ -10,7 +14,10 @@
 CREATE TABLE IF NOT EXISTS public.farmers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
-  farmer_code text
+  farmer_code text,
+  -- The phone is a login identifier now, so its uniqueness is under test.
+  phone_number text,
+  is_active boolean DEFAULT true
 );
 
 CREATE TABLE IF NOT EXISTS public.milk_collections (
@@ -25,5 +32,8 @@ CREATE TABLE IF NOT EXISTS public.milk_collections (
   total_amount numeric,
   species text,
   is_accepted boolean DEFAULT true,
-  remarks text
+  remarks text,
+  -- The undo window is judged on how long ago the row was written, so the
+  -- fixture needs this even though the rate logic never looks at it.
+  created_at timestamptz DEFAULT now()
 );

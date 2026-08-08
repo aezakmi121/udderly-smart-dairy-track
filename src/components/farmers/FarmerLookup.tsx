@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { DayHero, DaySessions, DayList } from '@/components/farmer-view';
+import { FarmerPinControl } from './FarmerPinControl';
+import { FarmerPhoneControl } from './FarmerPhoneControl';
 import { groupByDay, pickLatestDay, type FarmerCollection } from '@/lib/farmerDays';
 import { formatDateDMY, formatLitresShort, formatRupees } from '@/lib/farmerFormat';
 
@@ -41,7 +43,7 @@ export const FarmerLookup: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('farmers')
-        .select('id, name, farmer_code')
+        .select('id, name, farmer_code, phone_number')
         .order('farmer_code');
       if (error) throw error;
       return data ?? [];
@@ -189,6 +191,13 @@ export const FarmerLookup: React.FC = () => {
                   </div>
                   <div className="mt-1 text-sm text-muted-foreground tabular-nums">
                     {formatLitresShort(summary?.litres ?? 0)} लीटर · {summary?.deliveries ?? 0} बार
+                  </div>
+                  <div className="mt-3 space-y-2 border-t pt-3">
+                    <FarmerPhoneControl
+                      farmerId={selectedId}
+                      phoneNumber={selected?.phone_number}
+                    />
+                    <FarmerPinControl farmerId={selectedId} farmerName={selected?.name} />
                   </div>
                 </CardContent>
               </Card>

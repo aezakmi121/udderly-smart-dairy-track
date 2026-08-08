@@ -4,8 +4,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogOut, QrCode, Receipt, Wallet, CalendarDays, Download, Store } from 'lucide-react';
+import { Loader2, LogOut, Receipt, Wallet, CalendarDays, Download, KeyRound } from 'lucide-react';
 import { DayHero, DaySessions, DayList } from '@/components/farmer-view';
+import { PinLoginCard } from '@/components/farmer-view/PinLoginCard';
+import { PinSetupCard } from '@/components/farmer-view/PinSetupCard';
+import { PhoneCaptureCard } from '@/components/farmer-view/PhoneCaptureCard';
+import { FarmerInstallPrompt } from '@/components/farmer-view/FarmerInstallPrompt';
 import { groupByDay, pickLatestDay } from '@/lib/farmerDays';
 import { formatDateDMY, formatLitresShort, formatRupees, formatRupeesRounded } from '@/lib/farmerFormat';
 
@@ -24,13 +28,32 @@ async function callFn(path: string, body?: any, token?: string) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? 'Request failed');
+  if (!res.ok) {
+    // Carry the whole payload, not just a message: the PIN screens need the
+    // machine-readable code and the attempts remaining to say anything useful.
+    const err = Object.assign(new Error(data.error ?? 'Request failed'), data);
+    throw err;
+  }
   return data;
 }
 
 export const FarmerPortal: React.FC = () => {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const logout = () => { localStorage.removeItem(TOKEN_KEY); setToken(null); };
+
+  // A page carries one manifest, and the office one starts at the dashboard --
+  // which a farmer can neither open nor use. Swap it while this page is
+  // mounted so an install from here lands on their own screen, and put it back
+  // on the way out so staff installing from the office app still get theirs.
+  useEffect(() => {
+    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (!link) return;
+    const original = link.getAttribute('href');
+    link.setAttribute('href', '/farmer-manifest.json');
+    return () => {
+      if (original) link.setAttribute('href', original);
+    };
+  }, []);
 
   return (
     // `farmer-theme` swaps the office app's slate palette for the dairy's own.
@@ -47,52 +70,27 @@ export const FarmerPortal: React.FC = () => {
         )}
       </header>
       <main className="mx-auto max-w-md space-y-4 p-3">
-        {!token ? <SignedOutCard /> : <PortalHome token={token} onUnauthorized={logout} />}
+        {!token ? (
+          <PinLoginCard
+            callFn={(path, body) => callFn(path, body)}
+            onToken={(t) => { localStorage.setItem(TOKEN_KEY, t); setToken(t); }}
+          />
+        ) : (
+          <PortalHome token={token} onUnauthorized={logout} />
+        )}
       </main>
     </div>
   );
 };
 
-/**
- * What a farmer sees before they are signed in.
- *
- * There used to be a phone + OTP form here. It could never succeed: the code is
- * stored only as a hash, WhatsApp delivery is not configured, and the fallback
- * told the farmer to ask the office -- where no screen has ever shown the code.
- * Sending someone down a route that cannot work is worse than offering nothing,
- * so until PINs land the only way in is the QR, which does work.
- */
-const SignedOutCard: React.FC = () => (
-  <Card>
-    <CardContent className="space-y-4 p-5 text-center">
-      <h1 className="text-xl font-bold">अपना दूध हिसाब देखें</h1>
-
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-        <QrCode className="h-8 w-8" />
-      </div>
-
-      <p className="text-base">
-        अपनी पर्ची पर बना QR कोड फ़ोन के कैमरे से स्कैन करें।
-      </p>
-      <p className="text-sm text-muted-foreground">
-        हर पर्ची पर वही QR होता है — पुरानी पर्ची से भी चलेगा।
-      </p>
-
-      <div className="flex items-start gap-2 rounded-xl bg-muted p-3 text-left text-sm">
-        <Store className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-        <span>
-          QR न चले या पर्ची न हो, तो कलेक्शन सेंटर पर पूछें — वहाँ आपका पूरा हिसाब
-          देखा जा सकता है।
-        </span>
-      </div>
-    </CardContent>
-  </Card>
-);
-
 const PortalHome: React.FC<{ token: string; onUnauthorized: () => void }> = ({ token, onUnauthorized }) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [pinPanel, setPinPanel] = useState<'hidden' | 'open'>('hidden');
+  const [pinDismissed, setPinDismissed] = useState(false);
+  const [phoneAdded, setPhoneAdded] = useState(false);
+  const [phoneDismissed, setPhoneDismissed] = useState(false);
 
   useEffect(() => {
     callFn('farmer-portal-data', undefined, token)
@@ -115,7 +113,12 @@ const PortalHome: React.FC<{ token: string; onUnauthorized: () => void }> = ({ t
   if (err) return <Card><CardContent className="p-4 text-sm text-destructive">{err}</CardContent></Card>;
   if (!data) return null;
 
-  const { farmer, cycle, liveTotal, bills, advances } = data;
+  const { farmer, cycle, liveTotal, bills, advances, pin } = data;
+  // Only worth offering to farmers with a number on file -- the PIN is useless
+  // without one to pair it with, and 32 of 61 have none.
+  const offerPin = (pin?.canSet || phoneAdded) && !pin?.isSet && !pinDismissed;
+  // Without a number a PIN has nothing to pair with, so ask for that first.
+  const offerPhone = !pin?.canSet && !phoneAdded && !phoneDismissed;
   const lastPaid = bills?.find((b: any) => b.status === 'paid');
   const advanceDue = (advances ?? []).filter((a: any) => a.status === 'outstanding')
     .reduce((s: number, a: any) => s + (Number(a.amount) - Number(a.recovered_amount ?? 0)), 0);
@@ -173,6 +176,36 @@ const PortalHome: React.FC<{ token: string; onUnauthorized: () => void }> = ({ t
           ? <p className="px-1 text-sm text-muted-foreground">अभी कोई बिल नहीं</p>
           : bills.map((b: any) => <BillCard key={b.id} bill={b} token={token} />)}
       </section>
+
+      {/* Offered under the figures, not over them: the farmer opened this to
+          see what he earned, not to be asked to set something up. */}
+      {offerPhone && (
+        <PhoneCaptureCard
+          callFn={(path, body) => callFn(path, body, token)}
+          onSaved={() => setPhoneAdded(true)}
+          onDismiss={() => setPhoneDismissed(true)}
+        />
+      )}
+      {(offerPin || pinPanel === 'open') && (
+        <PinSetupCard
+          callFn={(path, body) => callFn(path, body, token)}
+          hasPin={!!pin?.isSet}
+          onDone={() => { setPinPanel('hidden'); setPinDismissed(true); }}
+          onDismiss={() => { setPinPanel('hidden'); setPinDismissed(true); }}
+        />
+      )}
+
+      <FarmerInstallPrompt />
+
+      {pin?.isSet && pinPanel === 'hidden' && (
+        <Button
+          variant="outline"
+          className="h-11 w-full text-sm"
+          onClick={() => setPinPanel('open')}
+        >
+          <KeyRound className="mr-1 h-4 w-4" /> PIN बदलें
+        </Button>
+      )}
     </div>
   );
 };

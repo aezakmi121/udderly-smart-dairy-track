@@ -18,7 +18,12 @@ BEGIN
   PERFORM set_config('test.uid', p_uid::text, true);
   BEGIN
     EXECUTE p_sql;
-  EXCEPTION WHEN insufficient_privilege OR check_violation THEN
+  -- A refusal can arrive as a policy denial, a constraint, or a RAISE from
+  -- inside a definer function -- all three mean "not allowed". Deliberately
+  -- not WHEN OTHERS: a typo'd table or a function that failed to install
+  -- should crash the run, not quietly read as a correct refusal.
+  EXCEPTION WHEN insufficient_privilege OR check_violation
+                 OR raise_exception OR unique_violation THEN
     allowed := false; msg := SQLERRM;
   END;
   INSERT INTO _rls_results VALUES (
@@ -56,6 +61,10 @@ INSERT INTO public.farmers(id, name, farmer_code)
 VALUES ('ffffffff-0000-0000-0000-00000000000f', 'Test Farmer', 'T001')
 ON CONFLICT DO NOTHING;
 
+INSERT INTO public.farmers(id, name, farmer_code)
+VALUES ('ffffffff-0000-0000-0000-00000000000e', 'Second Farmer', 'T002')
+ON CONFLICT DO NOTHING;
+
 -- One settled period and one still open.
 INSERT INTO public.farmer_payout_cycles(cycle_start, cycle_end, half, year_month, status) VALUES
   ('2026-06-01', '2026-06-15', 'first', '2026-06', 'finalized'),
@@ -70,12 +79,57 @@ VALUES
   ('22222222-0000-0000-0000-000000000002', 'ffffffff-0000-0000-0000-00000000000f',
    '2026-07-10', 'morning', 10, 4.0, 8.5, 37.54, 375.40, 'Cow');   -- open
 
+-- Entries for the undo checks. created_by and created_at are set explicitly so
+-- each case is unambiguous rather than depending on when the suite runs.
+INSERT INTO public.milk_collections
+  (id, farmer_id, collection_date, session, quantity, fat_percentage, snf_percentage,
+   rate_per_liter, total_amount, species, created_by, created_at) VALUES
+  ('33333333-0000-0000-0000-000000000003', 'ffffffff-0000-0000-0000-00000000000f',
+   '2026-07-10', 'morning', 6, 4.0, 8.5, 37.54, 225.24, 'Cow',
+   'cccccccc-0000-0000-0000-000000000003', now() - interval '2 minutes'),
+  ('44444444-0000-0000-0000-000000000004', 'ffffffff-0000-0000-0000-00000000000f',
+   '2026-07-10', 'morning', 7, 4.0, 8.5, 37.54, 262.78, 'Cow',
+   'aaaaaaaa-0000-0000-0000-000000000001', now() - interval '2 minutes'),
+  ('55555555-0000-0000-0000-000000000005', 'ffffffff-0000-0000-0000-00000000000f',
+   '2026-07-10', 'morning', 8, 4.0, 8.5, 37.54, 300.32, 'Cow',
+   'cccccccc-0000-0000-0000-000000000003', now() - interval '2 hours'),
+  ('66666666-0000-0000-0000-000000000006', 'ffffffff-0000-0000-0000-00000000000f',
+   '2026-06-10', 'morning', 9, 4.0, 8.5, 37.54, 337.86, 'Cow',
+   'cccccccc-0000-0000-0000-000000000003', now() - interval '2 minutes'),
+  ('77777777-0000-0000-0000-000000000007', 'ffffffff-0000-0000-0000-00000000000f',
+   '2026-07-10', 'morning', 5, 4.0, 8.5, 37.54, 187.70, 'Cow',
+   NULL, now() - interval '2 minutes'),
+  ('88888888-0000-0000-0000-000000000008', 'ffffffff-0000-0000-0000-00000000000f',
+   '2026-07-10', 'morning', 6, 4.0, 8.5, 37.54, 225.24, 'Cow',
+   'cccccccc-0000-0000-0000-000000000003', now() - interval '1 minute');
+
+UPDATE public.milk_collections SET slip_printed_at = now()
+WHERE id = '88888888-0000-0000-0000-000000000008';
+
+-- A PIN to try and read. Seeded before the role switch, because the point of
+-- the checks below is that RLS hides it, not that the row is missing.
+INSERT INTO public.farmer_pins(farmer_id, pin_hash, pin_salt)
+VALUES ('ffffffff-0000-0000-0000-00000000000f', 'GUARD_HASH', 'GUARD_SALT')
+ON CONFLICT (farmer_id) DO UPDATE SET pin_hash = 'GUARD_HASH';
+
 -- Run the checks as a role that RLS applies to.
 CREATE ROLE _tester;
 GRANT USAGE ON SCHEMA public, auth TO _tester;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.milk_collections TO _tester;
 GRANT SELECT ON public.user_roles, public.farmer_payout_cycles, public.farmers TO _tester;
 GRANT INSERT ON _rls_results TO _tester;
+-- Production grants these definer functions to `authenticated`; the tester
+-- needs the same or the checks below fail on a missing GRANT rather than on
+-- the role check inside the function, which is what they are actually for.
+GRANT EXECUTE ON FUNCTION public.fn_set_farmer_phone(uuid, text) TO _tester;
+GRANT EXECUTE ON FUNCTION public.fn_mark_slip_printed(uuid) TO _tester;
+GRANT EXECUTE ON FUNCTION public.fn_regenerate_portal_token(uuid) TO _tester;
+GRANT EXECUTE ON FUNCTION public.fn_clear_farmer_pin(uuid) TO _tester;
+GRANT EXECUTE ON FUNCTION public.fn_farmer_pin_status(uuid) TO _tester;
+-- Supabase grants these to anon and authenticated on every table in public, so
+-- the tester gets them too. Without this the PIN checks below would pass for
+-- the wrong reason -- a missing GRANT rather than the RLS that actually ships.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.farmer_pins TO _tester;
 SET ROLE _tester;
 
 ------------------------------------------------------------------------------
@@ -166,6 +220,164 @@ SELECT _try('a user with no role cannot record milk',
      VALUES ('ffffffff-0000-0000-0000-00000000000f','2026-07-12','morning',5,4.0,8.5,37.54,187.70,'Cow')$q$,
   false);
 
+------------------------------------------------------------------------------
+-- The undo window
+--
+-- The collection centre holds no DELETE, which left a wrong member code with
+-- no remedy short of finding an admin. This opens exactly one door: your own
+-- entry, made minutes ago, in a period nobody has settled.
+------------------------------------------------------------------------------
+SELECT _try_rows('CC can undo the entry it just made',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$DELETE FROM public.milk_collections WHERE id = '33333333-0000-0000-0000-000000000003'$q$,
+  1);
+
+-- Somebody else's mistake is not yours to erase.
+SELECT _try_rows('CC cannot undo another operator entry',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$DELETE FROM public.milk_collections WHERE id = '44444444-0000-0000-0000-000000000004'$q$,
+  0);
+
+SELECT _try_rows('CC cannot undo its own entry once the window has passed',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$DELETE FROM public.milk_collections WHERE id = '55555555-0000-0000-0000-000000000005'$q$,
+  0);
+
+-- Undo must never reach into money that has already been paid out.
+SELECT _try_rows('CC cannot undo a fresh entry in a settled period',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$DELETE FROM public.milk_collections WHERE id = '66666666-0000-0000-0000-000000000006'$q$,
+  0);
+
+-- 18,570 rows predate created_by. If a null owner matched, every one of them
+-- would be deletable by anyone at the counter.
+SELECT _try_rows('CC cannot undo a row that predates the owner column',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$DELETE FROM public.milk_collections WHERE id = '77777777-0000-0000-0000-000000000007'$q$,
+  0);
+
+------------------------------------------------------------------------------
+-- Once a slip is printed
+--
+-- The paper is the farmer's copy of the deal. Editing the row behind it leaves
+-- two versions of one collection with nothing to say which is right.
+------------------------------------------------------------------------------
+SELECT _try_rows('CC can still correct a collection that has not been printed',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$UPDATE public.milk_collections SET quantity = 11
+     WHERE id = '22222222-0000-0000-0000-000000000002'$q$,
+  1);
+
+SELECT _try('CC can mark a slip printed',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT public.fn_mark_slip_printed('22222222-0000-0000-0000-000000000002')$q$,
+  true);
+
+SELECT _try_rows('CC cannot edit once the slip is printed',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$UPDATE public.milk_collections SET quantity = 12
+     WHERE id = '22222222-0000-0000-0000-000000000002'$q$,
+  0);
+
+SELECT _try_rows('an admin can still correct a printed collection',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  $q$UPDATE public.milk_collections SET quantity = 13
+     WHERE id = '22222222-0000-0000-0000-000000000002'$q$,
+  1);
+
+-- Undo has to outlive printing: a wrong member code is noticed *because* the
+-- slip came out with the wrong name on it.
+SELECT _try_rows('CC can still undo its own printed entry inside the window',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$DELETE FROM public.milk_collections WHERE id = '88888888-0000-0000-0000-000000000008'$q$,
+  1);
+
+-- Voiding every slip a farmer holds is not a counter decision.
+SELECT _try('CC cannot reset a portal QR',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT public.fn_regenerate_portal_token('ffffffff-0000-0000-0000-00000000000f')$q$,
+  false);
+
+SELECT _try('an admin can reset a portal QR',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  $q$SELECT public.fn_regenerate_portal_token('ffffffff-0000-0000-0000-00000000000f')$q$,
+  true);
+
+------------------------------------------------------------------------------
+-- Mobile numbers
+--
+-- The number is a login identifier now, not a contact detail, so it has to
+-- point at exactly one farmer. The collection centre can read farmers but not
+-- write them, so capture goes through a definer function that touches the
+-- number and nothing else.
+------------------------------------------------------------------------------
+SELECT _try('CC cannot edit a farmer directly',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$UPDATE public.farmers SET name = 'Renamed' WHERE id = 'ffffffff-0000-0000-0000-00000000000f'$q$,
+  false);
+
+SELECT _try('CC can take a mobile number through the function',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT public.fn_set_farmer_phone('ffffffff-0000-0000-0000-00000000000f', '98765 43210')$q$,
+  true);
+
+-- Two farmers on one number cannot be told apart at login, and guessing would
+-- show one of them the other's earnings.
+SELECT _try('a number already in use is refused',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT public.fn_set_farmer_phone('ffffffff-0000-0000-0000-00000000000e', '+91 98765 43210')$q$,
+  false);
+
+SELECT _try('a number too short to be one is refused',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT public.fn_set_farmer_phone('ffffffff-0000-0000-0000-00000000000e', '98765')$q$,
+  false);
+
+SELECT _try('a wrong number can be cleared',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT public.fn_set_farmer_phone('ffffffff-0000-0000-0000-00000000000f', '')$q$,
+  true);
+
+SELECT _try('a user with no role cannot set a number',
+  '00000000-0000-0000-0000-0000000000ff',
+  $q$SELECT public.fn_set_farmer_phone('ffffffff-0000-0000-0000-00000000000f', '9000000000')$q$,
+  false);
+
+------------------------------------------------------------------------------
+-- PIN hashes are unreachable from the client, whoever is asking
+--
+-- The whole PIN design rests on this. A four digit PIN offers little once its
+-- hash is in hand, so the table carries no policies at all and is reached only
+-- by the edge functions through the service role.
+------------------------------------------------------------------------------
+SELECT _try_rows('an admin cannot read PIN hashes',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  $q$SELECT 1 FROM public.farmer_pins$q$,
+  0);
+
+SELECT _try_rows('the collection centre cannot read PIN hashes',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$SELECT 1 FROM public.farmer_pins$q$,
+  0);
+
+-- Setting a PIN for somebody is signing in as them. Clearing is the only
+-- staff-side action, and it goes through fn_clear_farmer_pin.
+SELECT _try('the collection centre cannot set a PIN directly',
+  'cccccccc-0000-0000-0000-000000000003',
+  $q$INSERT INTO public.farmer_pins(farmer_id, pin_hash, pin_salt)
+     VALUES ('ffffffff-0000-0000-0000-00000000000f', 'x', 'y')$q$,
+  false);
+
+SELECT _try_rows('nobody can delete a PIN behind the audited function',
+  'aaaaaaaa-0000-0000-0000-000000000001',
+  $q$DELETE FROM public.farmer_pins$q$,
+  0);
+
+SELECT _try_rows('a user with no role cannot read PIN hashes',
+  '00000000-0000-0000-0000-0000000000ff',
+  $q$SELECT 1 FROM public.farmer_pins$q$,
+  0);
+
 RESET ROLE;
 \o
 
@@ -174,12 +386,13 @@ SELECT name, detail FROM _rls_results WHERE NOT ok;
 
 SELECT
   count(*) FILTER (WHERE ok) AS passed,
-  count(*) FILTER (WHERE NOT ok) AS failed
+  count(*) FILTER (WHERE NOT ok) AS failed,
+  (count(*) FILTER (WHERE NOT ok) > 0) AS any_failed
 FROM _rls_results \gset
 
-\if :failed
-  \echo '=== FAILED:' :failed 'of' :passed '+' :failed 'collection centre guard checks ==='
-  DO $$ BEGIN RAISE EXCEPTION 'collection centre guard checks failed'; END $$;
+\if :any_failed
+  \echo '=== FAILED:' :failed 'of' :passed '+' :failed 'access guard checks ==='
+  DO $$ BEGIN RAISE EXCEPTION 'access guard checks failed'; END $$;
 \else
-  \echo '=== all' :passed 'collection centre guard checks passed ==='
+  \echo '=== all' :passed 'access guard checks passed ==='
 \endif

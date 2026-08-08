@@ -59,8 +59,17 @@ Deno.serve(async (req) => {
       .eq('farmer_id', farmerId).gte('collection_date', since)
       .order('collection_date', { ascending: false }).limit(250);
 
+    // Enough for the portal to offer PIN setup, and nothing that would help
+    // guess an existing one.
+    const { data: pinRow } = await supabase.from('farmer_pins')
+      .select('farmer_id').eq('farmer_id', farmerId).maybeSingle();
+    const pin = {
+      isSet: !!pinRow,
+      canSet: !!String(farmer?.phone_number ?? '').replace(/\D/g, '').match(/\d{10}$/),
+    };
+
     return new Response(JSON.stringify({
-      farmer, cycle, liveTotal, bills: bills ?? [], advances: advances ?? [], daily: daily ?? [],
+      farmer, cycle, liveTotal, bills: bills ?? [], advances: advances ?? [], daily: daily ?? [], pin,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
     return new Response(JSON.stringify({ error: (e as Error).message }), {
