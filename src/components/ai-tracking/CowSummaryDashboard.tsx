@@ -44,16 +44,22 @@ import {
 } from '@/lib/breedingSettings';
 import { groupHerd, ACTION_ORDER, ACTION_LABEL, ACTION_HELP, type ActionGroup } from '@/lib/breedingActions';
 import { Input } from '@/components/ui/input';
+import { CowActionRow } from './CowActionRow';
+import { QuickPdSheet, QuickCalvingSheet } from './QuickActionSheets';
+import { CowTimelineSheet } from './CowTimelineSheet';
 
 type FilterType = 'all' | 'about_to_deliver' | 'pd_due' | 'flagged';
 
 export const CowSummaryDashboard: React.FC = () => {
-  const { aiRecords, isLoading } = useAITracking();
+  const { aiRecords, isLoading, updateAIRecordMutation } = useAITracking();
   const { updateCowMilkingStatus, isUpdating } = useCowMilkingStatus();
   const [filter, setFilter] = useState<FilterType>('all');
   const [includeDelivered, setIncludeDelivered] = useState(false);
   const [search, setSearch] = useState('');
   const [showEverything, setShowEverything] = useState(false);
+  const [pdFor, setPdFor] = useState<CowSummary | null>(null);
+  const [calvingFor, setCalvingFor] = useState<CowSummary | null>(null);
+  const [timelineFor, setTimelineFor] = useState<CowSummary | null>(null);
 
   const { value: storedBreeding } = useAppSetting<BreedingSettings>(BREEDING_SETTINGS_KEY);
   const breeding = useMemo(() => normaliseBreedingSettings(storedBreeding), [storedBreeding]);
@@ -277,6 +283,32 @@ export const CowSummaryDashboard: React.FC = () => {
   };
 
 
+  const savePd = (cow: CowSummary, result: string, examinedOn: string) => {
+    updateAIRecordMutation.mutate(
+      { id: cow.aiRecord.id, pd_done: true, pd_result: result as 'positive' | 'negative' | 'inconclusive', pd_date: examinedOn },
+      { onSuccess: () => setPdFor(null) }
+    );
+  };
+
+  const saveCalving = (cow: CowSummary, calvedOn: string) => {
+    updateAIRecordMutation.mutate(
+      {
+        id: cow.aiRecord.id,
+        actual_delivery_date: calvedOn,
+        is_successful: true,
+        // The calf settles the PD, whatever was entered at the time. The
+        // database constraint refuses the row otherwise.
+        pd_done: true,
+        pd_result: 'positive' as const,
+      },
+      { onSuccess: () => setCalvingFor(null) }
+    );
+  };
+
+  const timelineRecords = timelineFor
+    ? (aiRecords ?? []).filter((r) => r.cow_id === timelineFor.cowId)
+    : [];
+
   if (isLoading) {
     return <div className="flex justify-center p-8">Loading cow summaries...</div>;
   }
@@ -309,169 +341,42 @@ export const CowSummaryDashboard: React.FC = () => {
       </div>
 
       {renderBoard()}
+
+      <QuickPdSheet
+        cow={pdFor}
+        busy={updateAIRecordMutation.isPending}
+        onClose={() => setPdFor(null)}
+        onSave={savePd}
+      />
+      <QuickCalvingSheet
+        cow={calvingFor}
+        busy={updateAIRecordMutation.isPending}
+        onClose={() => setCalvingFor(null)}
+        onSave={saveCalving}
+      />
+      <CowTimelineSheet
+        cowNumber={timelineFor?.cowNumber}
+        records={timelineRecords}
+        open={!!timelineFor}
+        onClose={() => setTimelineFor(null)}
+      />
     </div>
   );
 
-  function renderCow(cow: CowSummary) {
+  function renderCow(cow: CowSummary, group: ActionGroup | null = null) {
     return (
-            <Card key={cow.cowId} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="space-y-4">
-                  {/* Header with Cow Number and Primary Badges */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <h3 className="font-semibold text-lg">Cow #{cow.cowNumber}</h3>
-                     <div className="flex flex-wrap gap-2">
-                       {getMoveToMilkingBadge(cow)}
-                       {getDeliveryBadge(cow)}
-                       {getPDBadge(cow)}
-                       {cow.needsMilkingMove && !cow.movedToMilking && (
-                         <Badge variant="outline" className="flex items-center gap-1">
-                           <Flag className="h-3 w-3" />
-                           Flagged for Move
-                         </Badge>
-                       )}
-                       {cow.movedToMilking && (
-                         <Badge variant="default" className="flex items-center gap-1">
-                           <CheckCircle className="h-3 w-3" />
-                           Moved to Milking
-                         </Badge>
-                       )}
-                     </div>
-                  </div>
-                  
-                  {/* Main Data Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* AI Information */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">AI Information</h4>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                           <div className="min-w-0 flex-1">
-                             <span className="text-sm text-muted-foreground">AI Date:</span>
-                             <div className="font-medium">{formatCowDate(cow.latestAIDate)}</div>
-                           </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground w-16 flex-shrink-0">Service:</span>
-                          <span className="font-medium">#{cow.serviceNumber}</span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground w-16 flex-shrink-0">Status:</span>
-                          <span className={`font-medium ${getStatusColor(cow.status)}`}>{cow.status}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Pregnancy & Delivery Information */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Pregnancy & Delivery</h4>
-                      <div className="space-y-2">
-                        {/* Show PD Due Date for pending PD cases */}
-                        {!cow.aiRecord.pd_done && (
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <span className="text-sm text-muted-foreground">PD Due:</span>
-                               <div className="font-medium text-amber-600">
-                                 {pdTargetDate(cow.latestAIDate)}
-                               </div>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Show Expected Delivery only after successful PD */}
-                        {cow.aiRecord.pd_done && cow.aiRecord.pd_result === 'positive' && cow.expectedDeliveryDate && (
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                             <div className="min-w-0 flex-1">
-                               <span className="text-sm text-muted-foreground">Expected Delivery:</span>
-                               <div className="font-medium text-blue-600">{formatCowDate(cow.expectedDeliveryDate)}</div>
-                             </div>
-                          </div>
-                        )}
-                        
-                        {cow.pdDate ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground w-20 flex-shrink-0">PD Result:</span>
-                            <span className={`font-medium ${
-                              cow.aiRecord.pd_result === 'positive' ? 'text-green-600' : 
-                              cow.aiRecord.pd_result === 'negative' ? 'text-red-600' : 'text-gray-600'
-                            }`}>
-                              {cow.aiRecord.pd_result || 'Unknown'} ({formatCowDate(cow.pdDate)})
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground w-20 flex-shrink-0">PD Status:</span>
-                            <span className="font-medium text-amber-600">Pending</span>
-                          </div>
-                        )}
-                        
-                        {cow.deliveredDate && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground w-20 flex-shrink-0">Delivered:</span>
-                            <span className="font-medium text-green-600">{formatCowDate(cow.deliveredDate)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Notes Section */}
-                  {cow.notes && (
-                    <div className="border-t pt-3">
-                      <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide mb-2">Notes</h4>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{cow.notes}</p>
-                    </div>
-                  )}
-                  
-                  {/* Action Buttons */}
-                  {!cow.movedToMilking && (
-                    <div className="border-t pt-3">
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        {cow.needsMilkingMove ? (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleUndoFlag(cow.cowId)}
-                              disabled={isUpdating}
-                              className="flex items-center justify-center gap-2"
-                            >
-                              <Undo className="h-4 w-4" />
-                              Undo Flag
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleMarkAsMoved(cow.cowId)}
-                              disabled={isUpdating}
-                              className="flex items-center justify-center gap-2"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                              Mark as Moved
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleFlagForMove(cow.cowId)}
-                            disabled={isUpdating}
-                            className="flex items-center justify-center gap-2"
-                          >
-                            <Flag className="h-4 w-4" />
-                            Flag: Needs Move
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+      <CowActionRow
+        key={cow.cowId}
+        cow={cow}
+        group={group}
+        busy={isUpdating || updateAIRecordMutation.isPending}
+        onRecordPd={setPdFor}
+        onRecordCalving={setCalvingFor}
+        onFlagForMove={handleFlagForMove}
+        onUndoFlag={handleUndoFlag}
+        onMarkMoved={handleMarkAsMoved}
+        onOpenTimeline={setTimelineFor}
+      />
     );
   }
 
@@ -483,7 +388,7 @@ export const CowSummaryDashboard: React.FC = () => {
           No cow matches "{search}".
         </CardContent></Card>
       ) : (
-        <div className="grid gap-4">{searched.map(renderCow)}</div>
+        <div className="grid gap-2">{searched.map((c) => renderCow(c))}</div>
       );
     }
 
@@ -493,7 +398,7 @@ export const CowSummaryDashboard: React.FC = () => {
           No cows to show.
         </CardContent></Card>
       ) : (
-        <div className="grid gap-4">{cowSummaries.map(renderCow)}</div>
+        <div className="grid gap-2">{cowSummaries.map((c) => renderCow(c))}</div>
       );
     }
 
@@ -525,8 +430,8 @@ export const CowSummaryDashboard: React.FC = () => {
                 <Badge variant="secondary">{rows.length}</Badge>
               </div>
               <p className="text-xs text-muted-foreground">{ACTION_HELP[group]}</p>
-              <div className="grid gap-4">
-                {rows.map((r: any) => renderCow(r.summary as CowSummary))}
+              <div className="grid gap-2">
+                {rows.map((r: any) => renderCow(r.summary as CowSummary, group))}
               </div>
             </section>
           );
