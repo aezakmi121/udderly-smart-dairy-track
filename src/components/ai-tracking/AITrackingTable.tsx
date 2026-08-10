@@ -65,10 +65,15 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
   };
 
   const handleDeliveryUpdate = (recordId: string) => {
-    onUpdateRecord?.(recordId, { 
+    onUpdateRecord?.(recordId, {
       actual_delivery_date: deliveryDate,
       calf_gender: calfGender,
-      is_successful: true
+      is_successful: true,
+      // A calf settles the question. Recording a delivery used to leave a PD
+      // that said negative -- checked too early, or simply called wrong --
+      // standing, which is how seven records ended up claiming both at once.
+      pd_done: true,
+      pd_result: 'positive',
     });
     setDeliveryDialog(null);
     setDeliveryDate('');
@@ -167,17 +172,21 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
               </TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-2">
-                  {!record.pd_done && isPDDue(record.ai_date) && (
-                    <Dialog open={pdDialog === record.id} onOpenChange={(open) => setPdDialog(open ? record.id : null)}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          PD Update
-                        </Button>
-                      </DialogTrigger>
+                  {!record.actual_delivery_date && (
+                    <Dialog open={pdDialog === record.id} onOpenChange={(open) => { setPdDialog(open ? record.id : null); if (open) setPdResult(record.pd_result ?? ''); }}>
+                      {!record.pd_done && isPDDue(record.ai_date) && (
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            PD Update
+                          </Button>
+                        </DialogTrigger>
+                      )}
                       <DialogContent className="bg-white">
                         <DialogHeader>
-                          <DialogTitle>Update Pregnancy Detection</DialogTitle>
+                          <DialogTitle>
+                            {record.pd_done ? 'Correct the PD result' : 'Update Pregnancy Detection'}
+                          </DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4">
                           <div>
@@ -255,18 +264,17 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                   )}
 
                   {record.pd_done && !record.actual_delivery_date && (
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       className="flex items-center gap-1"
                       onClick={() => {
-                        setDeliveryDialog(record.id);
-                        setDeliveryDate('');
-                        setCalfGender('');
+                        setPdResult(record.pd_result ?? '');
+                        setPdDialog(record.id);
                       }}
                     >
                       <Edit className="h-3 w-3" />
-                      Edit Status
+                      Correct PD
                     </Button>
                   )}
 

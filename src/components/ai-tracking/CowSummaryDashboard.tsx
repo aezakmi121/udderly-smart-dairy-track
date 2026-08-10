@@ -34,6 +34,7 @@ import {
   PD_MAX_DAYS
 } from '@/lib/pdUtils';
 import { sortCowSummaries } from '@/lib/cowSorting';
+import { cycleState, latestRecord } from '@/lib/aiCycle';
 
 type FilterType = 'all' | 'about_to_deliver' | 'pd_due' | 'flagged';
 
@@ -46,33 +47,34 @@ export const CowSummaryDashboard: React.FC = () => {
   const cowSummaries = useMemo(() => {
     if (!aiRecords) return [];
 
-    // Group records by cow_id and get the latest AI record for each cow
-    const cowMap = new Map<string, AIRecord>();
-    
+    // A cow that has left the herd has no breeding to track. Her records stay
+    // in All Records; keeping her on this board meant cow 48 sat there as
+    // "Pregnant" indefinitely after being sold.
+    const byCow = new Map<string, AIRecord[]>();
     aiRecords.forEach(record => {
-      if (record.cow_id && record.cows) {
-        const existing = cowMap.get(record.cow_id);
-        if (!existing || record.ai_date > existing.ai_date) {
-          cowMap.set(record.cow_id, record as any);
-        }
-      }
+      if (!record.cow_id || !record.cows) return;
+      if ((record.cows as any).status && (record.cows as any).status !== 'active') return;
+      const list = byCow.get(record.cow_id) ?? [];
+      list.push(record as any);
+      byCow.set(record.cow_id, list);
     });
 
-    const summaries: CowSummary[] = Array.from(cowMap.values()).map(record => {
-      let status: CowSummary['status'] = 'Pending';
-      
-      if (record.actual_delivery_date) {
-        status = 'Delivered';
-      } else if (record.pd_result === 'positive') {
-        status = 'Pregnant';
-      } else if (record.pd_result === 'negative') {
-        status = 'Not Pregnant';
-      } else if (record.ai_status === 'failed') {
-        status = 'Failed';
-      }
+    const summaries: CowSummary[] = Array.from(byCow.entries()).flatMap(([cowId, records]) => {
+      const record = latestRecord(records as any) as AIRecord | null;
+      if (!record) return [];
 
-      return {
-        cowId: record.cows!.id,
+      // A calving outranks the PD on the same row: seven records say delivered
+      // and PD negative at once, and reality wins.
+      const state = cycleState(record as any);
+      const status: CowSummary['status'] =
+        state === 'delivered' ? 'Delivered'
+        : state === 'pregnant' ? 'Pregnant'
+        : state === 'open' ? 'Not Pregnant'
+        : state === 'failed' ? 'Failed'
+        : 'Pending';
+
+      return [{
+        cowId,
         cowNumber: record.cows?.cow_number || 'Unknown',
         latestAIDate: record.ai_date,
         serviceNumber: record.service_number || 1,
@@ -86,7 +88,7 @@ export const CowSummaryDashboard: React.FC = () => {
         movedToMilking: record.cows?.moved_to_milking || false,
         movedToMilkingAt: record.cows?.moved_to_milking_at,
         aiRecord: record
-      };
+      }];
     });
 
     const today = new Date();

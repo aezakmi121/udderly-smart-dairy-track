@@ -104,7 +104,11 @@ export const useCalves = () => {
         .update({
           actual_delivery_date: data.deliveryDate,
           calf_gender: data.calfGender,
-          is_successful: true
+          is_successful: true,
+          // The calf is the proof. Leaving a negative PD standing on a record
+          // that produced one is what created the contradictory rows.
+          pd_done: true,
+          pd_result: 'positive',
         })
         .eq('id', data.aiRecordId);
 
