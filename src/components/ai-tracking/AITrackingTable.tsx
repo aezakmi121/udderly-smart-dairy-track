@@ -28,6 +28,7 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
   const [deliveryDialog, setDeliveryDialog] = useState<string | null>(null);
   const [deliveryWithCalfDialog, setDeliveryWithCalfDialog] = useState<string | null>(null);
   const [pdResult, setPdResult] = useState('');
+  const [pdDate, setPdDate] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
   const [calfGender, setCalfGender] = useState('');
   
@@ -55,20 +56,30 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
   };
 
   const handlePDUpdate = (recordId: string) => {
-    onUpdateRecord?.(recordId, { 
-      pd_done: true, 
+    onUpdateRecord?.(recordId, {
+      pd_done: true,
       pd_result: pdResult,
-      pd_date: new Date().toISOString().split('T')[0]
+      // Whoever records this can say when the vet actually examined her. It
+      // used to stamp today unconditionally, so every backfilled record claimed
+      // a PD on the day it was typed -- which is why the stored PD dates say a
+      // median of 118 days after service and cannot be used to tune anything.
+      pd_date: pdDate || new Date().toISOString().split('T')[0],
     });
     setPdDialog(null);
     setPdResult('');
+    setPdDate('');
   };
 
   const handleDeliveryUpdate = (recordId: string) => {
-    onUpdateRecord?.(recordId, { 
+    onUpdateRecord?.(recordId, {
       actual_delivery_date: deliveryDate,
       calf_gender: calfGender,
-      is_successful: true
+      is_successful: true,
+      // A calf settles the question. Recording a delivery used to leave a PD
+      // that said negative -- checked too early, or simply called wrong --
+      // standing, which is how seven records ended up claiming both at once.
+      pd_done: true,
+      pd_result: 'positive',
     });
     setDeliveryDialog(null);
     setDeliveryDate('');
@@ -167,19 +178,35 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
               </TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-2">
-                  {!record.pd_done && isPDDue(record.ai_date) && (
-                    <Dialog open={pdDialog === record.id} onOpenChange={(open) => setPdDialog(open ? record.id : null)}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" variant="outline" className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          PD Update
-                        </Button>
-                      </DialogTrigger>
+                  {!record.actual_delivery_date && (
+                    <Dialog open={pdDialog === record.id} onOpenChange={(open) => { setPdDialog(open ? record.id : null); if (open) { setPdResult(record.pd_result ?? ''); setPdDate(record.pd_date ?? new Date().toISOString().split('T')[0]); } }}>
+                      {!record.pd_done && isPDDue(record.ai_date) && (
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            PD Update
+                          </Button>
+                        </DialogTrigger>
+                      )}
                       <DialogContent className="bg-white">
                         <DialogHeader>
-                          <DialogTitle>Update Pregnancy Detection</DialogTitle>
+                          <DialogTitle>
+                            {record.pd_done ? 'Correct the PD result' : 'Update Pregnancy Detection'}
+                          </DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium">Date examined</label>
+                            <Input
+                              type="date"
+                              value={pdDate}
+                              max={new Date().toISOString().split('T')[0]}
+                              onChange={(e) => setPdDate(e.target.value)}
+                            />
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              When the vet actually checked her, not today's date.
+                            </p>
+                          </div>
                           <div>
                             <label className="text-sm font-medium">PD Result</label>
                             <Select value={pdResult} onValueChange={setPdResult}>
@@ -255,18 +282,17 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                   )}
 
                   {record.pd_done && !record.actual_delivery_date && (
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       className="flex items-center gap-1"
                       onClick={() => {
-                        setDeliveryDialog(record.id);
-                        setDeliveryDate('');
-                        setCalfGender('');
+                        setPdResult(record.pd_result ?? '');
+                        setPdDialog(record.id);
                       }}
                     >
                       <Edit className="h-3 w-3" />
-                      Edit Status
+                      Correct PD
                     </Button>
                   )}
 

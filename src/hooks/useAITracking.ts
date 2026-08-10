@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { canServeAgain, latestRecord, expectedDeliveryDate, DEFAULT_GESTATION_DAYS } from '@/lib/aiCycle';
 
 interface AIRecord {
   id: string;
@@ -29,9 +30,17 @@ export const useAITracking = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ai_records')
+        // Everything the dashboard reads off the cow. It previously asked only
+        // for cow_number, so cows.id came back undefined -- which silently
+        // broke every action keyed on it, and made the milking-move flags
+        // permanently false.
         .select(`
           *,
-          cows!ai_records_cow_id_fkey (cow_number)
+          cows!ai_records_cow_id_fkey (
+            id, cow_number, status,
+            needs_milking_move, needs_milking_move_at,
+            moved_to_milking, moved_to_milking_at
+          )
         `)
         .order('ai_date', { ascending: false });
       
@@ -44,60 +53,46 @@ export const useAITracking = () => {
     const { data, error } = await supabase
       .from('ai_records')
       .select(`
-        id,
-        pd_done,
-        pd_result,
-        ai_date,
-        service_number,
+        id, pd_done, pd_result, ai_date, ai_status, service_number,
+        actual_delivery_date, created_at,
         cows!ai_records_cow_id_fkey (cow_number)
       `)
-      .eq('cow_id', cowId)
-      .order('ai_date', { ascending: false })
-      .limit(1);
-    
+      // Ordering is settled in latestRecord() so a same-day pair resolves to
+      // the row written last rather than to whatever came back first.
+      .eq('cow_id', cowId);
+
     if (error) throw error;
-    
-    // If no records exist, this is the first AI record - allow it
-    if (!data || data.length === 0) {
-      return { canAdd: true, message: '', recordId: null, recordData: null };
+
+    const last = latestRecord((data ?? []) as any[]);
+    const decision = canServeAgain(last as any);
+
+    if (decision.allowed) {
+      return { canAdd: true, message: '', reason: decision.reason, recordId: null, recordData: null };
     }
-    
-    const lastRecord = data[0];
-    const cowNumber = (lastRecord as any).cows?.cow_number || 'Unknown';
-    const formattedDate = new Date(lastRecord.ai_date).toLocaleDateString();
-    
-    // Check if PD is done
-    if (!lastRecord.pd_done) {
-      return { 
-        canAdd: false, 
-        message: `Cannot add new AI record. Please update the PD status for:\n\nCow: ${cowNumber}\nAI Date: ${formattedDate}\nService #${lastRecord.service_number}\n\nGo to "All Records" tab to update this record.`,
-        recordId: lastRecord.id,
-        recordData: {
-          id: lastRecord.id,
-          cow_number: cowNumber,
-          ai_date: lastRecord.ai_date,
-          service_number: lastRecord.service_number
-        }
-      };
-    }
-    
-    // Check if PD result is negative
-    if (lastRecord.pd_result !== 'negative') {
-      return { 
-        canAdd: false, 
-        message: `Cannot add new AI record. The last PD result for:\n\nCow: ${cowNumber}\nAI Date: ${formattedDate}\nService #${lastRecord.service_number}\n\nResult: ${lastRecord.pd_result || 'Not recorded'}\n\nNew AI records can only be added after a negative PD result. Please update this record in the "All Records" tab.`,
-        recordId: lastRecord.id,
-        recordData: {
-          id: lastRecord.id,
-          cow_number: cowNumber,
-          ai_date: lastRecord.ai_date,
-          service_number: lastRecord.service_number
-        }
-      };
-    }
-    
-    // All conditions met
-    return { canAdd: true, message: '', recordId: null, recordData: null };
+
+    const cowNumber = (last as any)?.cows?.cow_number || 'Unknown';
+    const formattedDate = last ? new Date(last.ai_date).toLocaleDateString('en-IN') : '';
+    const detail = `Cow ${cowNumber} · served ${formattedDate} · service #${last?.service_number ?? '?'}`;
+
+    const message =
+      decision.reason === 'awaiting_pd'
+        ? `Record the PD result first.\n\n${detail}`
+        : `She is carrying a calf from that service.\n\n${detail}\n\nRecord the calving, or a negative PD, before serving again.`;
+
+    return {
+      canAdd: false,
+      message,
+      reason: decision.reason,
+      recordId: last?.id ?? null,
+      recordData: last
+        ? {
+            id: last.id,
+            cow_number: cowNumber,
+            ai_date: last.ai_date,
+            service_number: last.service_number,
+          }
+        : null,
+    };
   };
 
   const getNextServiceNumber = async (cowId: string) => {
@@ -153,16 +148,18 @@ export const useAITracking = () => {
         }
       }
 
-      // Calculate expected delivery date (285 days after AI date)
-      const aiDate = new Date(newRecord.ai_date);
-      const expectedDeliveryDate = new Date(aiDate);
-      expectedDeliveryDate.setDate(aiDate.getDate() + 285);
+      // Gestation comes from settings, defaulting to the 285 days every stored
+      // record was built with. It used to be hardcoded here while the alerts
+      // read the setting, so a record's own date and its reminder disagreed.
+      const { data: setting } = await supabase
+        .from('app_settings').select('value').eq('key', 'delivery_expected_days').maybeSingle();
+      const gestation = Number((setting as any)?.value) || DEFAULT_GESTATION_DAYS;
 
       const { data, error } = await supabase
         .from('ai_records')
         .insert({
           ...newRecord,
-          expected_delivery_date: expectedDeliveryDate.toISOString().split('T')[0]
+          expected_delivery_date: expectedDeliveryDate(newRecord.ai_date, gestation)
         })
         .select()
         .single();

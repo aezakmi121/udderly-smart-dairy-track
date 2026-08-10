@@ -8,6 +8,7 @@ import { UserRoleManagement } from './UserRoleManagement';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
 import { SessionUnlock } from './SessionUnlock';
 import { AlertSettings } from './AlertSettings';
+import { BreedingSettings } from './BreedingSettings';
 import { MilkingSessionSettings } from './MilkingSessionSettings';
 import { NotificationSettings } from './NotificationSettings';
 import { SlipTemplateSettings } from './SlipTemplateSettings';
@@ -127,6 +128,10 @@ export const SettingsManagement = () => {
                 <div className="border-t pt-6">
                   <h3 className="text-md font-semibold mb-3">Alert Settings</h3>
                   <AlertSettings />
+                </div>
+                <div className="border-t pt-6">
+                  <h3 className="text-md font-semibold mb-3">Breeding & AI</h3>
+                  <BreedingSettings />
                 </div>
               </CardContent>
             </CollapsibleContent>
