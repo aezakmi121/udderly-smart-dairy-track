@@ -28,6 +28,7 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
   const [deliveryDialog, setDeliveryDialog] = useState<string | null>(null);
   const [deliveryWithCalfDialog, setDeliveryWithCalfDialog] = useState<string | null>(null);
   const [pdResult, setPdResult] = useState('');
+  const [pdDate, setPdDate] = useState('');
   const [deliveryDate, setDeliveryDate] = useState('');
   const [calfGender, setCalfGender] = useState('');
   
@@ -55,13 +56,18 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
   };
 
   const handlePDUpdate = (recordId: string) => {
-    onUpdateRecord?.(recordId, { 
-      pd_done: true, 
+    onUpdateRecord?.(recordId, {
+      pd_done: true,
       pd_result: pdResult,
-      pd_date: new Date().toISOString().split('T')[0]
+      // Whoever records this can say when the vet actually examined her. It
+      // used to stamp today unconditionally, so every backfilled record claimed
+      // a PD on the day it was typed -- which is why the stored PD dates say a
+      // median of 118 days after service and cannot be used to tune anything.
+      pd_date: pdDate || new Date().toISOString().split('T')[0],
     });
     setPdDialog(null);
     setPdResult('');
+    setPdDate('');
   };
 
   const handleDeliveryUpdate = (recordId: string) => {
@@ -173,7 +179,7 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
               <TableCell>
                 <div className="flex flex-wrap gap-2">
                   {!record.actual_delivery_date && (
-                    <Dialog open={pdDialog === record.id} onOpenChange={(open) => { setPdDialog(open ? record.id : null); if (open) setPdResult(record.pd_result ?? ''); }}>
+                    <Dialog open={pdDialog === record.id} onOpenChange={(open) => { setPdDialog(open ? record.id : null); if (open) { setPdResult(record.pd_result ?? ''); setPdDate(record.pd_date ?? new Date().toISOString().split('T')[0]); } }}>
                       {!record.pd_done && isPDDue(record.ai_date) && (
                         <DialogTrigger asChild>
                           <Button size="sm" variant="outline" className="flex items-center gap-1">
@@ -189,6 +195,18 @@ export const AITrackingTable: React.FC<AITrackingTableProps> = ({
                           </DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4">
+                          <div>
+                            <label className="text-sm font-medium">Date examined</label>
+                            <Input
+                              type="date"
+                              value={pdDate}
+                              max={new Date().toISOString().split('T')[0]}
+                              onChange={(e) => setPdDate(e.target.value)}
+                            />
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              When the vet actually checked her, not today's date.
+                            </p>
+                          </div>
                           <div>
                             <label className="text-sm font-medium">PD Result</label>
                             <Select value={pdResult} onValueChange={setPdResult}>
