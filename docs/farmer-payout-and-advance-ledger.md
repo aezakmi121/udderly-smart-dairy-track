@@ -130,213 +130,182 @@ Ordered roughly by how much they hurt.
 
 ---
 
-## Part 2 — Proposal
+## Part 2 — The plan (finalised)
 
-Three layers, each independently useful. Layer 1 alone solves the ₹35,000 case.
+Scope deliberately cut back after review. **Dropped:** recovery modes,
+installment schedules, interest, the derived ledger views, cash repayment,
+write-offs, `other_deductions`. What is left is the smallest thing that answers
+"did this farmer take an advance, what came off it last, and what is left" — for
+the admin who manages it and the farmer who reads it.
 
-### Layer 1 — Recovery policy on the advance
+### 2.1 What we are actually building
 
-Add to `farmer_advances`:
+Three small pieces:
 
-```sql
-ALTER TABLE public.farmer_advances
-  ADD COLUMN recovery_mode text NOT NULL DEFAULT 'auto'
-    CHECK (recovery_mode IN ('auto','installment','manual','paused')),
-  ADD COLUMN installment_amount numeric CHECK (installment_amount > 0),
-  ADD COLUMN recovery_start_date date,
-  ADD CONSTRAINT farmer_advances_installment_required
-    CHECK (recovery_mode <> 'installment' OR installment_amount IS NOT NULL);
-```
+1. **One number the admin controls** — how much comes off the advance this cycle.
+2. **A clear advance summary** — last deduction, which cycle it came from, what
+   remains. Admin sees it per farmer; the farmer sees only their own.
+3. **Two hygiene fixes** that are cheap while we are in here.
 
-- **`auto`** — today's behaviour. Recover as much as the bill allows. Default, so
-  nothing existing changes.
-- **`installment`** — recover at most `installment_amount` per cycle. Your ₹35,000
-  at ₹10,000 → four cycles, and the farmer still takes money home each time.
-- **`manual`** — never deducted automatically. The admin types a figure on the
-  draft bill each cycle (Layer 2). This is the "upto the farmer" case: ₹10,000
-  now, ₹5,000 next, nothing the cycle their buffalo is dry.
-- **`paused`** — recover nothing, keep the balance visible. For a farmer in
-  trouble.
-- **`recovery_start_date`** — a grace period. Advance given today, recovery starts
-  next month.
+No new tables. One meaningful new column.
 
-Plus one safety rail, because it is the thing that actually protects the farmer
-regardless of mode — a floor on take-home, in `app_settings.payout_settings`:
+### 2.2 The one knob
 
-```jsonc
-{
-  "advance_recovery": {
-    "default_mode": "auto",
-    "min_take_home_pct": 30,   // never recover more than 70% of the milk bill
-    "min_take_home_amount": 0  // or an absolute floor, whichever binds harder
-  }
-}
-```
+Today `generate-payout-cycle` decides the deduction for you:
+`min(total outstanding, milk amount)` — which is why a ₹35,000 advance eats a
+₹12,000 bill whole and the farmer goes home with nothing.
 
-Optionally overridable per farmer (`farmers.min_take_home_pct`) for the one or
-two who want everything cut at once.
-
-**Recovery amount for a cycle then becomes:**
-
-```
-budget      = milk_amount − max(min_take_home_amount, milk_amount × min_take_home_pct/100)
-per advance = auto        → remaining
-              installment → min(remaining, installment_amount)
-              manual      → 0   (admin supplies it per cycle)
-              paused      → 0
-              and 0 if recovery_start_date > cycle_end
-deducted    = min(Σ eligible, budget)     -- FIFO by advance_date, as today
-```
-
-`generate-payout-cycle` changes from ~6 lines to a small helper. Everything
-downstream — FIFO recovery in finalize, `farmer_advance_recoveries`, the PDF —
-already handles a partial `advances_deducted` correctly and needs no change.
-
-### Layer 2 — Per-cycle override on the draft bill
+Rather than a policy engine, give the admin the number directly:
 
 ```sql
 ALTER TABLE public.farmer_payouts
   ADD COLUMN advances_deducted_override numeric CHECK (advances_deducted_override >= 0),
-  ADD COLUMN deduction_override_note text,
   ADD COLUMN deduction_override_by uuid,
   ADD COLUMN deduction_override_at timestamptz;
 ```
 
-`generate-payout-cycle` uses `COALESCE(override, computed)` and — critically —
-**does not include the override columns in its upsert**, so regenerating a draft
-never clobbers a manual decision. The override is clamped to the outstanding
-balance, and clearing it (set to `NULL`) returns the row to policy.
+- `generate-payout-cycle` uses `COALESCE(override, computed)`.
+- The override columns are **excluded from its upsert**, so regenerating a draft
+  never wipes a manual decision.
+- Clamped to the outstanding balance. Setting it back to `NULL` returns the row
+  to the automatic figure.
+- Editable only while the payout is `draft`; rejected once the cycle is finalized.
 
-UI: in the Recon tab, each `DraftRow` gains an inline editable "Advance this
-cycle" field showing `deducted / outstanding`, with the net recomputing live. Admin
-only, draft-status only — rejected once the cycle is finalized.
+In the Recon tab each draft row gets one inline field — "Advance this cycle",
+showing `deducted / outstanding` — and the net recomputes live. Admin types
+`10000`. Next cycle they type `5000`. The cycle after, `0`. That is the whole
+"upto the farmer" behaviour, with no modes to configure and nothing to maintain.
 
-This is the piece that makes "₹10k now, ₹5k next, up to the farmer" a
-ten-second job at the counter rather than a policy decision.
+> This is the one piece of the earlier proposal worth keeping. If you would
+> rather not have it, everything below still works — the deduction just stays
+> automatic, and the ₹35,000 case still zeroes the farmer out for three cycles.
+> It is one nullable column and one input box, so it is the cheapest possible
+> answer to that problem.
 
-### Layer 3 — The ledger
+### 2.3 The advance summary — no new storage
 
-**Derive it, do not store it.** A physical ledger table means dual writes and
-guaranteed drift. Everything needed is already in the money tables; a view over
-them is always consistent by construction.
-
-The accounting model — one running balance, *what the dairy owes the farmer*:
-
-| Event | Source | Effect |
-|---|---|---|
-| Milk billed | `farmer_payouts` (finalized, not void) | `+ total_amount` |
-| Other deductions | `farmer_payouts` | `− other_deductions` |
-| Advance disbursed | `farmer_advances` | `− amount` |
-| Advance written off | `farmer_advances` (`written_off`) | `+ unrecovered remainder` |
-| Cash repaid by farmer | `farmer_advance_recoveries` (`source='cash'`) | `+ amount` |
-| Payment made to farmer | `farmer_payment_events` | `− amount` |
-
-**Advance *recovery against a bill* is deliberately not a ledger event.** The
-disbursement already debited the farmer; the recovery is only how that debit gets
-netted out at bill time. Counting both is the classic double-count in this kind
-of ledger, and it is worth stating explicitly in the migration comment so nobody
-"fixes" it later.
+Everything needed is already recorded. `farmer_advance_recoveries` holds one row
+per `(advance_id, payout_id, amount)`, and the payout carries its cycle. So
+"last deducted ₹X in cycle Y" is a query, not a column:
 
 ```sql
-CREATE VIEW public.farmer_ledger AS
-  SELECT farmer_id, finalized_at::date AS entry_date, 'milk_bill' AS kind,
-         id AS ref_id, bill_number AS ref_label, total_amount AS delta
-    FROM public.farmer_payouts WHERE status IN ('finalized','paid')
-  UNION ALL
-  SELECT farmer_id, advance_date, 'advance_given', id, notes, -amount
-    FROM public.farmer_advances
-  UNION ALL
-  SELECT p.farmer_id, e.paid_on, 'payment', e.id, e.method::text, -e.amount
-    FROM public.farmer_payment_events e
-    JOIN public.farmer_payouts p ON p.id = e.payout_id
-  -- + other_deductions, write-offs, cash repayments
-;
+CREATE VIEW public.farmer_advance_summary AS
+SELECT
+  a.farmer_id,
+  SUM(a.amount)                                     AS total_taken,
+  SUM(a.amount - a.recovered_amount)                AS outstanding,
+  MAX(a.advance_date)                               AS last_advance_date,
+  (SELECT r.amount FROM farmer_advance_recoveries r
+     JOIN farmer_advances a2 ON a2.id = r.advance_id
+    WHERE a2.farmer_id = a.farmer_id
+    ORDER BY r.created_at DESC LIMIT 1)             AS last_deducted_amount,
+  (SELECT c.cycle_start FROM farmer_advance_recoveries r
+     JOIN farmer_advances a2 ON a2.id = r.advance_id
+     JOIN farmer_payouts p ON p.id = r.payout_id
+     JOIN farmer_payout_cycles c ON c.id = p.cycle_id
+    WHERE a2.farmer_id = a.farmer_id
+    ORDER BY r.created_at DESC LIMIT 1)             AS last_deducted_cycle_start,
+  -- + matching cycle_end
+FROM public.farmer_advances a
+WHERE a.status = 'outstanding'
+GROUP BY a.farmer_id;
 ```
 
-with a running balance via
-`SUM(delta) OVER (PARTITION BY farmer_id ORDER BY entry_date, kind)`, and a
-companion `farmer_balances` view for the one-row-per-farmer summary
-(`milk_earned`, `advances_outstanding`, `paid_out`, `net_balance`).
+One view, admin-readable, and it cannot drift because it derives from the rows
+finalize already writes.
 
-**A reconciliation check** worth having as a DB function and surfacing in the
-admin UI — for every farmer, `ledger_balance` must equal
-`Σ unpaid_balance − Σ advances_outstanding`. Any drift means a bug, and you want
-to find it in a nightly check rather than in an argument with a farmer.
+### 2.4 Admin view — Advances tab
 
-Then two screens fall out almost for free:
-- **Admin**: farmer detail → statement, filterable by date, CSV export. This is
-  the answer to "show me everything about this farmer".
-- **Portal**: the farmer's own statement in Hindi. They already see an advance
-  tile; a real ledger of "मिला / कटा / बकाया" is far more convincing on paper.
+Replace the flat "last 100 advances across all farmers" list with one row per
+farmer who has an outstanding advance:
 
-### Layer 4 — Filling the smaller holes
+```
+कोड 042 · रामेश्वर                              बाकी ₹25,000
+लिया ₹35,000 · पिछली कटौती ₹10,000 · 1–15 अगस्त
+```
 
-Roughly in the order they are worth doing:
+Plus a total across the herd at the top, a search box, and the existing "add
+advance" form unchanged. Tapping a row expands the full recovery history for that
+farmer — every `farmer_advance_recoveries` row with its cycle. That is the whole
+screen.
 
-- **Advance requests admin screen** — a Pending list in the Advances tab, with
-  Approve (creates the `farmer_advances` row, writes `approved_advance_id`,
-  sets mode/installment right there) and Reject with a note. Notify over WhatsApp.
-  Wires up a feature that is already 80% built.
-- **Cash repayment** — make `farmer_advance_recoveries.payout_id` nullable, add
-  `source text NOT NULL DEFAULT 'payout' CHECK (source IN ('payout','cash','writeoff'))`
-  and `recovered_on date`, and replace the constraint with
-  `UNIQUE (advance_id, payout_id) WHERE payout_id IS NOT NULL`. Then a "Record
-  repayment" button.
-- **Advance edit / write-off** — with an audit row for each. Only while
-  `recovered_amount = 0` for edits; write-off at any time.
-- **`other_deductions`** — a small `farmer_deductions` table (`farmer_id`,
-  `cycle_id`, `kind`, `amount`, `note`) summed into the payout, so feed and
-  medicine stop being invisible.
-- **Fix the partial-payment status** — a `partially_paid` enum value, so
-  `fully_paid` on a cycle means what it says.
-- **Add the missing FK** on `farmer_advances.farmer_id` → `farmers.id`, mirroring
-  the Phase 1 treatment of `farmer_payouts`.
-- **Rebuild the Advances tab** — per-farmer grouping, outstanding total at the
-  top, search, and a link into the farmer's ledger. The current flat 100-row list
-  does not survive fifty farmers.
+**Admin only, properly.** The tab is already gated on `isAdmin`, but RLS
+currently lets `collection_centre` `SELECT` every farmer's advances. Since the
+decision is "only admin can do it", drop that policy:
 
-### Suggested order
+```sql
+DROP POLICY "CC view advances" ON public.farmer_advances;
+```
 
-| Step | Scope | Why here |
+### 2.5 Farmer view — read-only, and only if there is one
+
+`farmer-portal-data` already returns the farmer's advances; it needs the last
+recovery joined in. In `FarmerPortal.tsx`:
+
+- **No advance → show nothing.** Not a zero tile, not an empty row. A farmer who
+  has never taken an advance should never see the word.
+- **Advance outstanding →** replace the current "अगले बिल से कटेगा" tile with the
+  real figures:
+
+```
+अग्रिम / Advance
+लिया:          ₹35,000
+पिछली कटौती:   ₹10,000  (1–15 अगस्त)
+बाकी:          ₹25,000
+```
+
+Read-only. Nothing on the portal writes to advances, and the existing
+`farmer-request-advance` endpoint stays as it is (the approval screen for it is
+out of scope — see 2.7).
+
+### 2.6 Two hygiene fixes while we are here
+
+- **Add the missing foreign key** on `farmer_advances.farmer_id` → `farmers.id`
+  with `ON DELETE RESTRICT`, mirroring what `farmer_payouts` got in the Phase 1
+  data-integrity migration. Orphan advances are currently possible.
+- **Fix the partial-payment status.** Both branches of
+  `recalc_farmer_payout_from_events` resolve to `'paid'`, so a ₹100 payment on a
+  ₹10,000 bill marks the bill paid and the cycle can read `fully_paid` with money
+  still owed. Add a `partially_paid` value to `payout_status` and use it. No data
+  is wrong today — `unpaid_balance` stays correct — but every status readout is.
+
+### 2.7 Explicitly not doing (recorded so it is a decision, not an oversight)
+
+| Deferred | Why |
+|---|---|
+| Recovery modes / installments | Overkill. §2.2 gives the same control with one field. |
+| Interest on advances | Confirmed: advances are interest-free. |
+| The `farmer_ledger` views | Wanted a running balance; not needed for this question. Revisit if a full statement is ever asked for. |
+| Cash repayment of an advance | Needs `farmer_advance_recoveries.payout_id` to become nullable. Add when someone actually hands cash back. |
+| Write-off / edit advance UI | Rare. SQL for now. |
+| `other_deductions` | Still dead. Leave it. |
+| Advance-requests admin screen | The table and edge function exist and go nowhere. Worth doing eventually; not part of this. |
+| Skipped-cycle carry-forward | Only bites if a cycle is never drafted. Watch it. |
+
+### 2.8 Build order
+
+| # | Change | Size |
 |---|---|---|
-| 1 | Layer 1 + Layer 2 | Solves the actual problem. One migration, one edge-function change, one UI field. |
-| 2 | Layer 3 views + admin statement | Makes the result auditable and answers "where does this farmer stand". |
-| 3 | Advance requests screen + cash repayment | Closes the loop already half-built. |
-| 4 | Write-off, `other_deductions`, status fix, FK | Hygiene. |
-| 5 | Portal statement in Hindi | Farmer-facing polish. |
+| 1 | Migration: override columns, `farmer_advance_summary` view, FK, drop CC policy | one migration |
+| 2 | `generate-payout-cycle` — `COALESCE(override, computed)`, exclude override from upsert | ~10 lines |
+| 3 | Recon tab — inline "Advance this cycle" field | one component |
+| 4 | Advances tab — per-farmer summary rows | rewrite of `AdvancesTab.tsx` |
+| 5 | `farmer-portal-data` + `FarmerPortal.tsx` — advance block, hidden when none | ~30 lines |
+| 6 | `partially_paid` status | small migration + trigger edit |
 
-Steps 1 and 2 are the ones that matter. Everything after is cleanup.
+Steps 1–3 are the functional change; 4–5 are what you and the farmer actually
+look at. Step 6 is independent and can go whenever.
 
-### Worked example — ₹35,000, recovered your way
+### 2.9 The ₹35,000 case, finalised
 
 ```
-Cycle A  milk ₹12,000  advance outstanding ₹35,000
-         mode=manual, admin types 10,000
-         → deducted 10,000 · net payable ₹2,000 · outstanding ₹25,000
+Cycle A  milk ₹12,000   admin types 10,000
+         farmer gets ₹2,000 · advance left ₹25,000
+         portal shows: लिया ₹35,000 · पिछली कटौती ₹10,000 (1–15 अगस्त) · बाकी ₹25,000
 
-Cycle B  milk ₹14,000  admin types 5,000
-         → deducted 5,000 · net payable ₹9,000 · outstanding ₹20,000
+Cycle B  milk ₹14,000   admin types 5,000
+         farmer gets ₹9,000 · advance left ₹20,000
 
-Cycle C  milk ₹9,000   admin types 0 (bad month)
-         → net payable ₹9,000 · outstanding ₹20,000
-
-Cycle D  switched to installment, ₹8,000/cycle, milk ₹15,000
-         → deducted 8,000 · net payable ₹7,000 · outstanding ₹12,000
+Cycle C  milk ₹9,000    admin types 0
+         farmer gets ₹9,000 · advance left ₹20,000
 ```
-
-Under today's code, cycle A pays ₹0, cycle B pays ₹0, cycle C pays ₹0, and the
-farmer is owed nothing until the ₹35,000 is gone.
-
-### Open questions
-
-1. **Interest on advances?** None of this models it. If advances are effectively
-   interest-free credit, skip it entirely — that is the simpler system. If not,
-   it needs a rate on the advance and an accrual job, and the ledger gains an
-   `interest_accrued` entry kind.
-2. **Should the farmer see the recovery plan in the portal?** "₹25,000 बाकी,
-   ₹10,000 अगले बिल से" is more honest than the current "अगले बिल से कटेगा", but
-   it commits you publicly to an amount you may want to vary.
-3. **Who may set an override?** Admin only, or collection centre too? Layer 2
-   above assumes admin only.
-4. **Cap on total advance per farmer?** The portal request path already caps a
-   single request at ₹1,00,000, but nothing caps the running total.
