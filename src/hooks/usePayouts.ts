@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface PayoutCycle {
@@ -23,12 +23,14 @@ export interface PayoutRow {
   avg_fat: number | null;
   avg_snf: number | null;
   advances_deducted: number;
+  /** Set by an admin for this cycle; null means the computed figure stands. */
+  advances_deducted_override: number | null;
   carry_forward_in: number;
   other_deductions: number;
   net_payable: number;
   paid_amount: number;
   unpaid_balance: number;
-  status: 'draft' | 'finalized' | 'paid' | 'void';
+  status: 'draft' | 'finalized' | 'partially_paid' | 'paid' | 'void';
   paid_on: string | null;
   last_payment_method: string | null;
   finalized_at: string | null;
@@ -69,7 +71,57 @@ export const useCyclePayouts = (cycleId: string | null) => useQuery({
   },
 });
 
-export const useCurrentCycleLive = (cycle: PayoutCycle | null | undefined) => useQuery({
+/**
+ * How much of a farmer's advance comes off this cycle's bill.
+ *
+ * Only the override column is written: a database trigger recomputes
+ * advances_deducted and net_payable from it, so the money formula lives in one
+ * place rather than being repeated here. Passing null hands the row back to the
+ * automatic figure.
+ */
+export const useSetAdvanceDeduction = (cycleId: string | null) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ payoutId, amount }: { payoutId: string; amount: number | null }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from('farmer_payouts').update({
+        advances_deducted_override: amount,
+        deduction_override_by: amount === null ? null : user?.id ?? null,
+        deduction_override_at: amount === null ? null : new Date().toISOString(),
+      }).eq('id', payoutId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cycle-payouts', cycleId] });
+      qc.invalidateQueries({ queryKey: ['advance-summary'] });
+    },
+  });
+};
+
+/** Per-farmer advance position, straight off the farmer_advance_summary view. */
+export interface AdvanceSummaryRow {
+  farmer_id: string;
+  total_taken: number;
+  outstanding: number;
+  total_recovered: number;
+  last_advance_date: string | null;
+  open_advances: number;
+  last_deducted_amount: number | null;
+  last_deducted_cycle_start: string | null;
+  last_deducted_cycle_end: string | null;
+  last_deducted_bill_number: string | null;
+}
+
+export const useAdvanceSummary = () => useQuery({
+  queryKey: ['advance-summary'],
+  queryFn: async () => {
+    const { data, error } = await supabase.from('farmer_advance_summary').select('*');
+    if (error) throw error;
+    return (data ?? []) as unknown as AdvanceSummaryRow[];
+  },
+});
+
+export const useCurrentCycleLive =(cycle: PayoutCycle | null | undefined) => useQuery({
   queryKey: ['cycle-live', cycle?.id],
   enabled: !!cycle,
   queryFn: async () => {

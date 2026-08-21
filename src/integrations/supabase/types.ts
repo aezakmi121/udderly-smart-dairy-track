@@ -852,6 +852,45 @@ export type Database = {
           },
         ]
       }
+      farmer_advance_recoveries: {
+        Row: {
+          advance_id: string
+          amount: number
+          created_at: string
+          id: string
+          payout_id: string
+        }
+        Insert: {
+          advance_id: string
+          amount: number
+          created_at?: string
+          id?: string
+          payout_id: string
+        }
+        Update: {
+          advance_id?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          payout_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "farmer_advance_recoveries_advance_id_fkey"
+            columns: ["advance_id"]
+            isOneToOne: false
+            referencedRelation: "farmer_advances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "farmer_advance_recoveries_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "farmer_payouts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       farmer_advances: {
         Row: {
           advance_date: string
@@ -1128,12 +1167,15 @@ export type Database = {
       farmer_payouts: {
         Row: {
           advances_deducted: number
+          advances_deducted_override: number | null
           avg_fat: number | null
           avg_snf: number | null
           bill_number: string | null
           carry_forward_in: number
           created_at: string
           cycle_id: string
+          deduction_override_at: string | null
+          deduction_override_by: string | null
           farmer_id: string
           finalized_at: string | null
           id: string
@@ -1157,12 +1199,15 @@ export type Database = {
         }
         Insert: {
           advances_deducted?: number
+          advances_deducted_override?: number | null
           avg_fat?: number | null
           avg_snf?: number | null
           bill_number?: string | null
           carry_forward_in?: number
           created_at?: string
           cycle_id: string
+          deduction_override_at?: string | null
+          deduction_override_by?: string | null
           farmer_id: string
           finalized_at?: string | null
           id?: string
@@ -1186,12 +1231,15 @@ export type Database = {
         }
         Update: {
           advances_deducted?: number
+          advances_deducted_override?: number | null
           avg_fat?: number | null
           avg_snf?: number | null
           bill_number?: string | null
           carry_forward_in?: number
           created_at?: string
           cycle_id?: string
+          deduction_override_at?: string | null
+          deduction_override_by?: string | null
           farmer_id?: string
           finalized_at?: string | null
           id?: string
@@ -2793,7 +2841,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      farmer_advance_summary: {
+        Row: {
+          farmer_id: string | null
+          last_advance_date: string | null
+          last_deducted_amount: number | null
+          last_deducted_at: string | null
+          last_deducted_bill_number: string | null
+          last_deducted_cycle_end: string | null
+          last_deducted_cycle_start: string | null
+          open_advances: number | null
+          outstanding: number | null
+          total_recovered: number | null
+          total_taken: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_days_in_milk: { Args: { cow_id: string }; Returns: number }
@@ -2907,7 +2970,7 @@ export type Database = {
         | "drafted"
         | "finalized"
         | "fully_paid"
-      payout_status: "draft" | "finalized" | "paid" | "void"
+      payout_status: "draft" | "finalized" | "partially_paid" | "paid" | "void"
       pd_result: "positive" | "negative" | "inconclusive"
       session_type: "morning" | "evening"
       transaction_type: "incoming" | "outgoing"
@@ -3059,7 +3122,7 @@ export const Constants = {
         "finalized",
         "fully_paid",
       ],
-      payout_status: ["draft", "finalized", "paid", "void"],
+      payout_status: ["draft", "finalized", "partially_paid", "paid", "void"],
       pd_result: ["positive", "negative", "inconclusive"],
       session_type: ["morning", "evening"],
       transaction_type: ["incoming", "outgoing"],

@@ -20,6 +20,7 @@ export type ActionGroup =
   | 'due_to_calve'
   | 'move_to_milking'
   | 'overdue_delivery'
+  | 'needs_service'
   | 'check_record';
 
 export interface ActionInput {
@@ -68,6 +69,20 @@ export const cowActions = (
     ) {
       groups.push('check_record');
     }
+    // Past her waiting period with nothing booked. She was invisible on the
+    // board before this: her last record is closed, so no other group claims
+    // her, and an empty cow quietly costs a lactation.
+    const sinceCalving = dayDiff(record.actual_delivery_date, today);
+    if (sinceCalving !== null && sinceCalving >= settings.serviceDueAfterCalvingDays) {
+      groups.push('needs_service');
+    }
+    return groups;
+  }
+
+  // PD came back negative or inconclusive, or the service did not take. She can
+  // be served now and nothing is booked.
+  if (state === 'open' || state === 'failed') {
+    groups.push('needs_service');
     return groups;
   }
 
@@ -98,16 +113,25 @@ export const cowActions = (
   return groups;
 };
 
-/** Order the board renders them in: soonest-to-act first. */
+/**
+ * Order the board renders them in: soonest-to-act first.
+ *
+ * `check_record` is deliberately absent. It is a data-integrity signal rather
+ * than a job for the shed, and it sat on the morning board asking to be
+ * re-read every day. `CHECK_RECORD_GROUP` keeps it reachable so the detection
+ * is not lost -- the board shows it as one line at the foot.
+ */
 export const ACTION_ORDER: ActionGroup[] = [
   'overdue_delivery',
   'due_to_calve',
   'move_to_milking',
   'pd_overdue',
   'pd_due',
+  'needs_service',
   'heat_watch',
-  'check_record',
 ];
+
+export const CHECK_RECORD_GROUP: ActionGroup = 'check_record';
 
 export const ACTION_LABEL: Record<ActionGroup, string> = {
   overdue_delivery: 'Overdue to calve',
@@ -115,6 +139,7 @@ export const ACTION_LABEL: Record<ActionGroup, string> = {
   move_to_milking: 'Move to milking',
   pd_overdue: 'PD overdue',
   pd_due: 'PD due',
+  needs_service: 'AI pending',
   heat_watch: 'Watch for heat',
   check_record: 'Check the record',
 };
@@ -125,6 +150,7 @@ export const ACTION_HELP: Record<ActionGroup, string> = {
   move_to_milking: 'Move her from the dry group so she is ready to calve.',
   pd_overdue: 'Served a long time ago and still unchecked — every week costs a cycle.',
   pd_due: 'Old enough for a reliable pregnancy check.',
+  needs_service: 'Ready to be served, and nothing is booked for her.',
   heat_watch: 'If the service failed she should return to heat about now.',
   check_record: 'The gap between service and calving is impossible — the calving is on the wrong record, or a date is wrong.',
 };

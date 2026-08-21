@@ -25,6 +25,11 @@ export interface BreedingSettings {
   dueToCalveWithinDays: number;
   /** Move her from the dry group to milking this many days before calving. */
   dryToMilkingDaysBefore: number;
+  /**
+   * The voluntary waiting period. Past this many days since calving with
+   * nothing booked, she belongs on the board as needing a service.
+   */
+  serviceDueAfterCalvingDays: number;
 }
 
 export const BREEDING_SETTINGS_KEY = 'breeding_settings';
@@ -35,8 +40,12 @@ export const DEFAULT_BREEDING_SETTINGS: BreedingSettings = {
   heatWatchToDays: 24,
   pdDueFromDays: 35,
   pdOverdueAfterDays: 60,
+  // Left at 21, not widened to 30: the move to milking happens 30 days out, so
+  // a 30-day calving window would make the two headings the same list of cows
+  // under different names -- which is what splitting them was for.
   dueToCalveWithinDays: 21,
   dryToMilkingDaysBefore: 30,
+  serviceDueAfterCalvingDays: 60,
 };
 
 const int = (value: unknown, fallback: number): number => {
@@ -66,6 +75,7 @@ export const normaliseBreedingSettings = (raw: unknown): BreedingSettings => {
     pdOverdueAfterDays: pdOverdue,
     dueToCalveWithinDays: int(t.dueToCalveWithinDays, d.dueToCalveWithinDays),
     dryToMilkingDaysBefore: int(t.dryToMilkingDaysBefore, d.dryToMilkingDaysBefore),
+    serviceDueAfterCalvingDays: int(t.serviceDueAfterCalvingDays, d.serviceDueAfterCalvingDays),
   };
 };
 

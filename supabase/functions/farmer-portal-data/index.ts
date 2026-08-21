@@ -49,6 +49,23 @@ Deno.serve(async (req) => {
       .select('id, advance_date, amount, recovered_amount, status, notes')
       .eq('farmer_id', farmerId).order('advance_date', { ascending: false });
 
+    // What came off the advance last, and from which fortnight. Asked at the
+    // counter far more often than the balance itself -- "कितना काटा था?" --
+    // and it is already recorded, one row per recovery, by finalize.
+    const { data: lastRecovery } = await supabase.from('farmer_advance_recoveries')
+      .select('amount, created_at, farmer_advances!inner(farmer_id), farmer_payouts(farmer_payout_cycles(cycle_start, cycle_end))')
+      .eq('farmer_advances.farmer_id', farmerId)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+    const advanceCycle = (lastRecovery as any)?.farmer_payouts?.farmer_payout_cycles ?? null;
+    const advanceLast = lastRecovery
+      ? {
+          amount: Number((lastRecovery as any).amount),
+          cycle_start: advanceCycle?.cycle_start ?? null,
+          cycle_end: advanceCycle?.cycle_end ?? null,
+        }
+      : null;
+
     // Recent collections. The portal groups these into days itself, so it needs
     // the whole row a slip was printed from: which animal, when it was weighed,
     // and why a sample was turned away. Sixty days is roughly four payout
@@ -69,7 +86,8 @@ Deno.serve(async (req) => {
     };
 
     return new Response(JSON.stringify({
-      farmer, cycle, liveTotal, bills: bills ?? [], advances: advances ?? [], daily: daily ?? [], pin,
+      farmer, cycle, liveTotal, bills: bills ?? [], advances: advances ?? [],
+      advanceLast, daily: daily ?? [], pin,
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
     return new Response(JSON.stringify({ error: (e as Error).message }), {

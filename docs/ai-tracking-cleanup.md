@@ -1,7 +1,7 @@
 # AI tracking — what it touches, and the screen cleanup
 
-Status: design note. Part 1 is what the system is wired to today, Part 2 is the
-plan for the screen.
+Status: **built**. Part 1 is what the system is wired to; Part 2 is what was
+done to the screen.
 
 ---
 
@@ -136,9 +136,11 @@ on the wrong record or a date is wrong. Rather than delete the detection,
 2 records have an impossible service→calving gap — review
 ```
 
-…which expands to the rows. Off the way when it is nothing, still findable when
-it is not. If you would rather it vanish entirely, deleting the group from
-`ACTION_ORDER` and leaving `cowActions()` alone is a one-line change.
+**As built:** it renders below the action groups as a muted collapsed section
+carrying its own count, so it costs one greyed line when there is something in it
+and nothing at all when there is not. `cowActions()` still detects it, and
+`CHECK_RECORD_GROUP` keeps it addressable. Removing the section entirely is a
+one-line change if you would rather it vanish.
 
 ### 2.4 Add the missing "AI pending" group
 
@@ -164,6 +166,12 @@ guess at `active cows − pregnant cows`.
 Point `CowActionSummaryCard` at `groupHerd()` instead of its own queries. One
 source of truth, and §1.4 items 1–4 all disappear at once:
 
+**As built:** the query and the grouping moved into a shared
+`useHerdActionGroups` hook. `useCowActionSummary` (the tile counts) and
+`useCowActionDetails` (the list behind a tile) were both rewritten on top of it,
+so the count and the list it opens cannot disagree — the details hook had the
+same hardcoded 60-day windows and the same non-existent `cows.is_active` filter.
+
 - `useCowActionSummary`'s bespoke SQL is deleted.
 - Counts become cows, not records, because `groupHerd()` works off
   `latestRecord()`.
@@ -183,12 +191,15 @@ Tile → section mapping:
 | Overdue Delivery | `overdue_delivery` |
 | Needs AI | `needs_service` (new) |
 
-### 2.6 One settings change
+### 2.6 "Due to calve" stays at three weeks
 
-You described close-to-delivery as "less than a month".
-`dueToCalveWithinDays` is currently **21**. Set it to **30** in
-`DEFAULT_BREEDING_SETTINGS` — or just change it in Settings, since it is already
-configurable.
+Raising `dueToCalveWithinDays` from 21 to 30 was tried and reverted. The move to
+milking happens 30 days out, so a 30-day calving window makes the two headings
+the same list of cows under different names — which is what splitting them was
+for in the first place, and which a test and a Settings warning both already
+guard against. Three weeks is already less than a month, so the heading reads
+the way you described it without recreating the collision. It remains
+configurable in Settings for anyone who wants it wider.
 
 ### 2.7 Build order
 

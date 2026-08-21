@@ -17,6 +17,7 @@ import {
   Target,
   ArrowRight,
   Search,
+  ChevronRight,
 } from 'lucide-react';
 import { useAITracking } from '@/hooks/useAITracking';
 import { useCowMilkingStatus } from '@/hooks/useCowMilkingStatus';
@@ -42,7 +43,11 @@ import {
   normaliseBreedingSettings,
   type BreedingSettings,
 } from '@/lib/breedingSettings';
-import { groupHerd, ACTION_ORDER, ACTION_LABEL, ACTION_HELP, type ActionGroup } from '@/lib/breedingActions';
+import {
+  groupHerd, ACTION_ORDER, ACTION_LABEL, ACTION_HELP, CHECK_RECORD_GROUP,
+  type ActionGroup,
+} from '@/lib/breedingActions';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { CowActionRow } from './CowActionRow';
 import { QuickPdSheet, QuickCalvingSheet } from './QuickActionSheets';
@@ -50,7 +55,42 @@ import { CowTimelineSheet } from './CowTimelineSheet';
 
 type FilterType = 'all' | 'about_to_deliver' | 'pd_due' | 'flagged';
 
-export const CowSummaryDashboard: React.FC = () => {
+const OPEN_GROUPS_KEY = 'breeding-board-open-groups';
+
+/**
+ * Which headings are expanded, remembered between visits.
+ *
+ * Everything starts closed: the point of the board is to be readable in one
+ * glance. Whoever works PD overdue first every morning opens it once and finds
+ * it open thereafter.
+ */
+const useOpenGroups = (initial: ActionGroup[]) => {
+  const [open, setOpen] = useState<ActionGroup[]>(() => {
+    try {
+      const stored = localStorage.getItem(OPEN_GROUPS_KEY);
+      const remembered: ActionGroup[] = stored ? JSON.parse(stored) : [];
+      return Array.from(new Set([...remembered, ...initial]));
+    } catch {
+      return initial;
+    }
+  });
+
+  const toggle = (group: ActionGroup, isOpen: boolean) => {
+    setOpen((prev) => {
+      const next = isOpen ? Array.from(new Set([...prev, group])) : prev.filter((g) => g !== group);
+      try {
+        localStorage.setItem(OPEN_GROUPS_KEY, JSON.stringify(next));
+      } catch {
+        // A browser refusing storage is not a reason to stop working.
+      }
+      return next;
+    });
+  };
+
+  return { open, toggle };
+};
+
+export const CowSummaryDashboard: React.FC<{ expandGroups?: ActionGroup[] }> = ({ expandGroups }) => {
   const { aiRecords, isLoading, updateAIRecordMutation } = useAITracking();
   const { updateCowMilkingStatus, isUpdating } = useCowMilkingStatus();
   const [filter, setFilter] = useState<FilterType>('all');
@@ -60,6 +100,7 @@ export const CowSummaryDashboard: React.FC = () => {
   const [pdFor, setPdFor] = useState<CowSummary | null>(null);
   const [calvingFor, setCalvingFor] = useState<CowSummary | null>(null);
   const [timelineFor, setTimelineFor] = useState<CowSummary | null>(null);
+  const { open: openGroups, toggle: toggleGroup } = useOpenGroups(expandGroups ?? []);
 
   const { value: storedBreeding } = useAppSetting<BreedingSettings>(BREEDING_SETTINGS_KEY);
   const breeding = useMemo(() => normaliseBreedingSettings(storedBreeding), [storedBreeding]);
@@ -118,7 +159,7 @@ export const CowSummaryDashboard: React.FC = () => {
     const today = new Date();
 
     // Apply filters using unified helpers
-    let filtered = allSummaries.filter(cow => {
+    const filtered = allSummaries.filter(cow => {
       if (!includeDelivered && cow.status === 'Delivered') return false;
       
       switch (filter) {
@@ -157,7 +198,14 @@ export const CowSummaryDashboard: React.FC = () => {
     () =>
       groupHerd(
         allSummaries.map((c) => ({
-          record: { ...(c.aiRecord as any), expected_delivery_date: c.expectedDeliveryDate },
+          record: {
+            ai_date: c.aiRecord.ai_date,
+            ai_status: c.aiRecord.ai_status ?? null,
+            pd_done: c.aiRecord.pd_done ?? null,
+            pd_result: c.aiRecord.pd_result ?? null,
+            actual_delivery_date: c.aiRecord.actual_delivery_date ?? null,
+            expected_delivery_date: c.expectedDeliveryDate ?? null,
+          },
           movedToMilking: c.movedToMilking,
           summary: c,
         })),
@@ -418,25 +466,70 @@ export const CowSummaryDashboard: React.FC = () => {
       );
     }
 
+    const odd = grouped.get(CHECK_RECORD_GROUP) ?? [];
+
     return (
-      <div className="space-y-6">
+      <div className="space-y-2">
         {ACTION_ORDER.map((group) => {
           const rows = grouped.get(group) ?? [];
           if (rows.length === 0) return null;
           return (
-            <section key={group} className="space-y-2">
-              <div className="flex items-baseline gap-2">
-                <h3 className="text-base font-semibold">{ACTION_LABEL[group]}</h3>
-                <Badge variant="secondary">{rows.length}</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">{ACTION_HELP[group]}</p>
-              <div className="grid gap-2">
-                {rows.map((r: any) => renderCow(r.summary as CowSummary, group))}
-              </div>
-            </section>
+            <ActionSection
+              key={group}
+              group={group}
+              count={rows.length}
+              open={openGroups.includes(group)}
+              onOpenChange={(v) => toggleGroup(group, v)}
+            >
+              {rows.map((r) => renderCow(r.summary, group))}
+            </ActionSection>
           );
         })}
+
+        {/* Not a job for the shed -- a calving sitting on the wrong record.
+            Off the board, but not lost. */}
+        {odd.length > 0 && (
+          <ActionSection
+            group={CHECK_RECORD_GROUP}
+            count={odd.length}
+            muted
+            open={openGroups.includes(CHECK_RECORD_GROUP)}
+            onOpenChange={(v) => toggleGroup(CHECK_RECORD_GROUP, v)}
+          >
+            {odd.map((r) => renderCow(r.summary, CHECK_RECORD_GROUP))}
+          </ActionSection>
+        )}
       </div>
     );
   }
 };
+
+/**
+ * One heading on the morning board.
+ *
+ * Collapsed by default, so the board opens as a handful of lines you can read
+ * at a glance -- which job, how many cows -- rather than a page of cards to
+ * scroll past before finding the one you came for.
+ */
+const ActionSection: React.FC<{
+  group: ActionGroup;
+  count: number;
+  open: boolean;
+  muted?: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
+}> = ({ group, count, open, muted, onOpenChange, children }) => (
+  <Collapsible open={open} onOpenChange={onOpenChange} className="rounded-lg border">
+    <CollapsibleTrigger className="flex w-full items-center gap-2 p-3 text-left hover:bg-muted/50">
+      <ChevronRight className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-90' : ''}`} />
+      <span className={`flex-1 font-semibold ${muted ? 'text-sm text-muted-foreground' : ''}`}>
+        {ACTION_LABEL[group]}
+      </span>
+      <Badge variant="secondary">{count}</Badge>
+    </CollapsibleTrigger>
+    <CollapsibleContent className="space-y-2 border-t p-3">
+      <p className="text-xs text-muted-foreground">{ACTION_HELP[group]}</p>
+      <div className="grid gap-2">{children}</div>
+    </CollapsibleContent>
+  </Collapsible>
+);

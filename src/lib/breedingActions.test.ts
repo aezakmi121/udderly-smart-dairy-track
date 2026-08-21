@@ -39,8 +39,55 @@ describe('watching for a return to heat', () => {
     expect(cowActions(served(30), S, today)).not.toContain('heat_watch');
   });
 
-  it('says nothing once the PD is recorded', () => {
-    expect(cowActions(served(21, { pd_done: true, pd_result: 'negative' }), S, today)).toEqual([]);
+  it('stops watching once the PD is recorded', () => {
+    // A negative result ends the watch, but she is now open and needs serving,
+    // so she moves to that heading rather than off the board.
+    expect(cowActions(served(21, { pd_done: true, pd_result: 'negative' }), S, today))
+      .toEqual(['needs_service']);
+  });
+});
+
+describe('cows with nothing booked', () => {
+  it('lists her once the PD comes back negative', () => {
+    expect(cowActions(served(40, { pd_done: true, pd_result: 'negative' }), S, today))
+      .toContain('needs_service');
+  });
+
+  it('lists her when the check was inconclusive', () => {
+    expect(cowActions(served(40, { pd_done: true, pd_result: 'inconclusive' }), S, today))
+      .toContain('needs_service');
+  });
+
+  it('lists her when the service itself did not take', () => {
+    expect(cowActions(served(10, { ai_status: 'failed' }), S, today)).toContain('needs_service');
+  });
+
+  it('waits out the voluntary waiting period after a calving', () => {
+    const calvedDaysAgo = (n: number) => {
+      const del = new Date(today);
+      del.setDate(del.getDate() - n);
+      const ai = new Date(del);
+      ai.setDate(ai.getDate() - S.gestationDays);
+      const iso = (d: Date) => d.toISOString().slice(0, 10);
+      return served(S.gestationDays + n, {
+        pd_done: true,
+        pd_result: 'positive',
+        actual_delivery_date: iso(del),
+      });
+    };
+    expect(cowActions(calvedDaysAgo(S.serviceDueAfterCalvingDays - 1), S, today))
+      .not.toContain('needs_service');
+    expect(cowActions(calvedDaysAgo(S.serviceDueAfterCalvingDays), S, today))
+      .toContain('needs_service');
+  });
+
+  it('says nothing about a cow who is carrying', () => {
+    const pregnant = served(60, { pd_done: true, pd_result: 'positive' });
+    expect(cowActions(pregnant, S, today)).not.toContain('needs_service');
+  });
+
+  it('says nothing while her check is still outstanding', () => {
+    expect(cowActions(served(40), S, today)).not.toContain('needs_service');
   });
 });
 
@@ -133,13 +180,15 @@ describe('records that cannot be true', () => {
   });
 
   it('allows the full natural spread without complaining', () => {
-    // The herd's real range is 272-296 days.
+    // The herd's real range is 272-296 days. These calvings are long past, so
+    // she is also due another service -- what matters here is that the record
+    // itself is not called impossible.
     for (const days of [272, 285, 296]) {
       const ai = new Date(2025, 0, 1);
       const del = new Date(ai);
       del.setDate(del.getDate() + days);
       const iso = (d: Date) => d.toISOString().slice(0, 10);
-      expect(cowActions(calved(iso(ai), iso(del)), S, today)).toEqual([]);
+      expect(cowActions(calved(iso(ai), iso(del)), S, today)).not.toContain('check_record');
     }
   });
 

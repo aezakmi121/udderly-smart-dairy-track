@@ -6,9 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
-import { usePayoutCycles, useCyclePayouts, useCurrentCycleLive, type PayoutCycle, type PayoutRow } from '@/hooks/usePayouts';
+import {
+  usePayoutCycles, useCyclePayouts, useCurrentCycleLive,
+  useAdvanceSummary, useSetAdvanceDeduction,
+  type PayoutCycle, type PayoutRow,
+} from '@/hooks/usePayouts';
 import { PaymentDialog } from './PaymentDialog';
 import { AdvancesTab } from './AdvancesTab';
 import { BulkPayDialog, downloadPaymentRegisterCsv } from './BulkPayDialog';
@@ -173,6 +178,15 @@ const Stat: React.FC<{ label: string; value: string; highlight?: boolean }> = ({
 
 const ReconciliationCard: React.FC<{ cycle: PayoutCycle; isAdmin: boolean; busy: string | null; onAction: (fn: string, body: any) => void }> = ({ cycle, isAdmin, busy, onAction }) => {
   const { data: payouts = [] } = useCyclePayouts(cycle.id);
+  const { data: advances = [] } = useAdvanceSummary();
+  const setDeduction = useSetAdvanceDeduction(cycle.id);
+  // What each farmer still owes. Recovery only happens at finalize, so during
+  // reconciliation this is the full balance a deduction is taken from -- the
+  // same figure the database trigger clamps against.
+  const advanceByFarmer = useMemo(
+    () => new Map(advances.map((a) => [a.farmer_id, Number(a.outstanding)])),
+    [advances]
+  );
   return (
     <Card>
       <CardHeader className="py-3"><CardTitle className="text-base flex items-center justify-between flex-wrap gap-2">
@@ -198,7 +212,16 @@ const ReconciliationCard: React.FC<{ cycle: PayoutCycle; isAdmin: boolean; busy:
           <div className="space-y-2">
             <div className="text-xs text-muted-foreground">{payouts.length} draft bills · Total {inr(payouts.reduce((s, p) => s + Number(p.net_payable), 0))}</div>
             <div className="max-h-[50vh] overflow-y-auto space-y-1">
-              {payouts.map((p) => <DraftRow key={p.id} p={p} />)}
+              {payouts.map((p) => (
+                <DraftRow
+                  key={p.id}
+                  p={p}
+                  isAdmin={isAdmin}
+                  outstanding={advanceByFarmer.get(p.farmer_id) ?? 0}
+                  onSetDeduction={(amount) => setDeduction.mutate({ payoutId: p.id, amount })}
+                  busy={setDeduction.isPending}
+                />
+              ))}
             </div>
           </div>
         )}
@@ -207,20 +230,91 @@ const ReconciliationCard: React.FC<{ cycle: PayoutCycle; isAdmin: boolean; busy:
   );
 };
 
-const DraftRow: React.FC<{ p: PayoutRow }> = ({ p }) => (
-  <div className="border rounded p-2 text-xs">
-    <div className="flex justify-between gap-2">
-      <span className="font-medium truncate">{p.farmers?.farmer_code} · {p.farmers?.name}</span>
-      <span className="font-bold">{inr(Number(p.net_payable))}</span>
+/**
+ * A draft bill, with the one number an admin gets to decide.
+ *
+ * Recovery is otherwise "as much as the milk allows", which takes a large
+ * advance out of a small fortnight in one go and sends the farmer home with
+ * nothing. Typing a figure here settles it for this cycle only; clearing the
+ * field hands the row back to the automatic amount.
+ */
+const DraftRow: React.FC<{
+  p: PayoutRow;
+  isAdmin: boolean;
+  outstanding: number;
+  onSetDeduction: (amount: number | null) => void;
+  busy: boolean;
+}> = ({ p, isAdmin, outstanding, onSetDeduction, busy }) => {
+  const deducted = Number(p.advances_deducted);
+  const isOverridden = p.advances_deducted_override !== null;
+  // Advance left after this cycle takes its cut -- what the farmer would still
+  // owe if the bill were finalized as it stands.
+  const remainingAfter = Math.max(outstanding - deducted, 0);
+  const [draft, setDraft] = useState<string | null>(null);
+  const editable = isAdmin && p.status === 'draft' && (outstanding > 0 || deducted > 0);
+
+  const commit = () => {
+    if (draft === null) return;
+    const trimmed = draft.trim();
+    setDraft(null);
+    if (trimmed === '') {
+      if (isOverridden) onSetDeduction(null);
+      return;
+    }
+    const n = Number(trimmed);
+    if (!Number.isFinite(n) || n < 0 || n === deducted) return;
+    onSetDeduction(n);
+  };
+
+  return (
+    <div className="border rounded p-2 text-xs space-y-1">
+      <div className="flex justify-between gap-2">
+        <span className="font-medium truncate">{p.farmers?.farmer_code} · {p.farmers?.name}</span>
+        <span className="font-bold">{inr(Number(p.net_payable))}</span>
+      </div>
+      <div className="text-muted-foreground flex flex-wrap gap-x-3">
+        <span>{Number(p.total_quantity).toFixed(1)} L</span>
+        <span>Milk {inr(Number(p.total_amount))}</span>
+        {deducted > 0 && <span className="text-orange-700">−Adv {inr(deducted)}</span>}
+        {Number(p.carry_forward_in) > 0 && <span className="text-red-700">+CF {inr(Number(p.carry_forward_in))}</span>}
+      </div>
+      {editable && (
+        <div className="flex flex-wrap items-center gap-2 border-t pt-1">
+          <Label htmlFor={`adv-${p.id}`} className="text-[11px] text-muted-foreground">Advance this cycle</Label>
+          <Input
+            id={`adv-${p.id}`}
+            inputMode="numeric"
+            disabled={busy}
+            className="h-7 w-24 text-xs"
+            value={draft ?? String(Math.round(deducted))}
+            onChange={(e) => setDraft(e.target.value.replace(/[^0-9.]/g, ''))}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+              if (e.key === 'Escape') setDraft(null);
+            }}
+          />
+          <span className="text-[11px] text-muted-foreground">
+            of {inr(outstanding)} owed · {inr(remainingAfter)} left after
+          </span>
+          {isOverridden && (
+            <Badge variant="secondary" className="text-[10px]">
+              set by hand
+              <button
+                type="button"
+                className="ml-1 underline"
+                disabled={busy}
+                onClick={() => onSetDeduction(null)}
+              >
+                auto
+              </button>
+            </Badge>
+          )}
+        </div>
+      )}
     </div>
-    <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-3">
-      <span>{Number(p.total_quantity).toFixed(1)} L</span>
-      <span>Milk {inr(Number(p.total_amount))}</span>
-      {Number(p.advances_deducted) > 0 && <span className="text-orange-700">−Adv {inr(Number(p.advances_deducted))}</span>}
-      {Number(p.carry_forward_in) > 0 && <span className="text-red-700">+CF {inr(Number(p.carry_forward_in))}</span>}
-    </div>
-  </div>
-);
+  );
+};
 
 const PaymentsCard: React.FC<{ cycle: PayoutCycle }> = ({ cycle }) => {
   const { data: payouts = [], isLoading } = useCyclePayouts(cycle.id);

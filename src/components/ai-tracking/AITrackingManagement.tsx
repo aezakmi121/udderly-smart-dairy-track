@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Plus, Filter } from 'lucide-react';
@@ -10,6 +10,15 @@ import { AITrackingTable } from './AITrackingTable';
 import { AITrackingFiltersModal } from './AITrackingFiltersModal';
 import { CowSummaryDashboard } from './CowSummaryDashboard';
 import { useAITracking } from '@/hooks/useAITracking';
+import type { ActionGroup } from '@/lib/breedingActions';
+
+/** Which board headings each dashboard tile opens. */
+const DASHBOARD_LINK_GROUPS: Record<string, ActionGroup[]> = {
+  'pd-due': ['pd_due', 'pd_overdue'],
+  'close-delivery': ['due_to_calve'],
+  'overdue-delivery': ['overdue_delivery'],
+  'needs-ai': ['needs_service'],
+};
 
 export const AITrackingManagement = () => {
   const [showModal, setShowModal] = useState(false);
@@ -27,16 +36,14 @@ export const AITrackingManagement = () => {
 
   const { aiRecords, isLoading, addAIRecordMutation, updateAIRecordMutation, deleteAIRecordMutation } = useAITracking();
 
-  // Apply preset filter when arriving from dashboard quick links
-  useEffect(() => {
-    if (!presetFilter) return;
-    if (presetFilter === 'pd-due') {
-      setFilters(f => ({ ...f, pdStatus: 'pending' }));
-    }
-    // close-delivery, overdue-delivery, needs-ai are computed presets — they
-    // don't map cleanly onto the existing filter shape, so we just open the
-    // page; the user sees all records and can refine via filters.
-  }, [presetFilter]);
+  // Arriving from a dashboard tile opens the matching headings on the board.
+  // Every tile used to land here unfiltered except pd-due, because the presets
+  // were being forced through the All Records filter shape; the board's own
+  // groups are what the tiles count, so they are what a tile should open.
+  const expandGroups = useMemo(
+    () => (presetFilter ? DASHBOARD_LINK_GROUPS[presetFilter] ?? [] : []),
+    [presetFilter]
+  );
 
   const filteredRecords = useMemo(() => {
     if (!aiRecords) return [];
@@ -88,14 +95,12 @@ export const AITrackingManagement = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">AI Tracking</h1>
-          <p className="text-muted-foreground">Track artificial insemination records and pregnancy detection.</p>
-        </div>
+    <div className="space-y-4">
+      {/* No page heading: the nav already says where you are, and the board
+          below is what you came for. */}
+      <div className="flex justify-end gap-2">
         <div className="flex gap-2">
-          <Button 
+          <Button
             variant="outline" 
             onClick={() => setShowFiltersModal(true)}
             className="flex items-center gap-2"
@@ -133,41 +138,24 @@ export const AITrackingManagement = () => {
       <Tabs defaultValue="dashboard" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="dashboard">Cow Dashboard</TabsTrigger>
-          <TabsTrigger value="all">All Records</TabsTrigger>
+          <TabsTrigger value="all">All Records ({filteredRecords.length})</TabsTrigger>
         </TabsList>
-        
+
+        {/* The tab label is the heading. A second one inside the panel saying
+            the same thing was just chrome to scroll past. */}
         <TabsContent value="dashboard" className="space-y-4">
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-semibold">
-                Cow Summary Dashboard
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                One card per cow with delivery tracking and milking group management
-              </p>
-            </div>
-            <div className="p-6">
-              <CowSummaryDashboard />
-            </div>
-          </div>
+          <CowSummaryDashboard expandGroups={expandGroups} />
         </TabsContent>
-        
+
         <TabsContent value="all" className="space-y-4">
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-6 border-b">
-              <h2 className="text-xl font-semibold">
-                AI Records ({filteredRecords.length})
-              </h2>
-            </div>
-            <div className="p-6">
-              <div className="max-h-[70vh] overflow-auto overflow-x-auto">
-                <AITrackingTable 
-                  aiRecords={filteredRecords} 
-                  isLoading={isLoading}
-                  onUpdateRecord={handleUpdateRecord}
-                  onDeleteRecord={handleDeleteRecord}
-                />
-              </div>
+          <div className="rounded-lg border bg-card p-3 sm:p-4">
+            <div className="max-h-[70vh] overflow-auto overflow-x-auto">
+              <AITrackingTable
+                aiRecords={filteredRecords}
+                isLoading={isLoading}
+                onUpdateRecord={handleUpdateRecord}
+                onDeleteRecord={handleDeleteRecord}
+              />
             </div>
           </div>
         </TabsContent>

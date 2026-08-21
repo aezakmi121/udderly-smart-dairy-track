@@ -80,6 +80,19 @@ Deno.serve(async (req) => {
       if (remaining > 0) adv.set(a.farmer_id, (adv.get(a.farmer_id) ?? 0) + remaining);
     }
 
+    // Deductions the admin already set by hand on this cycle's drafts. They win
+    // over the computed figure, and the columns are left out of the upsert
+    // below so regenerating the draft does not discard the decision.
+    const { data: existing } = await supabase
+      .from('farmer_payouts')
+      .select('farmer_id, advances_deducted_override')
+      .eq('cycle_id', cycle_id)
+      .not('advances_deducted_override', 'is', null);
+    const override = new Map<string, number>();
+    for (const p of (existing ?? [])) {
+      override.set(p.farmer_id, Number(p.advances_deducted_override));
+    }
+
     // Build payout rows
     const rows: any[] = [];
     const farmerIds = new Set([...agg.keys(), ...carry.keys(), ...adv.keys()]);
@@ -88,7 +101,11 @@ Deno.serve(async (req) => {
       const cf = carry.get(fid) ?? 0;
       const adRaw = adv.get(fid) ?? 0;
       // Don't deduct more advance than the milk amount allows; rest stays as outstanding
-      const advanceTaken = Math.min(adRaw, a.amt);
+      const computed = Math.min(adRaw, a.amt);
+      // An admin figure is the decision for this cycle, still clamped to what
+      // the farmer actually owes -- you cannot recover more than is left.
+      const manual = override.get(fid);
+      const advanceTaken = manual === undefined ? computed : Math.min(manual, adRaw);
       const net = Math.max(a.amt + cf - advanceTaken, 0);
       rows.push({
         cycle_id,

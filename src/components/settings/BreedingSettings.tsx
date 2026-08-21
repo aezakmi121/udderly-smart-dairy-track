@@ -131,6 +131,13 @@ export const BreedingSettings: React.FC = () => {
           value={draft.dryToMilkingDaysBefore}
           onChange={set('dryToMilkingDaysBefore')}
         />
+        <Field
+          id="serviceDueAfterCalvingDays"
+          label="Serve again after calving"
+          help="The voluntary waiting period. Past this with nothing booked, she appears under AI pending."
+          value={draft.serviceDueAfterCalvingDays}
+          onChange={set('serviceDueAfterCalvingDays')}
+        />
       </div>
 
       {draft.dryToMilkingDaysBefore <= draft.dueToCalveWithinDays && (

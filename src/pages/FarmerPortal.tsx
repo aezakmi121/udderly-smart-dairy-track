@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogOut, Receipt, Wallet, CalendarDays, Download, KeyRound } from 'lucide-react';
+import { Loader2, LogOut, Receipt, CalendarDays, Download, KeyRound } from 'lucide-react';
 import { DayHero, DaySessions, DayList } from '@/components/farmer-view';
 import { PinLoginCard } from '@/components/farmer-view/PinLoginCard';
 import { PinSetupCard } from '@/components/farmer-view/PinSetupCard';
@@ -113,15 +113,21 @@ const PortalHome: React.FC<{ token: string; onUnauthorized: () => void }> = ({ t
   if (err) return <Card><CardContent className="p-4 text-sm text-destructive">{err}</CardContent></Card>;
   if (!data) return null;
 
-  const { farmer, cycle, liveTotal, bills, advances, pin } = data;
+  const { farmer, cycle, liveTotal, bills, advances, advanceLast, pin } = data;
   // Only worth offering to farmers with a number on file -- the PIN is useless
   // without one to pair it with, and 32 of 61 have none.
   const offerPin = (pin?.canSet || phoneAdded) && !pin?.isSet && !pinDismissed;
   // Without a number a PIN has nothing to pair with, so ask for that first.
   const offerPhone = !pin?.canSet && !phoneAdded && !phoneDismissed;
   const lastPaid = bills?.find((b: any) => b.status === 'paid');
-  const advanceDue = (advances ?? []).filter((a: any) => a.status === 'outstanding')
-    .reduce((s: number, a: any) => s + (Number(a.amount) - Number(a.recovered_amount ?? 0)), 0);
+  const openAdvances: PortalAdvance[] = (advances ?? [])
+    .filter((a: PortalAdvance) => a.status === 'outstanding');
+  const advanceDue = openAdvances
+    .reduce((s, a) => s + (Number(a.amount) - Number(a.recovered_amount ?? 0)), 0);
+  const advanceTaken = openAdvances.reduce((s, a) => s + Number(a.amount), 0);
+  // A farmer who has never taken an advance should never see the word. The
+  // block appears only when there is something to say.
+  const showAdvance = advanceDue > 0;
 
   return (
     <div className="space-y-4">
@@ -153,22 +159,36 @@ const PortalHome: React.FC<{ token: string; onUnauthorized: () => void }> = ({ t
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-2 gap-2">
-          <SmallStat
-            icon={<Receipt className="h-4 w-4" />}
-            label="पिछला बिल"
-            value={lastPaid ? formatRupeesRounded(lastPaid.paid_amount) : '—'}
-            sub={lastPaid?.paid_on ? `भुगतान ${formatDateDMY(lastPaid.paid_on)}` : ''}
-          />
-          <SmallStat
-            icon={<Wallet className="h-4 w-4" />}
-            label="अग्रिम बकाया"
-            value={formatRupeesRounded(advanceDue)}
-            sub={advanceDue > 0 ? 'अगले बिल से कटेगा' : 'कोई बकाया नहीं'}
-            highlight={advanceDue > 0}
-          />
-        </div>
+        <SmallStat
+          icon={<Receipt className="h-4 w-4" />}
+          label="पिछला बिल"
+          value={lastPaid ? formatRupeesRounded(lastPaid.paid_amount) : '—'}
+          sub={lastPaid?.paid_on ? `भुगतान ${formatDateDMY(lastPaid.paid_on)}` : ''}
+        />
       </section>
+
+      {showAdvance && (
+        <section className="space-y-2">
+          <h2 className="px-1 text-sm font-semibold text-muted-foreground">अग्रिम</h2>
+          <Card>
+            <CardContent className="space-y-2 p-4">
+              <AdvanceLine label="लिया" value={formatRupeesRounded(advanceTaken)} />
+              <AdvanceLine
+                label="पिछली कटौती"
+                value={advanceLast ? formatRupeesRounded(advanceLast.amount) : '—'}
+                sub={
+                  advanceLast?.cycle_start && advanceLast?.cycle_end
+                    ? `${formatDateDMY(advanceLast.cycle_start)} – ${formatDateDMY(advanceLast.cycle_end)}`
+                    : advanceLast ? '' : 'अभी कुछ नहीं कटा'
+                }
+              />
+              <div className="border-t pt-2">
+                <AdvanceLine label="बाकी" value={formatRupeesRounded(advanceDue)} strong />
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       <section className="space-y-2">
         <h2 className="px-1 text-sm font-semibold text-muted-foreground">पिछले बिल</h2>
@@ -218,6 +238,23 @@ const SmallStat: React.FC<{ icon: React.ReactNode; label: string; value: string;
       {sub && <div className="text-[11px] text-muted-foreground">{sub}</div>}
     </CardContent>
   </Card>
+);
+
+interface PortalAdvance {
+  amount: number;
+  recovered_amount: number | null;
+  status: string;
+}
+
+/** One row of the advance block: label on the left, rupees on the right. */
+const AdvanceLine: React.FC<{ label: string; value: string; sub?: string; strong?: boolean }> = ({ label, value, sub, strong }) => (
+  <div className="flex items-baseline justify-between gap-3">
+    <div>
+      <div className={`text-sm ${strong ? 'font-semibold' : 'text-muted-foreground'}`}>{label}</div>
+      {sub && <div className="text-[11px] text-muted-foreground">{sub}</div>}
+    </div>
+    <div className={`tabular-nums ${strong ? 'text-xl font-bold text-primary' : 'text-base font-medium'}`}>{value}</div>
+  </div>
 );
 
 const BillCard: React.FC<{ bill: any; token: string }> = ({ bill, token }) => {

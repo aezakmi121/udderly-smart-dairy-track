@@ -1,7 +1,7 @@
 # Farmer payouts, advances, and the ledger
 
-Status: design note. Nothing here is built yet — Part 1 documents what already
-exists in the codebase today, Part 2 is the proposal.
+Status: **built**. Part 1 documents the system as it was; Part 2 is what was
+implemented. Section 2.7 records what was deliberately left out.
 
 ---
 
@@ -138,7 +138,7 @@ write-offs, `other_deductions`. What is left is the smallest thing that answers
 "did this farmer take an advance, what came off it last, and what is left" — for
 the admin who manages it and the farmer who reads it.
 
-### 2.1 What we are actually building
+### 2.1 What was built
 
 Three small pieces:
 
