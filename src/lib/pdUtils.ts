@@ -11,7 +11,7 @@ export interface AIRecord {
   service_number: number;
   ai_status: string;
   pd_done: boolean;
-  pd_result?: 'positive' | 'negative';
+  pd_result?: 'positive' | 'negative' | 'inconclusive';
   pd_date?: string;
   expected_delivery_date?: string;
   actual_delivery_date?: string;

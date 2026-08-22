@@ -1,6 +1,6 @@
 # Breeding board — categories, and the data behind them
 
-Status: **proposal, for decision.** Nothing here is built.
+Status: **built.** Section 10 records what shipped and the decisions taken.
 
 ---
 
@@ -231,3 +231,88 @@ settings keys.
 4. **Long open at 120 days** — or 150?
 5. **Do you want "Served — waiting" at all?** It is the least interesting stage.
    Dropping it breaks the add-up property, which is the one reason to keep it.
+
+
+---
+
+## 10. What shipped
+
+### Decisions taken
+
+| Question | Answer | Why |
+|---|---|---|
+| Eleven headings, or fold? | **Fold.** Eight action headings, then one muted "Everything else". | The partition survives; the morning board stays eight lines. Position is read weekly, not daily. |
+| Waiting period | **60 days, one number for both.** | Standard for crossbreds, already `serviceDueAfterCalvingDays`. One number is what makes "recently calved" and "ready to serve" a clean split rather than a gap. |
+| Repeat breeder | **3 services.** | Standard definition. At four you have burned an extra oestrous cycle before anyone asks. |
+| Long open | **120 days.** | ~13-month calving interval is ~90 days open. 120 is a month past target and still recoverable; 150 is not. |
+| Keep "Served — waiting"? | **Yes, inside the fold.** | Least interesting stage, and the reason the numbers add up. Costs nothing once folded. |
+
+### The stages, as built
+
+`cowStage()` returns **exactly one** stage per cow, first match wins down
+`ACTION_ORDER` then `INFO_ORDER`. `cowBadges()` returns the overlays. A cow ten
+days from calving who has not been moved is listed under *Due to calve* with a
+**Needs moving** badge — not twice under two headings.
+
+Action tier: overdue to calve · due to calve · move to milking · PD overdue ·
+PD due · not pregnant · ready to serve · watch for heat.
+
+Fold ("Everything else"): recently calved · pregnant — on track · served — waiting.
+
+Below that: **Never served**, then **Check the record**, then the reconciliation
+line.
+
+### Verified against the real herd
+
+Running the stage logic over the live database placed the cows exactly where
+this document predicted:
+
+```
+pregnant_on_track  7   15, 25, 4, 41, 45, 6, 9
+recently_calved    7   1, 16, 2, 21, 24, 33, 46
+ready_to_serve     4   26, 27, 32, 35
+not_pregnant       2   12, 5
+heat_watch         1   23
+served_waiting     1   39
+```
+
+Cows **5 and 12** — the confirmed-empty ones — separate cleanly from **32 and
+35**, which had recently calved. Those four shared a heading before.
+
+### The hole the partition found
+
+The counts above total **22 cows. The herd has 35 active.**
+
+Thirteen — 10, 19, 22, 28, 34, 40, 50, 51, 52, 53, 54, 55, 56 — have **no AI
+record at all**, so the board, which is built from `ai_records`, could not see
+them. Not "in the wrong heading": absent. This is precisely what the add-up
+property was meant to catch, and it caught it on the first run.
+
+They now appear as a **Never served** section, and the reconciliation line reads
+against the active herd rather than against whatever the board happened to find:
+
+```
+35 of 35 active cows accounted for · 13 never served
+```
+
+Whether a never-served cow is a heifer coming up to breeding age or a cow nobody
+entered cannot be told without an age rule, so the section is informational
+rather than an action heading. **Open question:** add a breeding-age setting
+(~13–15 months off `cows.date_of_birth`) and promote the ones past it into the
+action tier?
+
+### The `last_calving_date` fix
+
+A trigger on `ai_records` now maintains `cows.last_calving_date` alongside the
+existing one on `calves`, taking the later of the two so neither path can move
+the date backwards. The board's own "Record calving" writes no calf row, so the
+old trigger never fired for it.
+
+The backfill turned out to be a **no-op** — all 38 cows were already correct, so
+no board-recorded calving has hit this yet. The trigger stops it happening.
+
+### Also fixed
+
+`AIRecord.pd_result` was typed `'positive' | 'negative'`, missing the
+`'inconclusive'` the database enum has and the app already writes. That is why
+every call site needed a cast. Widened, and the casts came out.

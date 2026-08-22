@@ -30,7 +30,7 @@ export const useCowActionSummary = () => {
       pdDue: count('pd_due') + count('pd_overdue'),
       closeToDelivery: count('due_to_calve'),
       overdueDelivery: count('overdue_delivery'),
-      needsAI: count('needs_service'),
+      needsAI: count('not_pregnant') + count('ready_to_serve'),
     };
     // `count` reads from `grouped`, which is what actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps

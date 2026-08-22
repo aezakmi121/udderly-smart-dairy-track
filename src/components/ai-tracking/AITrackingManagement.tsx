@@ -17,7 +17,7 @@ const DASHBOARD_LINK_GROUPS: Record<string, ActionGroup[]> = {
   'pd-due': ['pd_due', 'pd_overdue'],
   'close-delivery': ['due_to_calve'],
   'overdue-delivery': ['overdue_delivery'],
-  'needs-ai': ['needs_service'],
+  'needs-ai': ['not_pregnant', 'ready_to_serve'],
 };
 
 export const AITrackingManagement = () => {

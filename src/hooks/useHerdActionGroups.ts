@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { latestRecord, type CycleRecord } from '@/lib/aiCycle';
-import { groupHerd, type ActionGroup } from '@/lib/breedingActions';
+import { buildCowCycle, type CowCycle } from '@/lib/cowCycle';
+import { groupHerd, cowBadges, type ActionGroup, type CowBadge } from '@/lib/breedingActions';
 import { useAppSetting } from '@/hooks/useAppSettings';
 import {
   BREEDING_SETTINGS_KEY,
@@ -27,14 +28,17 @@ export interface BoardRecord extends CycleRecord {
 export interface HerdEntry {
   record: BoardRecord;
   movedToMilking: boolean;
+  /** Read across her whole history, not just the record above. */
+  cycle: CowCycle;
+  badges: CowBadge[];
 }
 
 const SELECT =
   'id, cow_id, ai_date, ai_status, pd_done, pd_result, expected_delivery_date, actual_delivery_date, created_at, cows!ai_records_cow_id_fkey (id, cow_number, status, moved_to_milking)';
 
 /**
- * The herd bucketed into action groups — one cow, one row, decided by her most
- * recent record.
+ * The herd bucketed into stages — one cow, one stage, decided by her most
+ * recent record but described using her whole history.
  *
  * Shared so the breeding board, the dashboard tiles, and the list behind each
  * tile all answer from the same grouping. They used to run three sets of
@@ -75,13 +79,22 @@ export const useHerdActionGroups = (enabled = true) => {
     const herd: HerdEntry[] = Array.from(byCow.values()).flatMap((list) => {
       const record = latestRecord(list);
       if (!record) return [];
-      return [{ record, movedToMilking: !!record.cows?.moved_to_milking }];
+      const cycle = buildCowCycle(list, record);
+      const movedToMilking = !!record.cows?.moved_to_milking;
+      const entry = { record, movedToMilking, cycle };
+      return [{ ...entry, badges: cowBadges(entry, breeding) }];
     });
 
     return groupHerd(herd, breeding);
   }, [query.data, breeding]);
 
-  const count = (group: ActionGroup) => grouped?.get(group)?.length ?? 0;
+  const count = (group: ActionGroup) => grouped?.stages.get(group)?.length ?? 0;
 
-  return { grouped, count, isLoading: query.isLoading, error: query.error };
+  return {
+    grouped,
+    count,
+    settings: breeding,
+    isLoading: query.isLoading,
+    error: query.error,
+  };
 };

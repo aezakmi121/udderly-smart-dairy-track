@@ -18,7 +18,7 @@ const CATEGORY_GROUPS: Record<ActionCategory, ActionGroup[]> = {
   'pd-due': ['pd_due', 'pd_overdue'],
   'close-delivery': ['due_to_calve'],
   'overdue-delivery': ['overdue_delivery'],
-  'needs-ai': ['needs_service'],
+  'needs-ai': ['not_pregnant', 'ready_to_serve'],
 };
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -43,7 +43,7 @@ export const useCowActionDetails = (category: ActionCategory | null) => {
     const seen = new Set<string>();
     const rows: ActionDetailRow[] = [];
     for (const group of CATEGORY_GROUPS[category]) {
-      for (const entry of grouped.get(group) ?? []) {
+      for (const entry of grouped.stages.get(group) ?? []) {
         if (seen.has(entry.record.id)) continue;
         seen.add(entry.record.id);
         rows.push(describe(category, entry.record, t));

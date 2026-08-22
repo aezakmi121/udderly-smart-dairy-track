@@ -134,9 +134,23 @@ export const BreedingSettings: React.FC = () => {
         <Field
           id="serviceDueAfterCalvingDays"
           label="Serve again after calving"
-          help="The voluntary waiting period. Past this with nothing booked, she appears under AI pending."
+          help="The voluntary waiting period. Before this she is Recently calved; after it, Ready to serve."
           value={draft.serviceDueAfterCalvingDays}
           onChange={set('serviceDueAfterCalvingDays')}
+        />
+        <Field
+          id="repeatBreederServices"
+          label="Repeat breeder after"
+          help="Services in one lactation without conceiving before she is flagged for a closer look."
+          value={draft.repeatBreederServices}
+          onChange={set('repeatBreederServices')}
+        />
+        <Field
+          id="longOpenDays"
+          label="Long open after"
+          help="Days open past which she is behind on the calving interval."
+          value={draft.longOpenDays}
+          onChange={set('longOpenDays')}
         />
       </div>
 
@@ -144,8 +158,9 @@ export const BreedingSettings: React.FC = () => {
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription className="text-sm">
-            "Move to milking" is not further out than "due to calve", so the same cows will appear
-            under both headings. Setting the move a week or more earlier keeps the two jobs apart.
+            "Move to milking" is not further out than "due to calve", so no cow will ever reach the
+            move heading — she is listed as due to calve first, carrying a "needs moving" badge.
+            Setting the move a week or more earlier gives the two jobs their own headings.
           </AlertDescription>
         </Alert>
       )}

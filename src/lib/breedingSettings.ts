@@ -28,8 +28,23 @@ export interface BreedingSettings {
   /**
    * The voluntary waiting period. Past this many days since calving with
    * nothing booked, she belongs on the board as needing a service.
+   *
+   * The same number separates "recently calved" from "ready to serve", which
+   * is what keeps those two a clean split rather than a gap or an overlap.
    */
   serviceDueAfterCalvingDays: number;
+  /**
+   * Services in one lactation without conceiving before she is worth a second
+   * look. Three is the standard definition: at four you have already burned an
+   * extra oestrous cycle before anyone asks why.
+   */
+  repeatBreederServices: number;
+  /**
+   * Days open past which she is behind on the calving interval. A 13-month
+   * interval is about 90 days open, so 120 is a month past target and still
+   * recoverable -- by 150 it is not.
+   */
+  longOpenDays: number;
 }
 
 export const BREEDING_SETTINGS_KEY = 'breeding_settings';
@@ -46,6 +61,8 @@ export const DEFAULT_BREEDING_SETTINGS: BreedingSettings = {
   dueToCalveWithinDays: 21,
   dryToMilkingDaysBefore: 30,
   serviceDueAfterCalvingDays: 60,
+  repeatBreederServices: 3,
+  longOpenDays: 120,
 };
 
 const int = (value: unknown, fallback: number): number => {
@@ -76,6 +93,8 @@ export const normaliseBreedingSettings = (raw: unknown): BreedingSettings => {
     dueToCalveWithinDays: int(t.dueToCalveWithinDays, d.dueToCalveWithinDays),
     dryToMilkingDaysBefore: int(t.dryToMilkingDaysBefore, d.dryToMilkingDaysBefore),
     serviceDueAfterCalvingDays: int(t.serviceDueAfterCalvingDays, d.serviceDueAfterCalvingDays),
+    repeatBreederServices: int(t.repeatBreederServices, d.repeatBreederServices),
+    longOpenDays: int(t.longOpenDays, d.longOpenDays),
   };
 };
 
