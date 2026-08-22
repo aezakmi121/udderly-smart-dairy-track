@@ -1,6 +1,6 @@
 # The cows screen — what to strip, and the button that should not be there
 
-Status: **proposal, for decision.** Nothing here is built.
+Status: **built.** Section 8 records the decisions and what shipped.
 
 ---
 
@@ -187,3 +187,98 @@ matter for not losing data. 5 is the biggest visual win.
 4. **Do the nine phantom cows get marked `sold` or `dead`?** You will know
    which; if some are one and some the other I can prepare the update once you
    say which is which.
+
+
+---
+
+## 8. What shipped
+
+### The decision that simplified everything
+
+The proposal was to split `status` into `presence` + `condition`. Your answer —
+*"as long as they are alive and in farm they are considered active no matter
+their status"* — removed the need for the second column entirely. There is no
+condition to track, so there is one axis:
+
+```
+status:  active | sold | dead        + exit_date, exit_reason, exit_note
+```
+
+`dry`, `pregnant` and `sick` stay in the database enum because Postgres cannot
+drop an enum value, but nothing writes them any more and the UI never offers
+them.
+
+### The future-proofing, which was the real point
+
+`lib/cowPresence.ts` is now the only place that decides whether a cow is on the
+farm, and it decides by **exclusion** — she is here unless she has left:
+
+```ts
+export const isOnFarm = (status) => !GONE_STATUSES.includes(status);
+```
+
+That direction matters. The five hooks each listed the statuses that *counted
+as present*, which is why a status nobody had thought about would silently drop
+a cow off some screens and not others. Stated as an exclusion, an unrecognised
+status leaves her visible. There is a test for exactly that.
+
+All five hooks now resolve to one query. The names are kept so call sites still
+read as what they are for:
+
+| Was | Now |
+|---|---|
+| `useActiveCows` — `['active']` | on the farm |
+| `useMilkingCows` — `['active','pregnant','sick']` | on the farm |
+| `useVaccinationCows` — `['active','dry','sick']` | on the farm |
+| `useAICows`, `useWeightLogCows`, `useGroupAssignmentCows` | on the farm |
+
+`useMilkingCows` excluding `dry` was the one exclusion that was arguably right.
+It is folded in because nothing sets `dry`; the comment says that if dry-off is
+ever tracked, this is the hook to split back out — and it should read the
+breeding board's dry-off window rather than a status someone has to remember.
+
+### The delete button
+
+Gone, and the cascades with it. Verified against the live database — deleting a
+cow that has milk history is now refused by the constraint rather than silently
+taking 10,189 rows with it:
+
+```
+NOTICE: Deleting a cow with milk history is now refused, as intended
+```
+
+`ai_records`, `calves`, `milk_production`, `vaccination_records` and
+`weight_logs` are `RESTRICT`. `cow_group_assignments` stays `CASCADE`
+deliberately — group membership is current arrangement, not history, and an
+assignment for a cow who no longer exists means nothing.
+
+The three duplicate FKs (`fk_ai_records_cow_id`, `fk_vaccination_records_cow_id`,
+`fk_weight_logs_cow_id`) are dropped, the same cleanup Phase 1 did for
+`milk_collections`.
+
+### The screen
+
+- Page `<h2>`, its subtitle and the "Cow Details" card header: gone. The count
+  survives as one small line at the foot.
+- The button row was `flex-col` on mobile, which is what stretched Filters to
+  full width. Now `flex-row justify-end`.
+- **Cards below `sm`, table at `sm` and up** — nine columns genuinely fit on a
+  laptop, and never fit on a phone.
+- Two collapsible groups: **On the farm** (open) and **Left the herd**
+  (collapsed, dashed border). Opposite default to the breeding board, on
+  purpose: that is a worklist you scan, this is a register you look things up
+  in, so the group holding nearly every cow starts open.
+- **Search cuts across both groups** — asking after a cow should not require
+  knowing first whether she has been sold.
+- `CowFilters.tsx`, 125 lines of dead code, deleted.
+
+### One more always-zero metric
+
+`CattleReports` counted `cows.status === 'pregnant'`, which nothing has ever
+set — the same silent zero as the "Needs AI" tile. It now counts cows with a
+positive PD and no calving recorded, restricted to cows still on the farm.
+
+### Not done
+
+No hard delete of any kind survives, per your answer. If a genuinely mistyped
+cow ever needs removing, it is a deliberate database operation, not a button.

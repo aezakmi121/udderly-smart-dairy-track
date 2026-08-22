@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { isOnFarm } from '@/lib/cowPresence';
 import { useReportExports } from '@/hooks/useReportExports';
 
 export const CattleReports = () => {
@@ -16,7 +17,7 @@ export const CattleReports = () => {
     queryFn: async () => {
       const { data: cows, error: cowError } = await supabase
         .from('cows')
-        .select('status');
+        .select('id, status');
 
       const { data: calves, error: calfError } = await supabase
         .from('calves')
@@ -24,15 +25,27 @@ export const CattleReports = () => {
 
       if (cowError || calfError) throw cowError || calfError;
 
-      const activeCows = cows?.filter(cow => cow.status === 'active').length || 0;
-      const milkingCows = cows?.filter(cow => cow.status === 'active').length || 0; // Simplified
-      const pregnantCows = cows?.filter(cow => cow.status === 'pregnant').length || 0;
+      // Pregnancy comes from the breeding records, not from cows.status. The
+      // status was never set to 'pregnant' by anything, so this count had
+      // always read zero -- and the records are the better source anyway,
+      // since a PD result is what actually decides it.
+      const { data: carrying } = await supabase
+        .from('ai_records')
+        .select('cow_id')
+        .eq('pd_result', 'positive')
+        .is('actual_delivery_date', null);
+
+      const onFarm = cows?.filter(cow => isOnFarm(cow.status)) ?? [];
+      const onFarmIds = new Set(onFarm.map(c => c.id));
+      const pregnantCows = new Set(
+        (carrying ?? []).map(r => r.cow_id).filter((id): id is string => !!id && onFarmIds.has(id))
+      ).size;
       const totalCalves = calves?.filter(calf => calf.status === 'alive').length || 0;
 
       return {
         totalCattle: cows?.length || 0,
-        activeCows,
-        milkingCows,
+        activeCows: onFarm.length,
+        milkingCows: onFarm.length,
         pregnantCows,
         totalCalves
       };

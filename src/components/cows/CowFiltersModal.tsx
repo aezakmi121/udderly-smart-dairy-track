@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown } from 'lucide-react';
 import { FilterModal } from '@/components/common/FilterModal';
+import { COW_STATUSES, COW_STATUS_LABEL } from '@/lib/cowPresence';
 
 interface CowFiltersModalProps {
   searchTerm: string;
@@ -68,11 +69,9 @@ export const CowFiltersModal: React.FC<CowFiltersModalProps> = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="dry">Dry</SelectItem>
-              <SelectItem value="pregnant">Pregnant</SelectItem>
-              <SelectItem value="sick">Sick</SelectItem>
-              <SelectItem value="sold">Sold</SelectItem>
+              {COW_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>{COW_STATUS_LABEL[s]}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

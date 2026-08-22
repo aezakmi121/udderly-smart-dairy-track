@@ -443,6 +443,9 @@ export type Database = {
           date_of_arrival: string
           date_of_birth: string | null
           estimated_milk_capacity: number | null
+          exit_date: string | null
+          exit_note: string | null
+          exit_reason: string | null
           id: string
           image_url: string | null
           is_promoted_calf: boolean | null
@@ -469,6 +472,9 @@ export type Database = {
           date_of_arrival: string
           date_of_birth?: string | null
           estimated_milk_capacity?: number | null
+          exit_date?: string | null
+          exit_note?: string | null
+          exit_reason?: string | null
           id?: string
           image_url?: string | null
           is_promoted_calf?: boolean | null
@@ -495,6 +501,9 @@ export type Database = {
           date_of_arrival?: string
           date_of_birth?: string | null
           estimated_milk_capacity?: number | null
+          exit_date?: string | null
+          exit_note?: string | null
+          exit_reason?: string | null
           id?: string
           image_url?: string | null
           is_promoted_calf?: boolean | null

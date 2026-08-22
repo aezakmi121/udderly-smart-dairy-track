@@ -7,6 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Plus } from 'lucide-react';
 import { useBreeds } from '@/hooks/useBreeds';
+import {
+  COW_STATUSES, COW_STATUS_LABEL, COW_EXIT_REASON_LABEL, exitReasonsFor, isGone,
+} from '@/lib/cowPresence';
 
 interface CowModalProps {
   selectedCow?: any;
@@ -33,6 +36,12 @@ export const CowModal: React.FC<CowModalProps> = ({
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = externalOnOpenChange || setInternalOpen;
   const { breeds } = useBreeds();
+  // Controlled so the exit fields can appear the moment Sold or Dead is picked.
+  const [status, setStatus] = React.useState<string>(selectedCow?.status || 'active');
+
+  React.useEffect(() => {
+    setStatus(selectedCow?.status || 'active');
+  }, [selectedCow?.id, selectedCow?.status]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -105,20 +114,22 @@ export const CowModal: React.FC<CowModalProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select name="status" defaultValue={selectedCow?.status || 'active'}>
+              {/* Active means she is here, whatever her condition. Dry, sick
+                  and pregnant used to be offered and were never once set --
+                  and pregnancy is decided by the breeding records, which
+                  actually know. */}
+              <Select name="status" value={status} onValueChange={setStatus}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="dry">Dry</SelectItem>
-                  <SelectItem value="pregnant">Pregnant</SelectItem>
-                  <SelectItem value="sick">Sick</SelectItem>
-                  <SelectItem value="sold">Sold</SelectItem>
+                  {COW_STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>{COW_STATUS_LABEL[s]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <Label htmlFor="estimated_milk_capacity">Est. Milk Capacity (L)</Label>
               <Input
@@ -130,6 +141,41 @@ export const CowModal: React.FC<CowModalProps> = ({
               />
             </div>
           </div>
+
+          {/* Asked for at the moment she leaves, because it is unanswerable
+              later: without a date, herd size over time cannot be charted. */}
+          {isGone(status) && (
+            <div className="grid grid-cols-1 gap-4 rounded-lg border bg-muted/40 p-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="exit_date">
+                  {status === 'sold' ? 'Date sold' : 'Date of death'}
+                </Label>
+                <Input
+                  id="exit_date"
+                  name="exit_date"
+                  type="date"
+                  defaultValue={selectedCow?.exit_date || new Date().toISOString().slice(0, 10)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="exit_reason">Reason</Label>
+                <Select name="exit_reason" defaultValue={selectedCow?.exit_reason || undefined}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {exitReasonsFor(status).map((r) => (
+                      <SelectItem key={r} value={r}>{COW_EXIT_REASON_LABEL[r]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="exit_note">Note (optional)</Label>
+                <Input id="exit_note" name="exit_note" defaultValue={selectedCow?.exit_note || ''} />
+              </div>
+            </div>
+          )}
 
           <div>
             <Label htmlFor="image">Cow Image</Label>

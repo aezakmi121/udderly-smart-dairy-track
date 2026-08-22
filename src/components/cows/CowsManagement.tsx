@@ -11,7 +11,7 @@ import { CowModal } from './CowModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Image, Trash2, Baby, Eye, ArrowRight } from 'lucide-react';
+import { Edit, Image, Baby, Eye, ArrowRight, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useCalves } from '@/hooks/useCalves';
@@ -19,6 +19,8 @@ import { CalfDetailsDialog } from './CalfDetailsDialog';
 import { CowDetailsModal } from './CowDetailsModal';
 import { CowFiltersModal } from './CowFiltersModal';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { COW_STATUS_LABEL, isGone, isOnFarm, statusTone } from '@/lib/cowPresence';
 
 interface Cow {
   id: string;
@@ -27,6 +29,9 @@ interface Cow {
   date_of_birth?: string;
   date_of_arrival: string;
   status?: 'active' | 'dry' | 'pregnant' | 'sick' | 'sold' | 'dead';
+  exit_date?: string | null;
+  exit_reason?: string | null;
+  exit_note?: string | null;
   image_url?: string;
   estimated_milk_capacity?: number;
   current_month_yield?: number;
@@ -229,21 +234,6 @@ export const CowsManagement = () => {
     }
   });
 
-  const deleteCowMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('cows')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cows-list'] });
-      toast({ title: "Cow deleted successfully!" });
-    }
-  });
-
   const handleImageUpload = async (file: File, cowId?: string) => {
     setIsUploading(true);
     try {
@@ -278,12 +268,18 @@ export const CowsManagement = () => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     
+    const gone = isGone(formData.get('status') as string);
     const cowData = {
       cow_number: formData.get('cow_number') as string,
       breed: formData.get('breed') as string,
       date_of_birth: formData.get('date_of_birth') as string || null,
       date_of_arrival: formData.get('date_of_arrival') as string,
-      status: formData.get('status') as 'active' | 'dry' | 'pregnant' | 'sick' | 'sold' | 'dead',
+      status: formData.get('status') as Cow['status'],
+      // Cleared when she comes back to active, so a corrected mistake does not
+      // leave a stale exit date behind.
+      exit_date: gone ? (formData.get('exit_date') as string) || null : null,
+      exit_reason: gone ? (formData.get('exit_reason') as string) || null : null,
+      exit_note: gone ? (formData.get('exit_note') as string) || null : null,
       estimated_milk_capacity: parseFloat(formData.get('estimated_milk_capacity') as string) || null,
       notes: formData.get('notes') as string,
       image_url: selectedCow?.image_url || null
@@ -296,228 +292,216 @@ export const CowsManagement = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'pregnant': return 'bg-blue-100 text-blue-800';
-      case 'dry': return 'bg-yellow-100 text-yellow-800';
-      case 'sick': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const onFarmCows = useMemo(
+    () => filteredAndSortedCows.filter((c) => isOnFarm(c.status)),
+    [filteredAndSortedCows]
+  );
+  const goneCows = useMemo(
+    () => filteredAndSortedCows.filter((c) => isGone(c.status)),
+    [filteredAndSortedCows]
+  );
+
+  const openDetails = (cow: Cow) => { setSelectedCowForDetails(cow); setCowDetailsOpen(true); };
+  const openEdit = (cow: Cow) => { setSelectedCow(cow); setIsDialogOpen(true); };
+  const openCalves = (cow: Cow) => { setSelectedCowForCalves(cow); setCalfDialogOpen(true); };
+  const calfCount = (cow: Cow) => calves?.filter((c) => c.mother_cow_id === cow.id).length || 0;
+
+  const ageLabel = (cow: Cow) =>
+    cow.date_of_birth
+      ? `${Math.floor((Date.now() - new Date(cow.date_of_birth).getTime()) / 31557600000)} yr`
+      : 'age unknown';
+  const dimLabel = (cow: Cow) =>
+    cow.last_calving_date
+      ? `${Math.floor((Date.now() - new Date(cow.last_calving_date).getTime()) / 86400000)} days in milk`
+      : null;
+  const statusLabel = (cow: Cow) => COW_STATUS_LABEL[cow.status || 'active'] ?? cow.status;
+
+  /** One cow, readable one-handed. No horizontal scroll at any width. */
+  const renderCard = (cow: Cow) => (
+    <div key={cow.id} className="rounded-xl border bg-card p-3">
+      <button type="button" onClick={() => openDetails(cow)} className="flex w-full items-center gap-3 text-left">
+        {cow.image_url ? (
+          <img src={cow.image_url} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" />
+        ) : (
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <Image className="h-5 w-5 text-muted-foreground" />
+          </div>
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className="text-xl font-bold tabular-nums">#{cow.cow_number}</span>
+            <span className="truncate text-sm text-muted-foreground">{cow.breed || 'Unknown breed'}</span>
+          </span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            {[ageLabel(cow), dimLabel(cow), `${(cowDailyAverages.get(cow.id) || 0).toFixed(1)} L/day`]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+        </span>
+        <Badge className={`${statusTone(cow.status)} shrink-0`}>{statusLabel(cow)}</Badge>
+        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+      </button>
+      <div className="mt-2 flex gap-2">
+        <Button variant="outline" size="sm" className="flex-1" onClick={() => openCalves(cow)}>
+          <Baby className="mr-1 h-4 w-4" /> {calfCount(cow)} calves
+        </Button>
+        {canEdit.cows && (
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(cow)}>
+            <Edit className="mr-1 h-4 w-4" /> Edit
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
+  /** Nine columns genuinely fit on a laptop, so the table stays there. */
+  const renderTable = (rows: Cow[]) => (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Image</TableHead>
+            <TableHead>Cow Number</TableHead>
+            <TableHead>Breed</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Age</TableHead>
+            <TableHead>Days in Milk</TableHead>
+            <TableHead>Daily Avg (Month)</TableHead>
+            <TableHead>Calves</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((cow) => (
+            <TableRow key={cow.id}>
+              <TableCell>
+                {cow.image_url ? (
+                  <img src={cow.image_url} alt={`Cow ${cow.cow_number}`} className="h-12 w-12 rounded-lg object-cover" />
+                ) : (
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+                    <Image className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                )}
+              </TableCell>
+              <TableCell className="font-medium">
+                <div className="flex items-center gap-2">
+                  {cow.cow_number}
+                  {cow.is_promoted_calf && (
+                    <Badge variant="outline" className="text-xs">
+                      <ArrowRight className="mr-1 h-3 w-3" /> Promoted
+                    </Badge>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell>{cow.breed || 'N/A'}</TableCell>
+              <TableCell><Badge className={statusTone(cow.status)}>{statusLabel(cow)}</Badge></TableCell>
+              <TableCell>{ageLabel(cow)}</TableCell>
+              <TableCell>{dimLabel(cow) ?? 'N/A'}</TableCell>
+              <TableCell>{(cowDailyAverages.get(cow.id) || 0).toFixed(1)} L/day</TableCell>
+              <TableCell>
+                <Button variant="outline" size="sm" onClick={() => openCalves(cow)}>
+                  <Baby className="mr-1 h-4 w-4" />{calfCount(cow)}
+                </Button>
+              </TableCell>
+              <TableCell>
+                {/* The delete button that used to sit here ran a hard DELETE,
+                    and every FK pointing at cows was ON DELETE CASCADE -- so a
+                    misclick took her breeding history, her calves and every
+                    litre ever recorded against her. A cow leaving the herd is
+                    marked sold or dead in Edit; she is not a row to remove. */}
+                <div className="flex space-x-2">
+                  <Button variant="outline" size="sm" onClick={() => openDetails(cow)} title="View Details">
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  {canEdit.cows && (
+                    <Button variant="outline" size="sm" onClick={() => openEdit(cow)} title="Edit">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex flex-col space-y-4 sm:flex-row sm:justify-between sm:items-center sm:space-y-0">
-          <div>
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-64 mt-2" />
-          </div>
+      <div className="space-y-4">
+        <div className="flex justify-end gap-2">
+          <Skeleton className="h-10 w-24" />
           <Skeleton className="h-10 w-32" />
         </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-            <Skeleton className="h-4 w-48" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center space-x-4">
-                  <Skeleton className="h-12 w-12 rounded-lg" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-6 w-20" />
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-4 w-16" />
-                  <div className="flex space-x-2">
-                    <Skeleton className="h-8 w-8" />
-                    <Skeleton className="h-8 w-8" />
-                    <Skeleton className="h-8 w-8" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-xl" />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col space-y-4 sm:flex-row sm:justify-between sm:items-center sm:space-y-0">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Cows Management</h2>
-          <p className="text-muted-foreground">Manage your dairy cows and their information</p>
-        </div>
-        
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <CowFiltersModal
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            breedFilter={breedFilter}
-            setBreedFilter={setBreedFilter}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
-            sortOrder={sortOrder}
-            setSortOrder={setSortOrder}
-            onClearFilters={handleClearFilters}
-            breeds={uniqueBreeds}
-            open={filterModalOpen}
-            onOpenChange={setFilterModalOpen}
+    <div className="space-y-4">
+      {/* No page heading: the nav says where you are, and the list below is
+          what you came for. This row was flex-col on mobile, which stretched
+          both buttons to the full container width -- that is why Filters
+          looked wrong, not anything about the button itself. */}
+      <div className="flex flex-row items-center justify-end gap-2">
+        <CowFiltersModal
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          breedFilter={breedFilter}
+          setBreedFilter={setBreedFilter}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          sortOrder={sortOrder}
+          setSortOrder={setSortOrder}
+          onClearFilters={handleClearFilters}
+          breeds={uniqueBreeds}
+          open={filterModalOpen}
+          onOpenChange={setFilterModalOpen}
+        />
+
+        {canEdit.cows && (
+          <CowModal
+            selectedCow={selectedCow}
+            onSubmit={handleSubmit}
+            isLoading={addCowMutation.isPending || updateCowMutation.isPending}
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+            isUploading={isUploading}
+            handleImageUpload={handleImageUpload}
+            setSelectedCow={setSelectedCow}
           />
-          
-          {canEdit.cows && (
-            <CowModal
-              selectedCow={selectedCow}
-              onSubmit={handleSubmit}
-              isLoading={addCowMutation.isPending || updateCowMutation.isPending}
-              open={isDialogOpen}
-              onOpenChange={setIsDialogOpen}
-              isUploading={isUploading}
-              handleImageUpload={handleImageUpload}
-              setSelectedCow={setSelectedCow}
-            />
-          )}
-        </div>
+        )}
       </div>
 
+      {/* Two groups, one axis: is she still here. Condition is not a section --
+          a cow on this farm is active whatever her condition -- and a search
+          cuts across both, because asking after a cow should not require
+          knowing first whether she has been sold. */}
+      {searchTerm.trim() ? (
+        <CowGroup label={`Matching "${searchTerm.trim()}"`} cows={filteredAndSortedCows} defaultOpen
+          renderCard={renderCard} renderTable={renderTable} />
+      ) : (
+        <>
+          <CowGroup label="On the farm" cows={onFarmCows} defaultOpen
+            renderCard={renderCard} renderTable={renderTable} />
+          {goneCows.length > 0 && (
+            <CowGroup label="Left the herd" cows={goneCows} muted
+              renderCard={renderCard} renderTable={renderTable} />
+          )}
+        </>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Cow Details</CardTitle>
-          <CardDescription>
-            {filteredAndSortedCows.length} of {cows?.length || 0} cows shown
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Image</TableHead>
-                  <TableHead>Cow Number</TableHead>
-                  <TableHead>Breed</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Age</TableHead>
-                  <TableHead>Days in Milk</TableHead>
-                  <TableHead>Daily Avg (Month)</TableHead>
-                  <TableHead>Calves</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAndSortedCows?.map((cow) => (
-                  <TableRow key={cow.id}>
-                    <TableCell>
-                      {cow.image_url ? (
-                        <img 
-                          src={cow.image_url} 
-                          alt={`Cow ${cow.cow_number}`}
-                          className="w-12 h-12 object-cover rounded-lg"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-                          <Image className="h-6 w-6 text-gray-400" />
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {cow.cow_number}
-                        {cow.is_promoted_calf && (
-                          <Badge variant="outline" className="text-xs">
-                            <ArrowRight className="h-3 w-3 mr-1" />
-                            Promoted
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{cow.breed || 'N/A'}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(cow.status || 'active')}>
-                        {cow.status || 'active'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {cow.date_of_birth 
-                        ? `${Math.floor((new Date().getTime() - new Date(cow.date_of_birth).getTime()) / (1000 * 60 * 60 * 24 * 365))} years`
-                        : 'Unknown'
-                      }
-                    </TableCell>
-                    <TableCell>
-                      {cow.last_calving_date 
-                        ? `${Math.floor((new Date().getTime() - new Date(cow.last_calving_date).getTime()) / (1000 * 60 * 60 * 24))} days`
-                        : 'N/A'
-                      }
-                    </TableCell>
-                    <TableCell>
-                      {cowDailyAverages.get(cow.id)?.toFixed(1) || '0.0'} L/day
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedCowForCalves(cow);
-                          setCalfDialogOpen(true);
-                        }}
-                      >
-                        <Baby className="h-4 w-4 mr-1" />
-                        {calves?.filter(calf => calf.mother_cow_id === cow.id).length || 0}
-                      </Button>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedCowForDetails(cow);
-                            setCowDetailsOpen(true);
-                          }}
-                          title="View Details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedCow(cow);
-                            setIsDialogOpen(true);
-                          }}
-                          title="Edit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this cow?')) {
-                              deleteCowMutation.mutate(cow.id);
-                            }
-                          }}
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      <p className="px-1 text-[11px] text-muted-foreground">
+        {filteredAndSortedCows.length} of {cows?.length || 0} shown
+      </p>
 
       <CalfDetailsDialog
         calves={calves?.filter(calf => calf.mother_cow_id === selectedCowForCalves?.id) || []}
@@ -532,5 +516,46 @@ export const CowsManagement = () => {
         cow={selectedCowForDetails}
       />
     </div>
+  );
+};
+
+/**
+ * A collapsible group of cows: cards on a phone, the table on a laptop.
+ *
+ * "On the farm" opens by default and "Left the herd" does not -- unlike the
+ * breeding board, which starts fully collapsed. That board is a worklist you
+ * scan; this is a register you look things up in, so the group holding almost
+ * every cow should already be open.
+ */
+const CowGroup: React.FC<{
+  label: string;
+  cows: Cow[];
+  defaultOpen?: boolean;
+  muted?: boolean;
+  renderCard: (cow: Cow) => React.ReactNode;
+  renderTable: (cows: Cow[]) => React.ReactNode;
+}> = ({ label, cows, defaultOpen = false, muted, renderCard, renderTable }) => {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className={`rounded-lg border ${muted ? 'border-dashed' : ''}`}>
+      <CollapsibleTrigger className="flex w-full items-center gap-2 p-3 text-left hover:bg-muted/50">
+        <ChevronRight className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-90' : ''}`} />
+        <span className={`flex-1 font-semibold ${muted ? 'text-sm font-medium text-muted-foreground' : ''}`}>
+          {label}
+        </span>
+        <Badge variant="secondary">{cows.length}</Badge>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="border-t p-3">
+        {cows.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">No cows here.</p>
+        ) : (
+          <>
+            <div className="grid gap-2 sm:hidden">{cows.map(renderCard)}</div>
+            <div className="hidden sm:block">{renderTable(cows)}</div>
+          </>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 };
