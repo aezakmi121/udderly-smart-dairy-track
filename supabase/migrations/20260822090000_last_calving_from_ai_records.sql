@@ -31,12 +31,18 @@ BEGIN
     RETURN NULL;
   END IF;
 
+  -- COALESCE back to the stored value: a date entered by hand for a cow with
+  -- neither a calf row nor a recorded delivery is the only thing anyone knows
+  -- about her calving, and recomputing must not be able to erase it.
   UPDATE public.cows c
-  SET last_calving_date = GREATEST(
-        (SELECT MAX(r.actual_delivery_date) FROM public.ai_records r
-          WHERE r.cow_id = target AND r.actual_delivery_date IS NOT NULL),
-        (SELECT MAX(k.date_of_birth) FROM public.calves k
-          WHERE k.mother_cow_id = target AND k.status <> 'dead')
+  SET last_calving_date = COALESCE(
+        GREATEST(
+          (SELECT MAX(r.actual_delivery_date) FROM public.ai_records r
+            WHERE r.cow_id = target AND r.actual_delivery_date IS NOT NULL),
+          (SELECT MAX(k.date_of_birth) FROM public.calves k
+            WHERE k.mother_cow_id = target AND k.status <> 'dead')
+        ),
+        c.last_calving_date
       ),
       updated_at = now()
   WHERE c.id = target;
@@ -55,11 +61,14 @@ FOR EACH ROW EXECUTE FUNCTION public.update_cow_last_calving_from_ai();
 -- Backfill every cow from both sources. GREATEST ignores NULLs in Postgres, so
 -- a cow with only one of the two still gets the right date.
 UPDATE public.cows c
-SET last_calving_date = GREATEST(
-      (SELECT MAX(r.actual_delivery_date) FROM public.ai_records r
-        WHERE r.cow_id = c.id AND r.actual_delivery_date IS NOT NULL),
-      (SELECT MAX(k.date_of_birth) FROM public.calves k
-        WHERE k.mother_cow_id = c.id AND k.status <> 'dead')
+SET last_calving_date = COALESCE(
+      GREATEST(
+        (SELECT MAX(r.actual_delivery_date) FROM public.ai_records r
+          WHERE r.cow_id = c.id AND r.actual_delivery_date IS NOT NULL),
+        (SELECT MAX(k.date_of_birth) FROM public.calves k
+          WHERE k.mother_cow_id = c.id AND k.status <> 'dead')
+      ),
+      c.last_calving_date
     )
 WHERE c.last_calving_date IS DISTINCT FROM GREATEST(
       (SELECT MAX(r.actual_delivery_date) FROM public.ai_records r

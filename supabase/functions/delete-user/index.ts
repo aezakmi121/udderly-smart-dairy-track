@@ -36,12 +36,27 @@ serve(async (req: Request) => {
       });
     }
 
-    const { data: isAdmin, error: roleErr } = await anonClient.rpc('has_role', {
-      _user_id: user.id,
-      _role: 'admin'
-    });
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
 
-    if (roleErr || !isAdmin) {
+    // The caller's identity comes from their own JWT above; the role check runs
+    // on the service client, reading user_roles directly.
+    //
+    // This used to call has_role() through the anon client, which meant the
+    // check executed as `authenticated`. Revoking EXECUTE on that function --
+    // which is what stops anyone enumerating roles over /rest/v1/rpc -- would
+    // have turned every admin's delete into "Admin access required". Every
+    // other edge function here already reads user_roles this way.
+    const { data: roleRow, error: roleErr } = await serviceClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    if (roleErr || !roleRow) {
       return new Response(JSON.stringify({ error: 'Admin access required' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
@@ -55,11 +70,6 @@ serve(async (req: Request) => {
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
-
-    const serviceClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
 
     // Remove roles and profile first
     await serviceClient.from("user_roles").delete().eq("user_id", userId);
