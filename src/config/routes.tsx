@@ -36,15 +36,6 @@ import { CowGroupingManagement } from '@/components/grouping/CowGroupingManageme
 import { ReportsManagement } from '@/components/reports/ReportsManagement';
 import { ExpenseManagement } from '@/components/expenses/ExpenseManagement';
 import { SettingsManagement } from '@/components/settings/SettingsManagement';
-import { PlantSalesManagement } from '@/components/revenue/PlantSalesManagement';
-import { StoreSalesManagement } from '@/components/revenue/StoreSalesManagement';
-import { CollectionCenterSalesManagement } from '@/components/revenue/CollectionCenterSalesManagement';
-import { MilkDistributionManagement } from '@/components/revenue/MilkDistributionManagement';
-import { CollectionCenterDistributionManagement } from '@/components/revenue/CollectionCenterDistributionManagement';
-import { StoreReceiptManagement } from '@/components/revenue/StoreReceiptManagement';
-import { SlipVerificationManagement } from '@/components/revenue/SlipVerificationManagement';
-import { DahiProductionManagement } from '@/components/revenue/DahiProductionManagement';
-import { DistributionReports } from '@/components/reports/DistributionReports';
 import { PayoutsManagement } from '@/components/payouts/PayoutsManagement';
 
 export const routes: RouteConfig[] = [
@@ -154,69 +145,6 @@ export const routes: RouteConfig[] = [
     permission: 'expenses',
     label: 'Expenses',
     icon: Receipt
-  },
-  {
-    path: '/plant-sales',
-    component: PlantSalesManagement,
-    permission: 'milkCollection',
-    label: 'Plant Sales',
-    icon: TrendingUp
-  },
-  {
-    path: '/store-sales',
-    component: StoreSalesManagement,
-    permission: 'settings',
-    label: 'Store Sales',
-    icon: ShoppingBag
-  },
-  {
-    path: '/collection-center-sales',
-    component: CollectionCenterSalesManagement,
-    permission: 'milkCollection',
-    label: 'Collection Center',
-    icon: Users
-  },
-  {
-    path: '/milk-distribution',
-    component: MilkDistributionManagement,
-    permission: 'milkProduction',
-    label: 'Milk Distribution',
-    icon: Droplet
-  },
-  {
-    path: '/collection-center-distribution',
-    component: CollectionCenterDistributionManagement,
-    permission: 'milkCollection',
-    label: 'CC Distribution',
-    icon: Droplet
-  },
-  {
-    path: '/store-receipts',
-    component: StoreReceiptManagement,
-    permission: 'settings',
-    label: 'Store Receipts',
-    icon: Receipt
-  },
-  {
-    path: '/slip-verification',
-    component: SlipVerificationManagement,
-    permission: 'milkCollection',
-    label: 'Slip Verification',
-    icon: Receipt
-  },
-  {
-    path: '/dahi-production',
-    component: DahiProductionManagement,
-    permission: 'milkProduction',
-    label: 'Dahi Production',
-    icon: Droplet
-  },
-  {
-    path: '/distribution-reports',
-    component: DistributionReports,
-    permission: 'analytics',
-    label: 'Distribution Reports',
-    icon: FileText
   },
   {
     path: '/settings',

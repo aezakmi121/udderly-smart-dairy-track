@@ -60,9 +60,6 @@ verify_jwt = false
 [functions.send-milking-reminders]
 verify_jwt = false
 
-[functions.api]
-verify_jwt = false
-
 [functions.extract-collection-slip]
 verify_jwt = true
 

@@ -1,6 +1,6 @@
 # Dismantling the sales, distribution and slip-verification modules
 
-Status: **proposal, for decision.** Nothing removed yet.
+Status: **done.** Both phases shipped in one change. Section 8 records it.
 
 Nine screens to go: Plant Sales, Store Sales, Collection Center, Milk
 Distribution, CC Distribution, Store Receipts, Slip Verification, Dahi
@@ -200,3 +200,71 @@ unrelated to this removal. Worth deleting in the same sweep.
 3. **`cream_stock` / `ffm_stock` — confirm they go?** They are empty and serve
    only this subsystem, but they were not on your list.
 4. **Anything in those 32 rows worth keeping** beyond a CSV in the repo?
+
+
+---
+
+## 8. What was removed
+
+Both phases went together after you confirmed the four questions. The month-long
+wait in §5 was for the case where something might still call this; nothing does,
+so there was nothing to wait for.
+
+### Answers
+
+| Question | Answer |
+|---|---|
+| What calls the `api` function? | **Nothing.** No `functions.invoke('api')`, no fetch to `/functions/v1/api`, no reference in any doc. It existed only in `config.toml`. Deleted entirely rather than patched. |
+| Phase 2 now or later? | Now. |
+| `cream_stock` / `ffm_stock`? | Confirmed, dropped. |
+| Anything in the 32 rows? | Nothing beyond the CSV. |
+
+### Code
+
+**5,330 lines deleted across 38 files.**
+
+- Nine route entries and their imports — `routes.tsx` goes from 25 routes to 16.
+- The whole `src/components/revenue/` directory (20 files).
+- `reports/DistributionReports.tsx` and `reports/distribution/` (5 tabs).
+- Nine hooks.
+- `supabase/functions/notify-plant-sale/` and `supabase/functions/api/`, plus the
+  `[functions.api]` block in `config.toml`.
+- Four dead fetchers from `utils/paginatedFetch.ts` — it keeps the six that
+  serve milk, expenses and feed.
+- `reports/MilkReports.tsx`, dead code found in passing.
+
+### Database
+
+Ten tables dropped, children first, plain `DROP TABLE`:
+
+```
+ffm_stock · cream_stock                      (they hold the foreign keys)
+slip_verification · collection_center_distributions · collection_center_sales
+milk_distributions · plant_sales · store_sales · store_receipts · dahi_production
+auto_ffm_stock_from_distribution()           (its trigger went with the table)
+```
+
+Every one succeeded without `CASCADE`, which is itself the check: nothing
+outside the removal set depended on any of them.
+
+### Archived first
+
+`docs/archive/` holds all 32 rows as CSV, with `farmer_id` resolved to code and
+name so they stay readable now the ids mean nothing. The seven empty tables have
+nothing to archive, and the README says which those were.
+
+### Verified after
+
+| Check | Result |
+|---|---|
+| Dropped tables remaining | 0 |
+| Orphaned function | 0 |
+| `milk_collections` | **19,670 rows** — untouched |
+| `milk_production` | **10,406 rows** — untouched |
+| `farmers` | 61 — untouched |
+| `milk_collections.slip_printed_at` | present — slip printing and the QR portal intact |
+| `collection_centre` role | present — Milk Collection screen intact |
+| Tests | 294 passing |
+| Build | clean |
+| Lint | 544 → **459 problems**, purely from the deleted code |
+| Bundle | 2,511 kB → **2,417 kB** (gzip 697 → 683 kB) |
